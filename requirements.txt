@@ -1,5 +1,2 @@
-fastmcp==2.11.3
 uiautomation==2.0.29
-jsonpath-ng==1.7.0
 Pillow==11.3.0
-pyautogui==0.9.54
