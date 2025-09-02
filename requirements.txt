@@ -1,2 +1,9 @@
 uiautomation==2.0.29
 Pillow==11.3.0
+opencv-python
+pyautogui
+sounddevice
+scipy
+pynput
+imageio
+imageio-ffmpeg
