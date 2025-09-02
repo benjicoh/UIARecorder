@@ -54,7 +54,7 @@ class Recorder:
         print("[Recorder] Audio recording thread started.")
         try:
             samplerate = 44100
-            channels = 2
+            channels = 1
             self.audio_frames = []
 
             def callback(indata, frames, time, status):
@@ -92,6 +92,7 @@ class Recorder:
 
     def _highlight_element(self):
         print("[Recorder] Highlight thread started.")
+        auto.UIAutomationInitializerInThread()
         while self.is_recording:
             try:
                 x, y = pyautogui.position()
@@ -171,7 +172,7 @@ class Recorder:
             "element_hierarchy": element_hierarchy
         }
         self.annotations.append(annotation)
-        print(f"[Recorder] Annotation logged: {annotation}")
+        
 
     def _on_press(self, key):
         element = auto.GetFocusedControl()
