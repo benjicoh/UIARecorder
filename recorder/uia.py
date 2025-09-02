@@ -65,6 +65,10 @@ class UIAHelper:
         except Exception:
             info['name'] = 'N/A'
         try:
+            info['automation_id'] = element.AutomationId
+        except Exception:
+            info['automation_id'] = 'N/A'
+        try:
             info['class_name'] = element.ClassName
         except Exception:
             info['class_name'] = 'N/A'

@@ -38,13 +38,20 @@ The JSON file contains a list of events, each with the following structure:
 For each new UI element detected in the hierarchy, a screenshot of that element is captured and saved in the `recording/images` folder.
 - The screenshot is taken of the element's bounding rectangle.
 - Screenshots are only taken for elements that are on-screen and have a valid, non-zero rectangle.
-- The filename for each screenshot is in the format `{element_id}_ss_{timestamp}.png`, where the timestamp is the number of seconds from the start of the recording.
+- The filename for each screenshot is in the format `{element_id}_ss_{timestamp}.png`, where the timestamp is the number of milliseconds from the start of the recording.
 
 ## Guidelines
 - The script should be robust and able to handle various UI scenarios.
-- Pay close attention to the element hierarchy and control properties defined in the JSON file. Correctly identify the elements based on that.
-- **Refer to the `patterns` in the JSON to determine the available interfaces and actions for each element.**
 - If ambiguity arises in identifying elements, consider using additional properties or a combination of properties to disambiguate.
 - Use appropriate error handling to manage unexpected UI states.
 - Include comments in the code to explain the logic and flow.
 - Provide logging of your actions and any errors encountered.
+
+## Identifying elements correctly
+- Use the `name`, `automation_id`, `class_name`, and `control_type` properties from the JSON file to uniquely identify elements.
+- If multiple elements match the criteria, use additional properties or a combination of properties to disambiguate.
+- Always refer to the `element_hierarchy` in the JSON to understand the context of each element.
+- **Do not** try to to get the names from the UI
+- If no unique element can be identified, consider looking for the image in the screenshot using pyautogui bitmap matching
+- Use the patterns in the json file to understand the control's behavior and available actions.
+- You can cross correlate the element id with screenshot filename, to better understand where it is
