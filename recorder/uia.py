@@ -65,6 +65,10 @@ class UIAHelper:
         except Exception:
             info['name'] = 'N/A'
         try:
+            info['process_name'] = element.ProcessName
+        except Exception:
+            info['process_name'] = 'N/A'
+        try:
             info['automation_id'] = element.AutomationId
         except Exception:
             info['automation_id'] = 'N/A'
@@ -200,7 +204,7 @@ class UIAHelper:
 
         return info
 
-    def get_element_hierarchy(self, element):
+    def get_element_hierarchy(self, element, process_names=None):
         if not element:
             return None
         hierarchy = []
@@ -208,7 +212,8 @@ class UIAHelper:
         while current:
             info = self.get_element_info(current)
             if info:
-                hierarchy.append(info)
+                if not process_names or (info.get('process_name') and info['process_name'].lower() in [p.lower() for p in process_names]):
+                    hierarchy.append(info)
 
             try:
                 current = current.GetParentControl()
