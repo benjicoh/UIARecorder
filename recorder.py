@@ -1,8 +1,13 @@
+import argparse
 from recorder.main_recorder import Recorder
 from pynput import keyboard
 
 if __name__ == "__main__":
-    recorder = Recorder()
+    parser = argparse.ArgumentParser(description="Record UI interactions.")
+    parser.add_argument('--process_names', type=str, nargs='+', help='Filter recording by process name(s).')
+    args = parser.parse_args()
+
+    recorder = Recorder(process_names=args.process_names)
 
     def on_activate_record():
         if recorder.is_recording:

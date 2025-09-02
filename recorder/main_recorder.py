@@ -10,12 +10,15 @@ from .media import MediaRecorder
 from .uia import UIAHelper
 
 class Recorder:
-    def __init__(self, output_folder="recording"):
+    def __init__(self, output_folder="recording", process_names=None):
         self.output_folder = output_folder
         self.images_folder = f"{self.output_folder}/images"
         self.json_file = f"{self.output_folder}/annotations.json"
         print(f"[Recorder] Output folder set to: {self.output_folder}")
 
+        self.process_names = process_names
+        if self.process_names:
+            print(f"[Recorder] Filtering by process names: {self.process_names}")
         self.is_recording = False
         self.start_time = None
         self.annotations = []
@@ -93,7 +96,9 @@ class Recorder:
     def _handle_release(self, key):
         try:
             element = self.uia_helper.get_focused_element()
-            hierarchy = self.uia_helper.get_element_hierarchy(element)
+            if self.process_names and (not element or not element.ProcessName or element.ProcessName.lower() not in [p.lower() for p in self.process_names]):
+                return
+            hierarchy = self.uia_helper.get_element_hierarchy(element, self.process_names)
             self._log_annotation("key_release", str(key), hierarchy)
         except Exception as e:
             print(f"[Recorder] Error in _handle_release: {e}")
@@ -103,7 +108,9 @@ class Recorder:
         action = 'pressed' if pressed else 'released'
         try:
             element = self.uia_helper.get_element_from_point(x, y)
-            hierarchy = self.uia_helper.get_element_hierarchy(element)
+            if self.process_names and (not element or not element.ProcessName or element.ProcessName.lower() not in [p.lower() for p in self.process_names]):
+                return
+            hierarchy = self.uia_helper.get_element_hierarchy(element, self.process_names)
             self._log_annotation("mouse_click", {"x": x, "y": y, "button": str(button), "action": action}, hierarchy)
         except Exception as e:
             print(f"[Recorder] Error in _handle_click: {e}")

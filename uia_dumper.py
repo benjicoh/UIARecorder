@@ -23,8 +23,12 @@ def get_element_info(element):
         'control_type': element.ControlTypeName,
         'bounding_rectangle': str(element.BoundingRectangle),  # Convert rect to string for serialization
         'is_offscreen': element.IsOffscreen,
-        'children': []
+        'children': [],
     }
+    try:
+        info['process_name'] = element.ProcessName
+    except Exception:
+        info['process_name'] = None
 
     # Extract pattern information
     patterns = {}
@@ -147,21 +151,36 @@ def get_element_info(element):
     return info
 
 
-def traverse_element_tree(element):
+def traverse_element_tree(element, process_names=None):
     """
     Recursively traverses the UI Automation tree and builds a dictionary representation.
+    If process_names is provided, only elements from those processes (and their ancestors) are included.
     """
     if not element:
         return None
 
-    tree = get_element_info(element)
-
+    children = []
     for child in element.GetChildren():
-        child_tree = traverse_element_tree(child)
+        child_tree = traverse_element_tree(child, process_names)
         if child_tree:
-            tree['children'].append(child_tree)
+            children.append(child_tree)
 
-    return tree
+    is_match = False
+    if process_names:
+        try:
+            if element.ProcessName and element.ProcessName.lower() in [p.lower() for p in process_names]:
+                is_match = True
+        except Exception:
+            pass  # Some elements might not have ProcessName
+    else:
+        is_match = True  # No filter, so everything is a match
+
+    if is_match or children:
+        tree = get_element_info(element)
+        tree['children'] = children
+        return tree
+
+    return None
 
 
 if __name__ == "__main__":
@@ -174,6 +193,7 @@ if __name__ == "__main__":
     group.add_argument('--process', type=str, help='Process name to dump the UI tree for')
     group.add_argument('--window', type=str, help='Top-level window title to dump the UI tree for')
     parser.add_argument('--output', type=str, required=True, help='Output JSON file')
+    parser.add_argument('--process_names', type=str, nargs='+', help='Filter elements by process name(s). Only elements from these processes will be included in the output.')
     args = parser.parse_args()
 
     root = None
@@ -196,7 +216,7 @@ if __name__ == "__main__":
             print(f"Window with title containing '{args.window}' not found.", file=sys.stderr)
             sys.exit(1)
 
-    tree = traverse_element_tree(root)
+    tree = traverse_element_tree(root, process_names=args.process_names)
     with open(args.output, 'w', encoding='utf-8') as f:
         json.dump(tree, f, ensure_ascii=False, indent=2)
     print(f"UI tree dumped to {args.output}")
