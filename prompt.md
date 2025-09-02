@@ -1,40 +1,37 @@
 ## Goal
-- Generate a robust windows desktop automation script using python uiautomation package
+- Generate a robust windows desktop automation script using python [uiautomation package](https://github.com/yinkaisheng/Python-UIAutomation-for-Windows).
 
 ## Inputs
-- A video file with narration of the test scenario
-- A json file with the UIA properties of the clicked elements and the focused elements in the following format
+- A video file with narration of the test scenario.
+- A json file with the UIA properties of the clicked and focused elements.
+- A series of screenshots for each user interaction, with annotations.
+
+## JSON Format
+The JSON file contains a list of events, each with the following structure:
 ```json
 {
-    [
-        "timestamp": 11.212849378585815, // relative to video start in seconds
-        "event_type": "mouse_click",
-        "event_data": {
-            "x": 1179,
-            "y": 422,
-            "button": "Button.left",
-            "action": "released"
-        },
-        "element_hierarchy": [ //route to desktop from element from point traversing its parents
-            {
-                "name": "Display is 3",
-                "class_name": "",
-                "control_type": "TextControl",
-                "bounding_rectangle": "(879,396,1199,471)[320x75]",
-                "is_offscreen": false
-            },
+    "timestamp": 12.345,
+    "event_type": "mouse_click",
+    "event_data": { ... },
+    "element_hierarchy": [
+        {
+            "id": "element-1",
+            "name": "Button",
+            "class_name": "Button",
+            "control_type": "ButtonControl",
             ...
-            {
-                "name": "Calculator",
-                "class_name": "ApplicationFrame",
-                "control_type": "Window",
-                "bounding_rectangle": "(100,100,800,600)[700x500]",
-                "is_offscreen": false
-            }]
-        },...
+        },
+        ...
     ]
 }
 ```
+Each element in the `element_hierarchy` now has a unique `id`.
+
+## Annotated Screenshots
+For each mouse click and key press, a screenshot is captured. These images are saved in the `recording/images` folder.
+The screenshots include:
+- A colored border around each UI element in the path to the root.
+- A legend at the top-left of the image that maps each color to its corresponding `id` from the JSON file.
 
 ## Guidelines
 - The script should be robust and able to handle various UI scenarios.
