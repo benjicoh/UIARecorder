@@ -17,10 +17,15 @@ class Recorder:
         self.output_folder = output_folder
         os.makedirs(self.output_folder, exist_ok=True)
 
+        print(f"[Recorder] Output folder set to: {self.output_folder}")
+
         self.video_file = f"{self.output_folder}/video.mp4"
         self.json_file = f"{self.output_folder}/annotations.json"
         self.temp_video_file = f"{self.output_folder}/temp_video.avi"
         self.temp_audio_file = f"{self.output_folder}/temp_audio.wav"
+
+        print(f"[Recorder] Video will be saved to: {self.video_file}")
+        print(f"[Recorder] Annotations will be saved to: {self.json_file}")
 
         self.is_recording = False
         self.start_time = None
@@ -36,14 +41,17 @@ class Recorder:
         self.highlight_thread = None
 
     def _record_video(self):
+        print("[Recorder] Video recording thread started.")
         self.video_writer = cv2.VideoWriter(self.temp_video_file, self.fourcc, 20.0, (self.screen_size.width, self.screen_size.height))
         while self.is_recording:
             img = pyautogui.screenshot()
             frame = np.array(img)
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             self.video_writer.write(frame)
+        print("[Recorder] Video recording thread stopped.")
 
     def _record_audio(self):
+        print("[Recorder] Audio recording thread started.")
         try:
             samplerate = 44100
             channels = 2
@@ -51,16 +59,18 @@ class Recorder:
 
             def callback(indata, frames, time, status):
                 if status:
-                    print(status)
+                    print(f"[Recorder] Audio status: {status}")
                 self.audio_frames.append(indata.copy())
 
             with sd.InputStream(samplerate=samplerate, channels=channels, callback=callback):
                 while self.is_recording:
                     time.sleep(0.1)
         except Exception as e:
-            print(f"Audio recording failed: {e}")
+            print(f"[Recorder] Audio recording failed: {e}")
+        print("[Recorder] Audio recording thread stopped.")
 
     def start(self):
+        print("[Recorder] Starting recording...")
         self.is_recording = True
         self.start_time = time.time()
 
@@ -78,9 +88,10 @@ class Recorder:
         self.keyboard_listener.start()
         self.mouse_listener.start()
 
-        print("Recording started.")
+        print("[Recorder] Recording started.")
 
     def _highlight_element(self):
+        print("[Recorder] Highlight thread started.")
         while self.is_recording:
             try:
                 x, y = pyautogui.position()
@@ -90,8 +101,10 @@ class Recorder:
             except Exception:
                 pass # Ignore errors
             time.sleep(0.1)
+        print("[Recorder] Highlight thread stopped.")
 
     def stop(self):
+        print("[Recorder] Stopping recording...")
         self.is_recording = False
 
         if self.keyboard_listener:
@@ -109,10 +122,12 @@ class Recorder:
             self.video_writer.release()
 
         if self.audio_frames:
+            print("[Recorder] Saving audio to file...")
             samplerate = 44100
             write_wav(self.temp_audio_file, samplerate, np.concatenate(self.audio_frames, axis=0))
 
             # Combine video and audio with ffmpeg
+            print("[Recorder] Combining video and audio with ffmpeg...")
             cmd = [
                 'ffmpeg',
                 '-y', # Overwrite output file if it exists
@@ -125,8 +140,9 @@ class Recorder:
             ]
             try:
                 subprocess.run(cmd, check=True, capture_output=True, text=True)
+                print(f"[Recorder] Video with audio saved to {self.video_file}")
             except subprocess.CalledProcessError as e:
-                print("ffmpeg error:")
+                print("[Recorder] ffmpeg error:")
                 print(e.stderr)
 
             # Clean up temp files
@@ -138,20 +154,24 @@ class Recorder:
             # If no audio, just rename the video file
             if os.path.exists(self.temp_video_file):
                 os.rename(self.temp_video_file, self.video_file)
+            print(f"[Recorder] Video saved to {self.video_file} (no audio)")
 
         with open(self.json_file, 'w') as f:
             json.dump(self.annotations, f, indent=4)
+        print(f"[Recorder] Annotations saved to {self.json_file}")
 
-        print("Recording stopped.")
+        print("[Recorder] Recording stopped.")
 
     def _log_annotation(self, event_type, event_data, element_hierarchy=None):
         timestamp = time.time() - self.start_time
-        self.annotations.append({
+        annotation = {
             "timestamp": timestamp,
             "event_type": event_type,
             "event_data": event_data,
             "element_hierarchy": element_hierarchy
-        })
+        }
+        self.annotations.append(annotation)
+        print(f"[Recorder] Annotation logged: {annotation}")
 
     def _on_press(self, key):
         element = auto.GetFocusedControl()
@@ -199,9 +219,12 @@ if __name__ == "__main__":
         global recorder, hotkey_pressed
         # Use a specific set for the hotkey to avoid conflicts
         hotkey_combo = {keyboard.Key.alt_l, keyboard.Key.shift, keyboard.KeyCode.from_char('r')}
-
+        
         if key in hotkey_combo:
             hotkey_pressed.add(key)
+            print(key)
+            print(hotkey_pressed)
+            print(hotkey_combo)
             if hotkey_pressed == hotkey_combo:
                 if recorder.is_recording:
                     recorder.stop()
@@ -219,6 +242,8 @@ if __name__ == "__main__":
             # Stop the main listener
             listener.stop()
 
-    print("Press Alt+Shift+R to start/stop recording. Press Esc to exit.")
+    print("[Main] Press Alt+Shift+R to start/stop recording. Press Esc to exit.")
     with keyboard.Listener(on_press=on_press, on_release=on_release) as listener:
+        print("[Main] Hotkey listener started.")
         listener.join()
+    print("[Main] Exiting script.")

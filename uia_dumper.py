@@ -1,3 +1,13 @@
+"""
+uia_dumper.py - Dump UI Automation tree to JSON
+
+Usage examples:
+    # Dump the UI tree for a window with a specific title
+    python uia_dumper.py --window "AI Shelveset Linter" --output ai_shelveset_linter_dump.json
+
+    # Dump the UI tree for a process by name
+    python uia_dumper.py --process explorer.exe --output explorer_ui.json
+"""
 import uiautomation as auto
 
 def get_element_info(element):
@@ -136,6 +146,7 @@ def get_element_info(element):
 
     return info
 
+
 def traverse_element_tree(element):
     """
     Recursively traverses the UI Automation tree and builds a dictionary representation.
@@ -151,3 +162,41 @@ def traverse_element_tree(element):
             tree['children'].append(child_tree)
 
     return tree
+
+
+if __name__ == "__main__":
+    import argparse
+    import json
+    import sys
+
+    parser = argparse.ArgumentParser(description="Dump UI Automation tree to JSON.")
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument('--process', type=str, help='Process name to dump the UI tree for')
+    group.add_argument('--window', type=str, help='Top-level window title to dump the UI tree for')
+    parser.add_argument('--output', type=str, required=True, help='Output JSON file')
+    args = parser.parse_args()
+
+    root = None
+    if args.process:
+        # Find the process by name
+        for w in auto.GetRootControl().GetChildren():
+            if w.ProcessName.lower() == args.process.lower():
+                root = w
+                break
+        if not root:
+            print(f"Process '{args.process}' not found.", file=sys.stderr)
+            sys.exit(1)
+    elif args.window:
+        # Find the window by title
+        for w in auto.GetRootControl().GetChildren():
+            if w.Name and args.window.lower() in w.Name.lower():
+                root = w
+                break
+        if not root:
+            print(f"Window with title containing '{args.window}' not found.", file=sys.stderr)
+            sys.exit(1)
+
+    tree = traverse_element_tree(root)
+    with open(args.output, 'w', encoding='utf-8') as f:
+        json.dump(tree, f, ensure_ascii=False, indent=2)
+    print(f"UI tree dumped to {args.output}")
