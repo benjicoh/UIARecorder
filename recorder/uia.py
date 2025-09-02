@@ -51,7 +51,7 @@ class UIAHelper:
             return None
 
         try:
-            runtime_id = element.RuntimeId
+            runtime_id = element.GetRuntimeId()
             if runtime_id not in self.element_ids:
                 self.element_ids[runtime_id] = f"element-{self.element_id_counter}"
                 self.element_id_counter += 1

@@ -31,7 +31,7 @@ The JSON file contains a list of events, each with the following structure:
     ]
 }
 ```
-- Each element in the `element_hierarchy` now has a unique `id`.
+- Each element in the `element_hierarchy` has a unique `id`.
 - The `patterns` object lists all the UI Automation patterns supported by the element. Refer to this to understand the available actions for an element (e.g., `InvokePattern`, `ValuePattern`).
 
 ## Annotated Screenshots

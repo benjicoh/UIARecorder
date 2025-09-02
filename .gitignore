@@ -1,3 +1,5 @@
 # Ignore the recording folder and its contents
 recording/
 test.py
+__pycache__/
+@AutomationLog.txt

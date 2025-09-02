@@ -55,19 +55,21 @@ class Recorder:
         print("[Recorder] Recording stopped.")
 
     def _handle_press(self, key):
-        try:
-            element = self.uia_helper.get_focused_element()
-            hierarchy = self.uia_helper.get_element_hierarchy(element)
-            self.annotator.capture_and_annotate_screenshot(hierarchy)
-            self.annotator.log_annotation("key_press", str(key), hierarchy)
-        except Exception as e:
-            print(f"[Recorder] Error in _handle_press: {e}")
-            self.annotator.log_annotation("key_press", str(key), None)
+        pass
+        # try:
+        #     element = self.uia_helper.get_focused_element()
+        #     hierarchy = self.uia_helper.get_element_hierarchy(element)
+        #     self.annotator.capture_and_annotate_screenshot(hierarchy)
+        #     self.annotator.log_annotation("key_press", str(key), hierarchy)
+        # except Exception as e:
+        #     print(f"[Recorder] Error in _handle_press: {e}")
+        #     self.annotator.log_annotation("key_press", str(key), None)
 
     def _handle_release(self, key):
         try:
             element = self.uia_helper.get_focused_element()
             hierarchy = self.uia_helper.get_element_hierarchy(element)
+            self.annotator.capture_and_annotate_screenshot(hierarchy)
             self.annotator.log_annotation("key_release", str(key), hierarchy)
         except Exception as e:
             print(f"[Recorder] Error in _handle_release: {e}")
