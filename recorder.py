@@ -204,12 +204,17 @@ class Recorder:
                         draw.rectangle(rect, outline=color, width=3)
 
                         element_id = element_info['id']
-                        legend_items.append((color, element_id))
+                        rect = element_info['bounding_rectangle']
+                        id = f"{element_id} - {rect}"
+                        legend_items.append((color, id))
                     except (ValueError, SyntaxError, KeyError) as e:
                         print(f"Could not parse or draw for element: {element_info}. Error: {e}")
 
         # Draw legend
         legend_y = 10
+        # Draw semi transparent box for the legend
+        height = legend_items.__len__() * 25 + 10
+        draw.rectangle([(0, legend_y), (200, legend_y + height)], fill=(0, 0, 0, 128))
         for color, element_id in legend_items:
             legend_text = f"{element_id}"
             draw.rectangle([(10, legend_y), (30, legend_y + 20)], fill=color)
@@ -221,16 +226,24 @@ class Recorder:
         return screenshot_path
 
     def _on_press(self, key):
-        element = auto.GetFocusedControl()
-        hierarchy = self._get_element_hierarchy(element)
-        self._capture_and_annotate_screenshot(hierarchy)
-        self._log_annotation("key_press", str(key), hierarchy)
+        pass
+        # try:
+        #     element = auto.GetFocusedControl()
+        #     hierarchy = self._get_element_hierarchy(element)
+        #     self._capture_and_annotate_screenshot(hierarchy)
+        #     self._log_annotation("key_press", str(key), hierarchy)
+        # except Exception as e:
+        #     print(f"Error in _on_press: {e}")
 
     def _on_release(self, key):
         # The main hotkey listener handles Esc
-        element = auto.GetFocusedControl()
-        hierarchy = self._get_element_hierarchy(element)
-        self._log_annotation("key_release", str(key), hierarchy)
+        try:
+            element = auto.GetFocusedControl()
+            hierarchy = self._get_element_hierarchy(element)
+            self._capture_and_annotate_screenshot(hierarchy)
+            self._log_annotation("key_release", str(key), hierarchy)
+        except Exception as e:
+            print(f"Error in _on_release: {e}")
 
     def _on_click(self, x, y, button, pressed):
         action = 'pressed' if pressed else 'released'
@@ -243,7 +256,7 @@ class Recorder:
         if not element:
             return None
 
-        runtime_id = element.RuntimeId
+        runtime_id = element.GetRuntimeId()
         if runtime_id not in self.element_ids:
             self.element_ids[runtime_id] = f"element-{self.element_id_counter}"
             self.element_id_counter += 1

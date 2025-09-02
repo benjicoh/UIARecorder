@@ -1,0 +1,3 @@
+# Ignore the recording folder and its contents
+recording/
+test.py
