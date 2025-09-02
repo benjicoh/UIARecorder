@@ -9,13 +9,16 @@ import sounddevice as sd
 from scipy.io.wavfile import write as write_wav
 import subprocess
 import os
+import ast
+from PIL import Image, ImageDraw, ImageFont
 
 from pynput import keyboard, mouse
 
 class Recorder:
     def __init__(self, output_folder="recording"):
         self.output_folder = output_folder
-        os.makedirs(self.output_folder, exist_ok=True)
+        self.images_folder = f"{self.output_folder}/images"
+        os.makedirs(self.images_folder, exist_ok=True)
 
         print(f"[Recorder] Output folder set to: {self.output_folder}")
 
@@ -30,6 +33,9 @@ class Recorder:
         self.is_recording = False
         self.start_time = None
         self.annotations = []
+        self.element_id_counter = 1
+        self.element_ids = {}
+        self.screenshot_counter = 1
 
         self.screen_size = pyautogui.size()
         self.fourcc = cv2.VideoWriter_fourcc(*'XVID')
@@ -174,43 +180,94 @@ class Recorder:
         self.annotations.append(annotation)
         
 
+    def _capture_and_annotate_screenshot(self, hierarchy):
+        screenshot_path = f"{self.images_folder}/screenshot_{self.screenshot_counter}.png"
+        img = pyautogui.screenshot()
+
+        draw = ImageDraw.Draw(img)
+        try:
+            font = ImageFont.truetype("arial.ttf", 15)
+        except IOError:
+            font = ImageFont.load_default()
+
+        colors = ["#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FF00FF", "#00FFFF"]
+        legend_items = []
+
+        if hierarchy:
+            for i, element_info in enumerate(hierarchy):
+                if element_info and not element_info['is_offscreen']:
+                    try:
+                        rect_str = element_info['bounding_rectangle'].split('[')[0]
+                        rect = ast.literal_eval(rect_str)
+
+                        color = colors[i % len(colors)]
+                        draw.rectangle(rect, outline=color, width=3)
+
+                        element_id = element_info['id']
+                        legend_items.append((color, element_id))
+                    except (ValueError, SyntaxError, KeyError) as e:
+                        print(f"Could not parse or draw for element: {element_info}. Error: {e}")
+
+        # Draw legend
+        legend_y = 10
+        for color, element_id in legend_items:
+            legend_text = f"{element_id}"
+            draw.rectangle([(10, legend_y), (30, legend_y + 20)], fill=color)
+            draw.text((40, legend_y + 5), legend_text, fill="white", font=font)
+            legend_y += 25
+
+        img.save(screenshot_path)
+        self.screenshot_counter += 1
+        return screenshot_path
+
     def _on_press(self, key):
         element = auto.GetFocusedControl()
-        hierarchy = get_element_hierarchy(element)
+        hierarchy = self._get_element_hierarchy(element)
+        self._capture_and_annotate_screenshot(hierarchy)
         self._log_annotation("key_press", str(key), hierarchy)
 
     def _on_release(self, key):
         # The main hotkey listener handles Esc
         element = auto.GetFocusedControl()
-        hierarchy = get_element_hierarchy(element)
+        hierarchy = self._get_element_hierarchy(element)
         self._log_annotation("key_release", str(key), hierarchy)
 
     def _on_click(self, x, y, button, pressed):
         action = 'pressed' if pressed else 'released'
         element = auto.ControlFromPoint(x, y)
-        hierarchy = get_element_hierarchy(element)
+        hierarchy = self._get_element_hierarchy(element)
+        self._capture_and_annotate_screenshot(hierarchy)
         self._log_annotation("mouse_click", {"x": x, "y": y, "button": str(button), "action": action}, hierarchy)
 
-def get_element_info(element):
-    if not element:
-        return None
-    return {
-        'name': element.Name,
-        'class_name': element.ClassName,
-        'control_type': element.ControlTypeName,
-        'bounding_rectangle': str(element.BoundingRectangle),
-        'is_offscreen': element.IsOffscreen
-    }
+    def _get_element_info(self, element):
+        if not element:
+            return None
 
-def get_element_hierarchy(element):
-    if not element:
-        return None
-    hierarchy = []
-    current = element
-    while current:
-        hierarchy.append(get_element_info(current))
-        current = current.GetParentControl()
-    return hierarchy
+        runtime_id = element.RuntimeId
+        if runtime_id not in self.element_ids:
+            self.element_ids[runtime_id] = f"element-{self.element_id_counter}"
+            self.element_id_counter += 1
+
+        element_id = self.element_ids[runtime_id]
+
+        return {
+            'id': element_id,
+            'name': element.Name,
+            'class_name': element.ClassName,
+            'control_type': element.ControlTypeName,
+            'bounding_rectangle': str(element.BoundingRectangle),
+            'is_offscreen': element.IsOffscreen
+        }
+
+    def _get_element_hierarchy(self, element):
+        if not element:
+            return None
+        hierarchy = []
+        current = element
+        while current:
+            hierarchy.append(self._get_element_info(current))
+            current = current.GetParentControl()
+        return hierarchy
 
 if __name__ == "__main__":
     recorder = Recorder()
