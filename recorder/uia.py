@@ -73,9 +73,9 @@ class UIAHelper:
         except Exception:
             info['control_type'] = 'N/A'
         try:
-            info['bounding_rectangle'] = str(element.BoundingRectangle)
+            info['bounding_rectangle'] = element.BoundingRectangle
         except Exception:
-            info['bounding_rectangle'] = 'N/A'
+            info['bounding_rectangle'] = None
         try:
             info['is_offscreen'] = element.IsOffscreen
         except Exception:

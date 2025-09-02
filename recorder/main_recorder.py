@@ -1,9 +1,10 @@
 import os
 import shutil
 import time
+import json
 from pynput import keyboard
 
-from .annotator import Annotator
+from .element_screenshotter import ElementScreenshotter
 from .events import InputListener
 from .media import MediaRecorder
 from .uia import UIAHelper
@@ -12,11 +13,14 @@ class Recorder:
     def __init__(self, output_folder="recording"):
         self.output_folder = output_folder
         self.images_folder = f"{self.output_folder}/images"
+        self.json_file = f"{self.output_folder}/annotations.json"
         print(f"[Recorder] Output folder set to: {self.output_folder}")
 
         self.is_recording = False
+        self.start_time = None
+        self.annotations = []
 
-        self.annotator = Annotator(self.output_folder)
+        self.element_screenshotter = ElementScreenshotter(self.output_folder)
         self.media_recorder = MediaRecorder(self.output_folder)
         self.uia_helper = UIAHelper()
         self.input_listener = InputListener(
@@ -32,8 +36,9 @@ class Recorder:
 
         print("[Recorder] Starting recording...")
         self.is_recording = True
+        self.start_time = time.time()
+        self.annotations = []
 
-        self.annotator.start()
         self.media_recorder.start()
         self.uia_helper.start_highlighting()
         self.input_listener.start()
@@ -50,38 +55,56 @@ class Recorder:
         self.media_recorder.stop()
         self.uia_helper.stop_highlighting()
         self.input_listener.stop()
-        self.annotator.stop()
+
+        with open(self.json_file, 'w') as f:
+            json.dump(self.annotations, f, indent=4)
+        print(f"[Recorder] Annotations saved to {self.json_file}")
 
         print("[Recorder] Recording stopped.")
 
+    def _log_annotation(self, event_type, event_data, element_hierarchy=None):
+        timestamp = time.time() - self.start_time
+
+        # Take screenshots of new elements
+        if element_hierarchy:
+            for element_info in element_hierarchy:
+                self.element_screenshotter.capture_element_screenshot(element_info, timestamp)
+
+        # Serialize bounding_rectangle for JSON output
+        import copy
+        log_hierarchy = copy.deepcopy(element_hierarchy)
+        if log_hierarchy:
+            for element_info in log_hierarchy:
+                rect = element_info.get('bounding_rectangle')
+                if rect:
+                    element_info['bounding_rectangle'] = (rect.left, rect.top, rect.right, rect.bottom)
+
+        annotation = {
+            "timestamp": timestamp,
+            "event_type": event_type,
+            "event_data": event_data,
+            "element_hierarchy": log_hierarchy
+        }
+        self.annotations.append(annotation)
+
     def _handle_press(self, key):
         pass
-        # try:
-        #     element = self.uia_helper.get_focused_element()
-        #     hierarchy = self.uia_helper.get_element_hierarchy(element)
-        #     self.annotator.capture_and_annotate_screenshot(hierarchy)
-        #     self.annotator.log_annotation("key_press", str(key), hierarchy)
-        # except Exception as e:
-        #     print(f"[Recorder] Error in _handle_press: {e}")
-        #     self.annotator.log_annotation("key_press", str(key), None)
 
     def _handle_release(self, key):
         try:
             element = self.uia_helper.get_focused_element()
             hierarchy = self.uia_helper.get_element_hierarchy(element)
-            self.annotator.capture_and_annotate_screenshot(hierarchy)
-            self.annotator.log_annotation("key_release", str(key), hierarchy)
+            self._log_annotation("key_release", str(key), hierarchy)
         except Exception as e:
             print(f"[Recorder] Error in _handle_release: {e}")
-            self.annotator.log_annotation("key_release", str(key), None)
+            self._log_annotation("key_release", str(key), None)
 
     def _handle_click(self, x, y, button, pressed):
         action = 'pressed' if pressed else 'released'
         try:
             element = self.uia_helper.get_element_from_point(x, y)
             hierarchy = self.uia_helper.get_element_hierarchy(element)
-            self.annotator.capture_and_annotate_screenshot(hierarchy)
-            self.annotator.log_annotation("mouse_click", {"x": x, "y": y, "button": str(button), "action": action}, hierarchy)
+            self._log_annotation("mouse_click", {"x": x, "y": y, "button": str(button), "action": action}, hierarchy)
         except Exception as e:
             print(f"[Recorder] Error in _handle_click: {e}")
-            self.annotator.log_annotation("mouse_click", {"x": x, "y": y, "button": str(button), "action": action}, None)
+            self._log_annotation("mouse_click", {"x": x, "y": y, "button": str(button), "action": action}, None)
