@@ -213,34 +213,26 @@ def get_element_hierarchy(element):
 
 if __name__ == "__main__":
     recorder = Recorder()
-    hotkey_pressed = set()
+
+    def on_activate_record():
+        if recorder.is_recording:
+            recorder.stop()
+        else:
+            recorder.start()
+
+    hotkey = keyboard.HotKey(
+        keyboard.HotKey.parse('<alt>+<shift>+r'),
+        on_activate_record)
 
     def on_press(key):
-        global recorder, hotkey_pressed
-        # Use a specific set for the hotkey to avoid conflicts
-        hotkey_combo = {keyboard.Key.alt_l, keyboard.Key.shift, keyboard.KeyCode.from_char('r')}
-        
-        if key in hotkey_combo:
-            hotkey_pressed.add(key)
-            print(key)
-            print(hotkey_pressed)
-            print(hotkey_combo)
-            if hotkey_pressed == hotkey_combo:
-                if recorder.is_recording:
-                    recorder.stop()
-                else:
-                    recorder.start()
+        hotkey.press(listener.canonical(key))
 
     def on_release(key):
-        global hotkey_pressed, listener
-        if key in hotkey_pressed:
-            hotkey_pressed.remove(key)
-
+        hotkey.release(listener.canonical(key))
         if key == keyboard.Key.esc:
             if recorder.is_recording:
                 recorder.stop()
-            # Stop the main listener
-            listener.stop()
+            return False # Stop listener
 
     print("[Main] Press Alt+Shift+R to start/stop recording. Press Esc to exit.")
     with keyboard.Listener(on_press=on_press, on_release=on_release) as listener:
