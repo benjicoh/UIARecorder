@@ -10,7 +10,12 @@ class TestCase(BaseTestCase):
         self.logger.info("Running the example test case.")
 
         username = self.variables.get("username", "default_user")
-        delay = self.variables.get("delay", 1)
+        delay_str = self.variables.get("delay", "1")
+        try:
+            delay = int(delay_str)
+        except (ValueError, TypeError):
+            self.logger.warning(f"Invalid delay value: {delay_str}. Using default value of 1.")
+            delay = 1
 
         self.logger.info(f"Simulating login for user: {username}")
         time.sleep(delay)

@@ -2,7 +2,18 @@ import logging
 import sys
 import os
 
-def get_logger(name, level=logging.INFO, log_file=None):
+class IndentFormatter(logging.Formatter):
+    def __init__(self, fmt=None, indent_char=' ', indent_level=0):
+        super().__init__(fmt)
+        self.indent_char = indent_char
+        self.indent_level = indent_level
+
+    def format(self, record):
+        indentation = self.indent_char * self.indent_level
+        record.msg = indentation + str(record.msg)
+        return super().format(record)
+
+def get_logger(name, level=logging.INFO, log_file=None, indent_level=0):
     """
     Initializes and returns a logger.
     """
@@ -13,7 +24,7 @@ def get_logger(name, level=logging.INFO, log_file=None):
     if logger.hasHandlers():
         logger.handlers.clear()
 
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    formatter = IndentFormatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s', indent_level=indent_level)
 
     # Console handler
     ch = logging.StreamHandler(sys.stdout)

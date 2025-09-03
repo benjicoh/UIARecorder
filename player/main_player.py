@@ -3,18 +3,19 @@ import os
 import sys
 import traceback
 from datetime import datetime
+import logging
 
 from player.exceptions import TestCaseNotFound, InvalidTestCase
 from player.logger import get_logger
 from player.test_case import BaseTestCase
 
 class Player:
-    def __init__(self, script_path: str, output_folder: str, variables: dict = None, record_video: bool = True):
+    def __init__(self, script_path: str, output_folder: str, variables: dict = None, record_video: bool = True, logger: logging.Logger = None):
         self.script_path = script_path
         self.output_folder = output_folder
         os.makedirs(self.output_folder, exist_ok=True)
         self.variables = variables or {}
-        self.logger = self._setup_logger()
+        self.logger = logger or self._setup_logger()
         self.record_video = record_video
         self.video_recorder = None
         if self.record_video:
@@ -69,6 +70,7 @@ class Player:
         return test_case_class(logger=self.logger, variables=self.variables)
 
     def _execute_test_case(self, test_case_instance: BaseTestCase):
+        start_time = datetime.now()
         try:
             self.logger.info("Executing setup()")
             test_case_instance.setup()
@@ -77,3 +79,6 @@ class Player:
         finally:
             self.logger.info("Executing teardown()")
             test_case_instance.teardown()
+            end_time = datetime.now()
+            duration = end_time - start_time
+            self.logger.info(f"Test case execution time: {duration}")
