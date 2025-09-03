@@ -9,11 +9,12 @@ import subprocess
 import os
 
 class MediaRecorder:
-    def __init__(self, output_folder):
+    def __init__(self, output_folder, record_audio=True):
         self.output_folder = output_folder
         self.video_file = f"{self.output_folder}/video.mp4"
         self.temp_video_file = f"{self.output_folder}/temp_video.avi"
         self.temp_audio_file = f"{self.output_folder}/temp_audio.wav"
+        self.record_audio = record_audio
 
         self.is_recording = False
         self.screen_size = pyautogui.size()
@@ -26,21 +27,22 @@ class MediaRecorder:
     def start(self):
         self.is_recording = True
         self.video_thread = threading.Thread(target=self._record_video)
-        self.audio_thread = threading.Thread(target=self._record_audio)
         self.video_thread.start()
-        self.audio_thread.start()
+        if self.record_audio:
+            self.audio_thread = threading.Thread(target=self._record_audio)
+            self.audio_thread.start()
 
     def stop(self):
         self.is_recording = False
         if self.video_thread:
             self.video_thread.join()
-        if self.audio_thread:
+        if self.record_audio and self.audio_thread:
             self.audio_thread.join()
 
         if self.video_writer:
             self.video_writer.release()
 
-        if self.audio_frames:
+        if self.record_audio and self.audio_frames:
             samplerate = 44100
             write_wav(self.temp_audio_file, samplerate, np.concatenate(self.audio_frames, axis=0))
 
@@ -59,7 +61,24 @@ class MediaRecorder:
                 os.remove(self.temp_audio_file)
         else:
             if os.path.exists(self.temp_video_file):
-                os.rename(self.temp_video_file, self.video_file)
+                # Convert AVI to MP4 using ffmpeg
+                cmd = [
+                    'ffmpeg', '-y', '-i', self.temp_video_file,
+                    '-c:v', 'libx264', '-preset', 'fast', '-crf', '22',
+                    self.video_file
+                ]
+                try:
+                    print("[MediaRecorder] Converting video to MP4...")
+                    subprocess.run(cmd, check=True, capture_output=True, text=True)
+                except (subprocess.CalledProcessError, FileNotFoundError) as e:
+                    stderr = e.stderr if hasattr(e, 'stderr') else "ffmpeg not found"
+                    print(f"[MediaRecorder] ffmpeg error: {stderr}")
+                    print("[MediaRecorder] Falling back to renaming AVI file.")
+                    # Fallback to renaming if ffmpeg fails or is not installed
+                    os.rename(self.temp_video_file, f"{self.output_folder}/video.avi")
+                finally:
+                    if os.path.exists(self.temp_video_file):
+                        os.remove(self.temp_video_file)
 
     def _record_video(self):
         print("[MediaRecorder] Video recording thread started.")
