@@ -7,3 +7,4 @@ scipy
 pynput
 imageio
 imageio-ffmpeg
+numpy

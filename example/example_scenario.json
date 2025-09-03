@@ -1,0 +1,23 @@
+{
+  "name": "Example Scenario",
+  "test_cases": [
+    {
+      "name": "Example Test 1",
+      "script": "example/example_test.py",
+      "variables": {
+        "username": "test_user_1",
+        "delay": 2
+      },
+      "record_video": false
+    },
+    {
+        "name": "Example Test 2",
+        "script": "example/example_test.py",
+        "variables": {
+          "username": "test_user_2",
+          "delay": 1
+        },
+        "record_video": false
+      }
+  ]
+}

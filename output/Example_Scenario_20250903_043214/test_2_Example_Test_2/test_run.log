@@ -1,0 +1,15 @@
+2025-09-03 04:32:18,359 - TestPlayer - INFO - Starting test from script: example/example_test.py
+2025-09-03 04:32:18,359 - TestPlayer - INFO - Output will be saved in: output/Example_Scenario_20250903_043214/test_2_Example_Test_2
+2025-09-03 04:32:18,359 - TestPlayer - INFO - Loading test case from example/example_test.py
+2025-09-03 04:32:18,360 - TestPlayer - INFO - Executing setup()
+2025-09-03 04:32:18,360 - TestPlayer - INFO - Setting up the example test case.
+2025-09-03 04:32:18,360 - TestPlayer - INFO - Received variables: {'username': 'test_user_2', 'delay': 1}
+2025-09-03 04:32:18,360 - TestPlayer - INFO - Executing run()
+2025-09-03 04:32:18,360 - TestPlayer - INFO - Running the example test case.
+2025-09-03 04:32:18,360 - TestPlayer - INFO - Simulating login for user: test_user_2
+2025-09-03 04:32:19,360 - TestPlayer - INFO - Simulating some action.
+2025-09-03 04:32:20,361 - TestPlayer - INFO - Example test case finished.
+2025-09-03 04:32:20,361 - TestPlayer - INFO - Executing teardown()
+2025-09-03 04:32:20,361 - TestPlayer - INFO - Tearing down the example test case.
+2025-09-03 04:32:20,361 - TestPlayer - INFO - Test case finished successfully.
+2025-09-03 04:32:20,361 - TestPlayer - INFO - Test run finished.
