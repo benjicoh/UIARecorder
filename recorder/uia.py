@@ -2,6 +2,7 @@ import uiautomation as auto
 import time
 import pyautogui
 import threading
+import psutil
 
 class UIAHelper:
     def __init__(self):
@@ -65,7 +66,10 @@ class UIAHelper:
         except Exception:
             info['name'] = 'N/A'
         try:
-            info['process_name'] = element.ProcessName
+            pid = element.ProcessId
+            # get the name by id
+            pname = psutil.Process(pid).name()
+            info['process_name'] = pname    
         except Exception:
             info['process_name'] = 'N/A'
         try:

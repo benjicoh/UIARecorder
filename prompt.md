@@ -46,9 +46,11 @@ For each new UI element detected in the hierarchy, a screenshot of that element 
 - Use appropriate error handling to manage unexpected UI states.
 - Include comments in the code to explain the logic and flow.
 - Provide logging of your actions and any errors encountered.
+- Listen to the video's audio, there might be additional context or information that can help with element identification.
 
 ## Identifying elements correctly
 - Use the `name`, `automation_id`, `class_name`, and `control_type` properties from the JSON file to uniquely identify elements.
+- Ignore `N/A` values, they cannot be used as identifiers.
 - If multiple elements match the criteria, use additional properties or a combination of properties to disambiguate.
 - Always refer to the `element_hierarchy` in the JSON to understand the context of each element.
 - **Do not** try to to get the names from the UI
