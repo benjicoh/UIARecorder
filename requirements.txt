@@ -8,3 +8,6 @@ pynput
 imageio
 imageio-ffmpeg
 numpy
+langchain
+langchain-google-genai
+google-generativeai

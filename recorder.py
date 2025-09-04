@@ -5,6 +5,7 @@ from pynput import keyboard
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Record UI interactions.")
     parser.add_argument('--process_names', type=str, nargs='+', help='Filter recording by process name(s).')
+    parser.add_argument('--agent', action='store_true', help='Enable the LangChain agent to process the recording.')
     args = parser.parse_args()
 
     recorder = Recorder(process_names=args.process_names)
@@ -12,6 +13,14 @@ if __name__ == "__main__":
     def on_activate_record():
         if recorder.is_recording:
             recorder.stop()
+            if args.agent:
+                from agent.main_agent import LangChainAgent
+                import logging
+                # Basic logging setup
+                logging.basicConfig(level=logging.INFO)
+                logger = logging.getLogger(__name__)
+                agent = LangChainAgent(recorder.output_folder, logger)
+                agent.run()
         else:
             recorder.start()
 

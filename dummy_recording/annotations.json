@@ -1,0 +1,13 @@
+[
+    {
+        "timestamp": 1.0,
+        "event_type": "mouse_click",
+        "event_data": {
+            "x": 100,
+            "y": 200,
+            "button": "Button.left",
+            "action": "pressed"
+        },
+        "element_hierarchy": []
+    }
+]
