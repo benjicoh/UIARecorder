@@ -1,0 +1,23 @@
+[Main] Current working directory: /app
+[Recorder] Output folder set to: /app/recorder/output
+[Recorder] Starting recording...
+[MediaRecorder] Video recording thread started.
+[InputListener] Listeners started.
+[Recorder] Recording started.
+[Main] Recording for 10 seconds...
+[Recorder] stop() called
+[Recorder] Stopping recording...
+[MediaRecorder] stop() called
+[MediaRecorder] Video recording thread stopped.
+[MediaRecorder] video_writer released
+[MediaRecorder] Checking for temp video file: /app/recorder/output/temp_video.avi
+[MediaRecorder] Temp video file exists: /app/recorder/output/temp_video.avi
+[MediaRecorder] Converting video to MP4...
+[MediaRecorder] ffmpeg error: ffmpeg not found
+[MediaRecorder] Falling back to renaming AVI file.
+[MediaRecorder] Renamed temp video file to /app/recorder/output/video.avi
+[InputListener] Listeners stopped.
+[Recorder] Saving annotations to /app/recorder/output/annotations.json
+[Recorder] Annotations saved to /app/recorder/output/annotations.json
+[Recorder] Recording stopped.
+[Main] Exiting script.
