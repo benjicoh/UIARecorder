@@ -14,8 +14,9 @@ class TestElementScreenshotter(unittest.TestCase):
         self.patcher = patch.dict('sys.modules', MOCK_MODULES)
         self.patcher.start()
 
-        from tools.recorder.element_screenshotter import ElementScreenshotter
         global ElementScreenshotter
+        from tools.recorder.element_screenshotter import ElementScreenshotter
+        
 
         self.mock_pyautogui = sys.modules['pyautogui']
         self.mock_pyautogui.reset_mock()
@@ -42,7 +43,7 @@ class TestElementScreenshotter(unittest.TestCase):
 
         # Assert
         self.mock_pyautogui.screenshot.assert_called_once_with(region=(10, 20, 100, 100))
-        expected_path = 'output/images/elem1_ss_123456.png'
+        expected_path = 'output/images/elem1__123456.png'
         mock_img.save.assert_called_once_with(expected_path)
         self.assertIn('elem1', screenshotter.seen_element_ids)
 

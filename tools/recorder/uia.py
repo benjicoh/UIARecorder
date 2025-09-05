@@ -1,8 +1,12 @@
+import sys
 import uiautomation as auto
 import time
 import pyautogui
 import threading
-from ..common.uia import get_element_info
+# Add the parent directory to sys.path for module resolution
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from common.uia import get_element_info
 
 class UIAHelper:
     def __init__(self):

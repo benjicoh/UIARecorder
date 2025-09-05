@@ -22,7 +22,7 @@ class ElementScreenshotter:
         width = rect.right - rect.left
         height = rect.bottom - rect.top
 
-        screenshot_path = f"{self.images_folder}/{element_id}_ss_{int(timestamp * 1000)}.png"
+        screenshot_path = f"{self.images_folder}/{element_id}__{int(timestamp * 1000)}.png"
 
         try:
             img = pyautogui.screenshot(region=(rect.left, rect.top, width, height))

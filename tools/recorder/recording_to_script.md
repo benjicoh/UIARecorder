@@ -38,7 +38,7 @@ The JSON file contains a list of events, each with the following structure:
 For each new UI element detected in the hierarchy, a screenshot of that element is captured and saved in the `recording/images` folder.
 - The screenshot is taken of the element's bounding rectangle.
 - Screenshots are only taken for elements that are on-screen and have a valid, non-zero rectangle.
-- The filename for each screenshot is in the format `{element_id}_ss_{timestamp}.png`, where the timestamp is the number of milliseconds from the start of the recording.
+- The filename for each screenshot is in the format `{element_id}__{timestamp}.png`, where the timestamp is the number of milliseconds from the start of the recording.
 
 ## Guidelines
 - The script should be robust and able to handle various UI scenarios.

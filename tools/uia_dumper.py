@@ -13,26 +13,26 @@ import os
 import argparse
 import json
 import sys
-from .common.uia import get_element_info, get_process_name
+from common.uia import get_element_info, get_process_name
 
-def traverse_element_tree(element, process_names=None, screenshot_dir=None):
+def traverse_element_tree(element, whitelist=None, screenshot_dir=None):
     """
     Recursively traverses the UI Automation tree and builds a dictionary representation.
-    If process_names is provided, only elements from those processes (and their ancestors) are included.
+    If whitelist is provided, only elements from those processes (and their ancestors) are included.
     """
     if not element:
         return None
 
     children = []
     for child in element.GetChildren():
-        child_tree = traverse_element_tree(child, process_names, screenshot_dir)
+        child_tree = traverse_element_tree(child, whitelist, screenshot_dir)
         if child_tree:
             children.append(child_tree)
 
     is_match = False
     process_name = get_process_name(element)
-    if process_names:
-        if process_name and process_name.lower() in [p.lower() for p in process_names]:
+    if whitelist:
+        if process_name and process_name.lower() in [p.lower() for p in whitelist]:
             is_match = True
     else:
         is_match = True  # No filter, so everything is a match
@@ -53,14 +53,14 @@ def main():
     # Group for specifying the target
     target_group = parser.add_argument_group('Target Selection (must specify one)')
     target_exclusive_group = target_group.add_mutually_exclusive_group(required=True)
-    target_exclusive_group.add_argument('--process', type=str, help='Process name to dump the UI tree for (e.g., "explorer.exe").')
-    target_exclusive_group.add_argument('--window', type=str, help='Top-level window title to dump the UI tree for (e.g., "Calculator").')
+    target_exclusive_group.add_argument('-p', '--process', type=str, help='Process name to dump the UI tree for (e.g., "explorer.exe").')
+    target_exclusive_group.add_argument('-w', '--window', type=str, help='Top-level window title to dump the UI tree for (e.g., "Calculator").')
 
     # Group for output and filtering options
     options_group = parser.add_argument_group('Output and Filtering')
-    options_group.add_argument('--output', type=str, required=True, help='Path to the output JSON file.')
-    options_group.add_argument('--process_names', type=str, nargs='+', help='Filter: Only include elements from these process names.')
-    options_group.add_argument('--screenshots', action='store_true', help='Enable capturing screenshots of elements.')
+    options_group.add_argument('-o', '--output', type=str, required=True, help='Path to the output JSON file.')
+    options_group.add_argument('-wh', '--whitelist', type=str, nargs='+', help='Filter: Only include elements from these process names.')
+    options_group.add_argument('-s', '--screenshots', action='store_true', help='Enable capturing screenshots of elements.')
 
     args = parser.parse_args()
 
@@ -96,7 +96,7 @@ def main():
 
     trees = []
     for root in roots:
-        tree = traverse_element_tree(root, process_names=args.process_names, screenshot_dir=screenshot_dir)
+        tree = traverse_element_tree(root, whitelist=args.whitelist, screenshot_dir=screenshot_dir)
         if tree:
             trees.append(tree)
 

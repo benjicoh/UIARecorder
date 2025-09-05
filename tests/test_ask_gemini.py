@@ -5,10 +5,14 @@ import json
 import builtins
 import sys
 
-# Mock google.generativeai and its components
+# Add the parent directory to sys.path for module resolution
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+# Mock google.genai and its components
 MOCK_MODULES = {
-    'google.generativeai': MagicMock(),
-    'google.generativeai.types': MagicMock(),
+    'google.genai': MagicMock(),
+    'google.genai.types': MagicMock(),
 }
 
 @patch.dict('sys.modules', MOCK_MODULES)
@@ -19,11 +23,11 @@ class TestAskGemini(unittest.TestCase):
         self.patcher = patch.dict('sys.modules', MOCK_MODULES)
         self.patcher.start()
 
-        from tools.ask_gemini import ask_gemini
         global ask_gemini
-
-        self.mock_genai = sys.modules['google.generativeai']
-        self.mock_genai_types = sys.modules['google.generativeai.types']
+        from tools.ask_gemini import ask_gemini
+        
+        self.mock_genai = sys.modules['google.genai']
+        self.mock_genai_types = sys.modules['google.genai.types']
         self.mock_genai.reset_mock()
         self.mock_genai_types.reset_mock()
 

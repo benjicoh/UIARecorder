@@ -3,7 +3,6 @@ import shutil
 import time
 import json
 import psutil
-from pynput import keyboard
 
 from .element_screenshotter import ElementScreenshotter
 from .events import InputListener
@@ -11,15 +10,15 @@ from .media import MediaRecorder
 from .uia import UIAHelper
 
 class Recorder:
-    def __init__(self, output_folder="recorder/output", process_names=None):
+    def __init__(self, output_folder="recorder/output", whitelist=None):
         self.output_folder = output_folder
         self.images_folder = f"{self.output_folder}/images"
         self.json_file = f"{self.output_folder}/annotations.json"
         print(f"[Recorder] Output folder set to: {self.output_folder}")
 
-        self.process_names = process_names
-        if self.process_names:
-            print(f"[Recorder] Filtering by process names: {self.process_names}")
+        self.whitelist = whitelist
+        if self.whitelist:
+            print(f"[Recorder] Filtering by process names: {self.whitelist}")
         self.is_recording = False
         self.start_time = None
         self.annotations = []
@@ -106,9 +105,9 @@ class Recorder:
         try:
             element = self.uia_helper.get_focused_element()
             process_name = self._get_process_name(element)
-            if self.process_names and (not process_name or process_name.lower() not in [p.lower() for p in self.process_names]):
+            if self.whitelist and (not process_name or process_name.lower() not in [p.lower() for p in self.whitelist]):
                 return
-            hierarchy = self.uia_helper.get_element_hierarchy(element, self.process_names)
+            hierarchy = self.uia_helper.get_element_hierarchy(element, self.whitelist)
             self._log_annotation("key_release", str(key), hierarchy)
         except Exception as e:
             print(f"[Recorder] Error in _handle_release: {e}")
@@ -119,9 +118,9 @@ class Recorder:
         try:
             element = self.uia_helper.get_element_from_point(x, y)
             process_name = self._get_process_name(element)
-            if self.process_names and (not process_name or process_name.lower() not in [p.lower() for p in self.process_names]):
+            if self.whitelist and (not process_name or process_name.lower() not in [p.lower() for p in self.whitelist]):
                 return
-            hierarchy = self.uia_helper.get_element_hierarchy(element, self.process_names)
+            hierarchy = self.uia_helper.get_element_hierarchy(element, self.whitelist)
             self._log_annotation("mouse_click", {"x": x, "y": y, "button": str(button), "action": action}, hierarchy)
         except Exception as e:
             print(f"[Recorder] Error in _handle_click: {e}")

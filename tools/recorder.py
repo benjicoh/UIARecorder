@@ -4,10 +4,10 @@ from pynput import keyboard
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Record UI interactions.")
-    parser.add_argument('--process_names', type=str, nargs='+', help='Filter recording by process name(s).')
+    parser.add_argument('-wh', '--whitelist', type=str, nargs='+', help='Filter recording by process name(s).')
     args = parser.parse_args()
 
-    recorder = Recorder(process_names=args.process_names)
+    recorder = Recorder(whitelist=args.whitelist)
 
     def on_activate_record():
         if recorder.is_recording:

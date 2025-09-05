@@ -10,8 +10,9 @@
             "type": "debugpy",
             "request": "launch",
             "program": "${file}",
+            "cwd": "${workspaceFolder}/tools",
             "console": "integratedTerminal",
-            "args": "--process \"Carto.exe\" --output dump.json"
+            "args": "--wh \"Carto.exe\""
         }
     ]
 }

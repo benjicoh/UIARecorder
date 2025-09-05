@@ -57,7 +57,7 @@ def get_element_info(element, element_ids=None, screenshot_dir=None):
     info['automation_id'] = get_prop('AutomationId', lambda: element.AutomationId)
     info['class_name'] = get_prop('ClassName', lambda: element.ClassName)
     info['control_type'] = get_prop('ControlTypeName', lambda: element.ControlTypeName)
-    info['bounding_rectangle'] = get_prop('BoundingRectangle', lambda: str(element.BoundingRectangle))
+    info['bounding_rectangle'] = get_prop('BoundingRectangle', lambda: element.BoundingRectangle)
     info['is_offscreen'] = get_prop('IsOffscreen', lambda: element.IsOffscreen)
     info['process_name'] = get_process_name(element)
 

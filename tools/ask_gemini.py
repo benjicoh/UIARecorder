@@ -17,7 +17,7 @@ def ask_gemini(
     dump_file: str = None
 ) -> str:
     """
-    Calls the Gemini 1.5 Pro LLM with the recording folder and optional context files
+    Calls the Gemini 2.5 Pro LLM with the recording folder and optional context files
     to generate or refine a Python script.
 
     Args:
@@ -158,16 +158,16 @@ def ask_gemini(
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Generate or refine a Python script from a recording folder.')
-    parser.add_argument('recording_folder', type=str, help='The path to the recording folder.')
-    parser.add_argument('--output_file', type=str, default='../user_scripts/test_scenario.py', help='The path to save the generated script.')
-    parser.add_argument('--log_file', type=str, help='(Optional) The path to a log file from a previous execution.')
-    parser.add_argument('--dump_file', type=str, help='(Optional) The path to a JSON dump of the UI tree.')
+    parser.add_argument('-r', 'recording_folder', type=str, help='The path to the recording folder.')
+    parser.add_argument('-o', '--output', type=str, default='../user_scripts/test_scenario.py', help='The path to save the generated script.')
+    parser.add_argument('-l', '--log_file', type=str, help='(Optional) The path to a log file from a previous execution.')
+    parser.add_argument('-d', '--dump_file', type=str, help='(Optional) The path to a JSON dump of the UI tree.')
 
     args = parser.parse_args()
 
     ask_gemini(
         args.recording_folder,
-        output_file=args.output_file,
+        output_file=args.output,
         log_file=args.log_file,
         dump_file=args.dump_file
     )
