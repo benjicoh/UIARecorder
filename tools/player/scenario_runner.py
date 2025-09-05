@@ -2,9 +2,13 @@ import json
 import os
 from datetime import datetime
 import logging
+import pyautogui
+import uiautomation as auto
 
 from player.main_player import Player
 from player.logger import get_logger
+from uia_dumper import traverse_element_tree
+
 
 class ScenarioRunner:
     def __init__(self, scenario_path: str, output_folder: str, logger: logging.Logger = None, indent_level: int = 0):
@@ -119,5 +123,37 @@ class ScenarioRunner:
             except Exception as e:
                 self.logger.error(f"--- Test Case Failed: {test_name} ---")
                 self.logger.error(f"Error: {e}")
+                on_failure_config = scenario_data.get("on_failure")
+                if on_failure_config:
+                    self._take_failure_snapshots(on_failure_config, test_output_folder)
 
         self.logger.info("Scenario run finished.")
+
+    def _take_failure_snapshots(self, config, output_folder):
+        self.logger.info("Taking failure snapshots...")
+        if config.get("screenshot", True):
+            try:
+                screenshot_path = os.path.join(output_folder, "failure_screenshot.png")
+                pyautogui.screenshot(screenshot_path)
+                self.logger.info(f"Screenshot saved to {screenshot_path}")
+            except Exception as e:
+                self.logger.error(f"Failed to take screenshot: {e}")
+
+        processes = config.get("processes_to_dump")
+        if processes:
+            self.logger.info(f"Dumping UI tree for processes: {processes}")
+            try:
+                dump_path = os.path.join(output_folder, "failure_uia_dump.json")
+                root_control = auto.GetRootControl()
+                trees = []
+                for w in root_control.GetChildren():
+                    try:
+                        if w.ProcessId and auto.ProcessName(w.ProcessId).lower() in [p.lower() for p in processes]:
+                            trees.append(traverse_element_tree(w))
+                    except Exception:
+                        continue
+                with open(dump_path, 'w', encoding='utf-8') as f:
+                    json.dump(trees, f, ensure_ascii=False, indent=2)
+                self.logger.info(f"UI dump saved to {dump_path}")
+            except Exception as e:
+                self.logger.error(f"Failed to dump UI tree: {e}")
