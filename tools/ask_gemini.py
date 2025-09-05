@@ -1,6 +1,7 @@
 import os
 import argparse
 import time
+import json
 import google.generativeai as genai
 from google.generativeai import types
 from pydantic import BaseModel
@@ -37,7 +38,16 @@ def ask_gemini(
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         raise ValueError("GEMINI_API_KEY environment variable not set.")
+    genai.configure(api_key=api_key)
     client = genai.GenerativeModel(model_name="gemini-1.5-pro-latest")
+
+    # --- Manifest for caching file uploads ---
+    manifest_path = os.path.join(recording_folder, 'gemini_uploads.json')
+    uploads_manifest = {}
+    if os.path.exists(manifest_path):
+        with open(manifest_path, 'r') as f:
+            uploads_manifest = json.load(f)
+    print(f"Loaded {len(uploads_manifest)} cached uploads from manifest.")
 
 
     # Read the system prompt
@@ -75,8 +85,20 @@ def ask_gemini(
                     prompt_parts.append(f"{file_name}\n```json\n{content}\n```")
                 continue
 
-            if file_name.endswith(('mp4','.png')):
-                print(f"Uploading file: {file_path}")
+            if file_name.endswith(('mp4', '.png')):
+                # --- Caching Logic ---
+                cached_file = uploads_manifest.get(file_path)
+                if cached_file:
+                    try:
+                        print(f"Verifying cached file: {file_path} as {cached_file['name']}")
+                        retrieved_file = genai.get_file(name=cached_file['name'])
+                        uploaded_files.append(retrieved_file)
+                        print("File is still active. Reusing.")
+                        continue # Skip to the next file
+                    except Exception as e:
+                        print(f"Could not retrieve cached file {cached_file['name']}. Re-uploading. Error: {e}")
+
+                # --- Upload if not cached or cache invalid ---
                 print(f"Uploading file: {file_path}")
                 uploaded_file = genai.upload_file(path=file_path)
                 
@@ -87,6 +109,8 @@ def ask_gemini(
                     uploaded_file = genai.get_file(name=uploaded_file.name)
 
                 uploaded_files.append(uploaded_file)
+                # Update manifest for the newly uploaded file
+                uploads_manifest[file_path] = {'name': uploaded_file.name, 'display_name': uploaded_file.display_name}
 
     if not uploaded_files and not any('.json' in p for p in prompt_parts):
         raise FileNotFoundError("No recording files (json, mp4, png) found in the specified folder.")
@@ -123,8 +147,13 @@ def ask_gemini(
     # Save the script
     with open(output_file, 'w') as f:
         f.write(generated_code)
-
     print(f"Script saved to '{output_file}'")
+
+    # --- Save the updated manifest ---
+    with open(manifest_path, 'w') as f:
+        json.dump(uploads_manifest, f, indent=2)
+    print(f"Updated uploads manifest saved to {manifest_path}")
+
     return output_file
 
 if __name__ == '__main__':
