@@ -43,7 +43,6 @@ class Recorder:
         self.annotations = []
 
         self.media_recorder.start()
-        self.uia_helper.start_highlighting()
         self.input_listener.start()
 
         print("[Recorder] Recording started.")
@@ -56,7 +55,6 @@ class Recorder:
         self.is_recording = False
 
         self.media_recorder.stop()
-        self.uia_helper.stop_highlighting()
         self.input_listener.stop()
 
         with open(self.json_file, 'w') as f:
@@ -108,6 +106,13 @@ class Recorder:
             if self.whitelist and (not process_name or process_name.lower() not in [p.lower() for p in self.whitelist]):
                 return
             hierarchy = self.uia_helper.get_element_hierarchy(element, self.whitelist)
+            colors = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0), (0, 255, 255)]
+            if hierarchy:
+                for i, element_info in enumerate(hierarchy):
+                    rect = element_info.get('bounding_rectangle')
+                    if rect:
+                        color = colors[i % len(colors)]
+                        self.media_recorder.add_overlay((rect.left, rect.top, rect.right, rect.bottom), element_info['element_id'], color)
             self._log_annotation("key_release", str(key), hierarchy)
         except Exception as e:
             print(f"[Recorder] Error in _handle_release: {e}")
@@ -121,6 +126,13 @@ class Recorder:
             if self.whitelist and (not process_name or process_name.lower() not in [p.lower() for p in self.whitelist]):
                 return
             hierarchy = self.uia_helper.get_element_hierarchy(element, self.whitelist)
+            colors = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0), (0, 255, 255)]
+            if hierarchy:
+                for i, element_info in enumerate(hierarchy):
+                    rect = element_info.get('bounding_rectangle')
+                    if rect:
+                        color = colors[i % len(colors)]
+                        self.media_recorder.add_overlay((rect.left, rect.top, rect.right, rect.bottom), element_info['element_id'], color)
             self._log_annotation("mouse_click", {"x": x, "y": y, "button": str(button), "action": action}, hierarchy)
         except Exception as e:
             print(f"[Recorder] Error in _handle_click: {e}")

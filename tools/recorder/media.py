@@ -7,6 +7,7 @@ import sounddevice as sd
 from scipy.io.wavfile import write as write_wav
 import subprocess
 import os
+from . import overlay_drawer
 
 class MediaRecorder:
     def __init__(self, output_folder, record_audio=True):
@@ -23,6 +24,7 @@ class MediaRecorder:
         self.audio_frames = []
         self.video_thread = None
         self.audio_thread = None
+        self.overlays = []
 
     def start(self):
         self.is_recording = True
@@ -80,6 +82,14 @@ class MediaRecorder:
                     if os.path.exists(self.temp_video_file):
                         os.remove(self.temp_video_file)
 
+    def add_overlay(self, bounding_box, element_id, color):
+        self.overlays.append({
+            "bounding_box": bounding_box,
+            "element_id": element_id,
+            "color": color,
+            "ttl": 10
+        })
+
     def _record_video(self):
         print("[MediaRecorder] Video recording thread started.")
         self.video_writer = cv2.VideoWriter(self.temp_video_file, self.fourcc, 20.0, (self.screen_size.width, self.screen_size.height))
@@ -88,6 +98,16 @@ class MediaRecorder:
                 img = pyautogui.screenshot()
                 frame = np.array(img)
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+                # Draw overlays
+                for overlay in self.overlays:
+                    overlay_drawer.draw_rectangle(frame, overlay["bounding_box"], overlay["color"], 2, overlay["element_id"])
+
+                # Update overlays TTL
+                self.overlays = [overlay for overlay in self.overlays if overlay["ttl"] > 0]
+                for overlay in self.overlays:
+                    overlay["ttl"] -= 1
+
                 self.video_writer.write(frame)
             except Exception as e:
                 print(f"[MediaRecorder] Error during video frame capture: {e}")
