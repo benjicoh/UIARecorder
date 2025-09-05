@@ -3,3 +3,4 @@ recording/
 test.py
 __pycache__/
 @AutomationLog.txt
+output/

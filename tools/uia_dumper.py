@@ -9,6 +9,15 @@ Usage examples:
     python uia_dumper.py --process explorer.exe --output explorer_ui.json
 """
 import uiautomation as auto
+import psutil
+
+def get_process_name(element):
+    if not element:
+        return None
+    try:
+        return psutil.Process(element.ProcessId).name()
+    except psutil.NoSuchProcess:
+        return None
 
 def get_element_info(element):
     """
@@ -24,11 +33,8 @@ def get_element_info(element):
         'bounding_rectangle': str(element.BoundingRectangle),  # Convert rect to string for serialization
         'is_offscreen': element.IsOffscreen,
         'children': [],
+        'process_name': get_process_name(element)
     }
-    try:
-        info['process_name'] = element.ProcessName
-    except Exception:
-        info['process_name'] = None
 
     # Extract pattern information
     patterns = {}
@@ -167,11 +173,9 @@ def traverse_element_tree(element, process_names=None):
 
     is_match = False
     if process_names:
-        try:
-            if element.ProcessName and element.ProcessName.lower() in [p.lower() for p in process_names]:
-                is_match = True
-        except Exception:
-            pass  # Some elements might not have ProcessName
+        process_name = get_process_name(element)
+        if process_name and process_name.lower() in [p.lower() for p in process_names]:
+            is_match = True
     else:
         is_match = True  # No filter, so everything is a match
 
@@ -188,19 +192,26 @@ if __name__ == "__main__":
     import json
     import sys
 
-    parser = argparse.ArgumentParser(description="Dump UI Automation tree to JSON.")
-    group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument('--process', type=str, help='Process name to dump the UI tree for')
-    group.add_argument('--window', type=str, help='Top-level window title to dump the UI tree for')
-    parser.add_argument('--output', type=str, required=True, help='Output JSON file')
-    parser.add_argument('--process_names', type=str, nargs='+', help='Filter elements by process name(s). Only elements from these processes will be included in the output.')
+    parser = argparse.ArgumentParser(description="Dump UI Automation tree to JSON.", formatter_class=argparse.RawTextHelpFormatter)
+
+    # Group for specifying the target
+    target_group = parser.add_argument_group('Target Selection (must specify one)')
+    target_exclusive_group = target_group.add_mutually_exclusive_group(required=True)
+    target_exclusive_group.add_argument('--process', type=str, help='Process name to dump the UI tree for (e.g., "explorer.exe").')
+    target_exclusive_group.add_argument('--window', type=str, help='Top-level window title to dump the UI tree for (e.g., "Calculator").')
+
+    # Group for output and filtering options
+    options_group = parser.add_argument_group('Output and Filtering')
+    options_group.add_argument('--output', type=str, required=True, help='Path to the output JSON file.')
+    options_group.add_argument('--process_names', type=str, nargs='+', help='Filter: Only include elements from these process names.')
+
     args = parser.parse_args()
 
     root = None
     if args.process:
         # Find the process by name
         for w in auto.GetRootControl().GetChildren():
-            if w.ProcessName.lower() == args.process.lower():
+            if get_process_name(w).lower() == args.process.lower():
                 root = w
                 break
         if not root:
