@@ -64,3 +64,10 @@ For each new UI element detected in the hierarchy, a screenshot of that element 
 - Based on the narration, video and json, identify the key uia elements involved, and their unique properties
 - Use the elements identified in the script
 - After genrating the script, review it to ensure all elements are correctly identified and the actions are appropriate.
+
+## Conversational Refinement
+If you are provided with a log file from a previous execution (`automation_log.txt`) or a full UI dump (`dump.json`), use them to refine the script.
+- **`automation_log.txt`**: This file contains the output of a previous run of the generated script. Analyze any errors or failures in the log to identify the root cause. Modify the script to fix these issues. For example, if an element was not found, you may need to adjust the selectors or add a wait condition.
+- **`dump.json`**: This file contains a full snapshot of the application's UI tree. Use this as a reference to find more robust selectors for elements that were problematic in the previous run. It can also help you understand the overall structure of the application and discover alternative ways to automate a task.
+
+Your goal is to iteratively improve the script based on the feedback from previous runs.
