@@ -47,8 +47,7 @@ def traverse_element_tree(element, process_names=None, screenshot_dir=None):
 
     return None
 
-
-if __name__ == "__main__":
+def main():
     parser = argparse.ArgumentParser(description="Dump UI Automation tree to JSON.", formatter_class=argparse.RawTextHelpFormatter)
 
     # Group for specifying the target
@@ -110,3 +109,6 @@ if __name__ == "__main__":
 
     # Play notification sound
     print('\007')
+
+if __name__ == "__main__":
+    main()

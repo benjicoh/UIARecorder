@@ -8,3 +8,5 @@ pynput
 imageio
 imageio-ffmpeg
 numpy
+pytest
+mock
