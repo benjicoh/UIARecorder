@@ -3,10 +3,10 @@ uia_dumper.py - Dump UI Automation tree to JSON
 
 Usage examples:
     # Dump the UI tree for a window with a specific title
-    python -m tools.uia_dumper --window "My Window Title" --output dump.json
+    python -m tools.uia_dumper -w "My Window Title" -o dump.json
 
     # Dump the UI tree for a process by name and capture screenshots
-    python -m tools.uia_dumper --process explorer.exe --output explorer_ui.json --screenshots
+    python -m tools.uia_dumper -p explorer.exe -o explorer_ui.json -s
 """
 import uiautomation as auto
 import os
