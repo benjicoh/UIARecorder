@@ -2,6 +2,7 @@ import os
 import shutil
 import time
 import json
+import psutil
 from pynput import keyboard
 
 from .element_screenshotter import ElementScreenshotter
@@ -10,7 +11,7 @@ from .media import MediaRecorder
 from .uia import UIAHelper
 
 class Recorder:
-    def __init__(self, output_folder="recording", process_names=None):
+    def __init__(self, output_folder="tools/recorder/output", process_names=None):
         self.output_folder = output_folder
         self.images_folder = f"{self.output_folder}/images"
         self.json_file = f"{self.output_folder}/annotations.json"
@@ -65,6 +66,14 @@ class Recorder:
 
         print("[Recorder] Recording stopped.")
 
+    def _get_process_name(self, element):
+        if not element:
+            return None
+        try:
+            return psutil.Process(element.ProcessId).name()
+        except psutil.NoSuchProcess:
+            return None
+
     def _log_annotation(self, event_type, event_data, element_hierarchy=None):
         timestamp = time.time() - self.start_time
 
@@ -96,7 +105,8 @@ class Recorder:
     def _handle_release(self, key):
         try:
             element = self.uia_helper.get_focused_element()
-            if self.process_names and (not element or not element.ProcessName or element.ProcessName.lower() not in [p.lower() for p in self.process_names]):
+            process_name = self._get_process_name(element)
+            if self.process_names and (not process_name or process_name.lower() not in [p.lower() for p in self.process_names]):
                 return
             hierarchy = self.uia_helper.get_element_hierarchy(element, self.process_names)
             self._log_annotation("key_release", str(key), hierarchy)
@@ -108,7 +118,8 @@ class Recorder:
         action = 'pressed' if pressed else 'released'
         try:
             element = self.uia_helper.get_element_from_point(x, y)
-            if self.process_names and (not element or not element.ProcessName or element.ProcessName.lower() not in [p.lower() for p in self.process_names]):
+            process_name = self._get_process_name(element)
+            if self.process_names and (not process_name or process_name.lower() not in [p.lower() for p in self.process_names]):
                 return
             hierarchy = self.uia_helper.get_element_hierarchy(element, self.process_names)
             self._log_annotation("mouse_click", {"x": x, "y": y, "button": str(button), "action": action}, hierarchy)
