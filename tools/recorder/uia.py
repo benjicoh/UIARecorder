@@ -33,8 +33,8 @@ class UIAHelper:
                 element = auto.ControlFromPoint(x, y)
                 if element:
                     element.ShowDesktopRectangle(color=0xFF0000, width=3)
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"[UIAHelper] Exception in highlight thread: {e}")
             time.sleep(0.1)
         print("[UIAHelper] Highlight thread stopped.")
 
