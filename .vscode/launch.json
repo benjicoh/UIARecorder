@@ -11,7 +11,7 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            //"args": "--window \"AI Shelveset Linter\" --output ai_shelveset_linter_dump.json"
+            "args": "--process \"Carto.exe\" --output dump.json"
         }
     ]
 }

@@ -57,3 +57,10 @@ For each new UI element detected in the hierarchy, a screenshot of that element 
 - If no unique element can be identified, consider looking for the image in the screenshot using pyautogui bitmap matching
 - Use the patterns in the json file to understand the control's behavior and available actions.
 - You can cross correlate the element id with screenshot filename, to better understand where it is
+
+## Usual workflow
+- Identify the main window of the application
+- Activate it at the start of the recording
+- Based on the narration, video and json, identify the key uia elements involved, and their unique properties
+- Use the elements identified in the script
+- After genrating the script, review it to ensure all elements are correctly identified and the actions are appropriate.

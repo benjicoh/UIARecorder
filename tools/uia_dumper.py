@@ -27,13 +27,15 @@ def get_element_info(element):
         return None
 
     info = {
+        'id': element.GetRuntimeId(),
         'name': element.Name,
+        'automation_id': element.AutomationId,
         'class_name': element.ClassName,
         'control_type': element.ControlTypeName,
         'bounding_rectangle': str(element.BoundingRectangle),  # Convert rect to string for serialization
         'is_offscreen': element.IsOffscreen,
-        'children': [],
-        'process_name': get_process_name(element)
+        'process_name': get_process_name(element),
+        'children': []
     }
 
     # Extract pattern information
@@ -154,6 +156,34 @@ def get_element_info(element):
 
     info['patterns'] = patterns
 
+    # Screenshot logic
+    try:
+        # Only take screenshot if element is visible and has a bounding rectangle
+        if not element.IsOffscreen and element.BoundingRectangle:
+            # Activate top-level window first
+            # top_window = element.GetTopLevelControl()
+            # if top_window:
+            #     top_window.SetActive()
+            # Get runtime id for filename
+            runtime_id = element.GetRuntimeId()
+            if runtime_id:
+                # Convert runtime_id to string for filename
+                runtime_id_str = '_'.join(str(i) for i in runtime_id)
+                import os
+                screenshots_dir = os.path.join(os.path.dirname(__file__), 'screenshots')
+                os.makedirs(screenshots_dir, exist_ok=True)
+                screenshot_path = os.path.join(screenshots_dir, f'{runtime_id_str}.png')
+                # Take screenshot
+                bmp = element.ToBitmap()
+                bmp.ToFile(screenshot_path)
+                info['screenshot'] = screenshot_path
+            else:
+                info['screenshot'] = None
+        else:
+            info['screenshot'] = None
+    except Exception as e:
+        info['screenshot'] = None
+
     return info
 
 
@@ -207,27 +237,33 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    root = None
+    roots = []
     if args.process:
         # Find the process by name
         for w in auto.GetRootControl().GetChildren():
             if get_process_name(w).lower() == args.process.lower():
-                root = w
-                break
-        if not root:
+                roots.append(w)
+                w.SetActive()
+                
+        if len(roots) == 0:
             print(f"Process '{args.process}' not found.", file=sys.stderr)
             sys.exit(1)
     elif args.window:
         # Find the window by title
         for w in auto.GetRootControl().GetChildren():
             if w.Name and args.window.lower() in w.Name.lower():
-                root = w
+                roots = [w]
+                w.SetActive()
                 break
-        if not root:
+        if len(roots) == 0:
             print(f"Window with title containing '{args.window}' not found.", file=sys.stderr)
             sys.exit(1)
-
-    tree = traverse_element_tree(root, process_names=args.process_names)
+    trees = []
+    for root in roots:
+        tree = traverse_element_tree(root, process_names=args.process_names)
+        trees.append(tree)
     with open(args.output, 'w', encoding='utf-8') as f:
-        json.dump(tree, f, ensure_ascii=False, indent=2)
+        json.dump(trees, f, ensure_ascii=False, indent=2)
     print(f"UI tree dumped to {args.output}")
+    #play notification sound
+    print('\007')

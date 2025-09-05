@@ -9,7 +9,7 @@ from pydantic import BaseModel
 class PythonScript(BaseModel):
     code: str
 
-def ask_gemini(recording_folder: str) -> str:
+def ask_gemini(recording_folder: str, output_file: str = 'generated_script.py') -> str:
     """
     Calls the Gemini 2.5 Pro LLM with the recording folder and returns the generated script.
 
@@ -79,16 +79,16 @@ def ask_gemini(recording_folder: str) -> str:
     generated_code = script_obj.code
 
     # Save the script
-    script_path = 'generated_script.py'
-    with open(script_path, 'w') as f:
+    with open(output_file, 'w') as f:
         f.write(generated_code)
 
-    print(f"Script saved to '{script_path}'")
-    return script_path
+    print(f"Script saved to '{output_file}'")
+    return output_file
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Generate a Python script from a recording folder.')
     parser.add_argument('recording_folder', type=str, help='The path to the recording folder.')
+    parser.add_argument('--output_file', type=str, default='../user_scripts/test_scenario.py', help='The path to save the generated script.')
     args = parser.parse_args()
 
-    ask_gemini(args.recording_folder)
+    ask_gemini(args.recording_folder, args.output_file)
