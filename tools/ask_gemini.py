@@ -2,8 +2,8 @@ import os
 import argparse
 import time
 import json
-import google.generativeai as genai
-from google.generativeai import types
+import google.genai as genai
+from google.genai import types
 from pydantic import BaseModel
 
 # A structured output for the generated script.

@@ -2,6 +2,10 @@ import unittest
 from unittest.mock import patch, MagicMock, mock_open
 import sys
 
+# Add the parent directory to sys.path for module resolution
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 # Mock the platform-specific modules
 MOCK_MODULES = {
     'uiautomation': MagicMock(),
@@ -20,8 +24,8 @@ class TestUiaDumper(unittest.TestCase):
         if 'tools.uia_dumper' in sys.modules:
             del sys.modules['tools.uia_dumper']
 
-        from tools.uia_dumper import traverse_element_tree
         global traverse_element_tree
+        from tools.uia_dumper import traverse_element_tree
 
         self.mock_uia = sys.modules['uiautomation']
         self.mock_common_uia = sys.modules['tools.common.uia']
