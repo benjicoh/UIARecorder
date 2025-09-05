@@ -10,3 +10,4 @@ imageio-ffmpeg
 numpy
 pytest
 mock
+psutil

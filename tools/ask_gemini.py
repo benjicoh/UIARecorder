@@ -158,8 +158,8 @@ def ask_gemini(
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Generate or refine a Python script from a recording folder.')
-    parser.add_argument('-r', 'recording_folder', type=str, help='The path to the recording folder.')
-    parser.add_argument('-o', '--output', type=str, default='../user_scripts/test_scenario.py', help='The path to save the generated script.')
+    parser.add_argument('-r', '--recording_folder', type=str, required=True, help='The path to the recording folder.')
+    parser.add_argument('-o', '--output_file', type=str, default='../user_scripts/test_scenario.py', help='The path to save the generated script.')
     parser.add_argument('-l', '--log_file', type=str, help='(Optional) The path to a log file from a previous execution.')
     parser.add_argument('-d', '--dump_file', type=str, help='(Optional) The path to a JSON dump of the UI tree.')
 
@@ -167,7 +167,7 @@ if __name__ == '__main__':
 
     ask_gemini(
         args.recording_folder,
-        output_file=args.output,
+        output_file=args.output_file,
         log_file=args.log_file,
         dump_file=args.dump_file
     )

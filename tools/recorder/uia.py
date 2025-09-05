@@ -3,19 +3,58 @@ import uiautomation as auto
 import time
 import pyautogui
 import threading
-# Add the parent directory to sys.path for module resolution
+import tkinter as tk
 import os
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from common.uia import get_element_info
+
+class HighlightWindow:
+    def __init__(self):
+        self.root = None
+        self.canvas = None
+        self.thread = threading.Thread(target=self.create_window)
+        self.thread.daemon = True
+        self.thread.start()
+        time.sleep(1)
+
+    def create_window(self):
+        self.root = tk.Tk()
+        self.root.title("Highlight Window")
+        self.root.overrideredirect(True)
+        self.root.attributes('-alpha', 0.5)
+        self.root.attributes('-topmost', True)
+        self.root.geometry(f"{self.root.winfo_screenwidth()}x{self.root.winfo_screenheight()}+0+0")
+
+        self.canvas = tk.Canvas(self.root, bg='white', highlightthickness=0)
+        self.root.wm_attributes('-transparentcolor', 'white')
+        self.canvas.pack(fill=tk.BOTH, expand=True)
+
+        self.root.mainloop()
+
+    def show_rectangle(self, rect, element_id):
+        if not self.canvas:
+            return
+        self.canvas.delete("all")
+        if rect:
+            self.canvas.create_rectangle(rect.left, rect.top, rect.right, rect.bottom, outline='red', width=3)
+            if element_id:
+                self.canvas.create_text(rect.left, rect.top - 10, text=element_id, fill='red', font=('Arial', 10))
+
+    def stop(self):
+        if self.root:
+            self.root.after(0, self.root.destroy)
 
 class UIAHelper:
     def __init__(self):
         self.element_ids = {}
         self.is_highlighting = False
         self.highlight_thread = None
+        self.highlight_window = None
 
     def start_highlighting(self):
         self.is_highlighting = True
+        self.highlight_window = HighlightWindow()
         self.highlight_thread = threading.Thread(target=self._highlight_element)
         self.highlight_thread.start()
 
@@ -23,6 +62,8 @@ class UIAHelper:
         self.is_highlighting = False
         if self.highlight_thread:
             self.highlight_thread.join()
+        if self.highlight_window:
+            self.highlight_window.stop()
 
     def _highlight_element(self):
         print("[UIAHelper] Highlight thread started.")
@@ -32,9 +73,14 @@ class UIAHelper:
                 x, y = pyautogui.position()
                 element = auto.ControlFromPoint(x, y)
                 if element:
-                    element.ShowDesktopRectangle(color=0xFF0000, width=3)
-            except Exception as e:
-                print(f"[UIAHelper] Exception in highlight thread: {e}")
+                    rect = element.BoundingRectangle
+                    info = get_element_info(element, self.element_ids)
+                    element_id = info['element_id'] if info else ''
+                    self.highlight_window.show_rectangle(rect, element_id)
+                else:
+                    self.highlight_window.show_rectangle(None, None)
+            except Exception:
+                self.highlight_window.show_rectangle(None, None)
             time.sleep(0.1)
         print("[UIAHelper] Highlight thread stopped.")
 
@@ -56,13 +102,10 @@ class UIAHelper:
         hierarchy = []
         current = element
         while current:
-            # Use the shared get_element_info function, passing the element_ids dict
             info = get_element_info(current, element_ids=self.element_ids)
             if info:
-                # Filter by process name if specified
                 if not process_names or (info.get('process_name') and info['process_name'].lower() in [p.lower() for p in process_names]):
                     hierarchy.append(info)
-
             try:
                 current = current.GetParentControl()
             except Exception:
