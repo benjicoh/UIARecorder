@@ -25,6 +25,7 @@ class MediaRecorder:
         self.video_thread = None
         self.audio_thread = None
         self.overlays = []
+        self.click_overlay = None
 
     def start(self):
         self.is_recording = True
@@ -87,8 +88,16 @@ class MediaRecorder:
             "bounding_box": bounding_box,
             "element_id": element_id,
             "color": color,
-            "ttl": 10
+            "ttl": 20
         })
+
+    def set_clickoverlay(self, x, y, button):
+        self.click_overlay = {
+            "x": x,
+            "y": y,
+            "button": button,
+            "ttl": 20
+        }
 
     def _record_video(self):
         print("[MediaRecorder] Video recording thread started.")
@@ -101,8 +110,16 @@ class MediaRecorder:
 
                 # Draw overlays
                 for overlay in self.overlays:
-                    overlay_drawer.draw_rectangle(frame, overlay["bounding_box"], overlay["color"], 2, overlay["element_id"])
-
+                    frame = overlay_drawer.draw_rectangle(frame, overlay["bounding_box"], overlay["color"], 2, overlay["element_id"])
+                # Draw mouse cursor
+                mouse_x, mouse_y = pyautogui.position()
+                frame = overlay_drawer.draw_cursor(frame, (mouse_x, mouse_y))
+                # Draw click overlay if exists
+                if self.click_overlay:
+                    frame = overlay_drawer.draw_circle(frame, (self.click_overlay["x"], self.click_overlay["y"]), 15, (0, 255, 0) if self.click_overlay["button"] == 'Button.left' else (255, 0, 0))
+                    self.click_overlay["ttl"] -= 1
+                    if self.click_overlay["ttl"] <= 0:
+                        self.click_overlay = None
                 # Update overlays TTL
                 self.overlays = [overlay for overlay in self.overlays if overlay["ttl"] > 0]
                 for overlay in self.overlays:

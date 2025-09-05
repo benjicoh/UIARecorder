@@ -5,9 +5,10 @@ def draw_rectangle(image, bounding_box, color, width, element_id):
     """Draws a rectangle and element ID on the image."""
     left, top, right, bottom = bounding_box
     # Draw the rectangle
-    cv2.rectangle(image, (left, top), (right, bottom), color, width)
-    # Put the element ID on top of the rectangle
-    cv2.putText(image, element_id, (left, top - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+    image = cv2.rectangle(image, (left, top), (right, bottom), color, width)
+    # Put the element ID on top of the rectangle, with outline for better visibility
+    image = cv2.putText(image, element_id, (left, top - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 0), 4)
+    image = cv2.putText(image, element_id, (left, top - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.75, color, 2)
     return image
 
 def draw_circle(image, position, radius, color):
@@ -24,6 +25,6 @@ def draw_cursor(image, position):
     cursor_size = 10
     # Draw a simple crosshair cursor
     x, y = position
-    cv2.line(image, (x - cursor_size, y), (x + cursor_size, y), cursor_color, 2)
-    cv2.line(image, (x, y - cursor_size), (x, y + cursor_size), cursor_color, 2)
+    image = cv2.line(image, (x - cursor_size, y), (x + cursor_size, y), cursor_color, 2)
+    image = cv2.line(image, (x, y - cursor_size), (x, y + cursor_size), cursor_color, 2)
     return image

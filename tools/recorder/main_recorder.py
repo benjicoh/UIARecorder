@@ -105,6 +105,7 @@ class Recorder:
             process_name = self._get_process_name(element)
             if self.whitelist and (not process_name or process_name.lower() not in [p.lower() for p in self.whitelist]):
                 return
+            self.media_recorder.overlays.clear()
             hierarchy = self.uia_helper.get_element_hierarchy(element, self.whitelist)
             colors = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0), (0, 255, 255)]
             if hierarchy:
@@ -112,7 +113,7 @@ class Recorder:
                     rect = element_info.get('bounding_rectangle')
                     if rect:
                         color = colors[i % len(colors)]
-                        self.media_recorder.add_overlay((rect.left, rect.top, rect.right, rect.bottom), element_info['element_id'], color)
+                        self.media_recorder.add_overlay((rect.left, rect.top, rect.right, rect.bottom), element_info['id'], color)
             self._log_annotation("key_release", str(key), hierarchy)
         except Exception as e:
             print(f"[Recorder] Error in _handle_release: {e}")
@@ -125,14 +126,17 @@ class Recorder:
             process_name = self._get_process_name(element)
             if self.whitelist and (not process_name or process_name.lower() not in [p.lower() for p in self.whitelist]):
                 return
+            self.media_recorder.overlays.clear()
             hierarchy = self.uia_helper.get_element_hierarchy(element, self.whitelist)
             colors = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0), (0, 255, 255)]
             if hierarchy:
-                for i, element_info in enumerate(hierarchy):
+                # Reverse the hierarchy to draw from parent to child
+                for i, element_info in enumerate(reversed(hierarchy)):
                     rect = element_info.get('bounding_rectangle')
                     if rect:
                         color = colors[i % len(colors)]
-                        self.media_recorder.add_overlay((rect.left, rect.top, rect.right, rect.bottom), element_info['element_id'], color)
+                        self.media_recorder.add_overlay((rect.left, rect.top, rect.right, rect.bottom), element_info['id'], color)
+            self.media_recorder.set_clickoverlay(x, y, str(button))
             self._log_annotation("mouse_click", {"x": x, "y": y, "button": str(button), "action": action}, hierarchy)
         except Exception as e:
             print(f"[Recorder] Error in _handle_click: {e}")
