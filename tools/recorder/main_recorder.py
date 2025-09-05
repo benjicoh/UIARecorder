@@ -11,7 +11,7 @@ from .media import MediaRecorder
 from .uia import UIAHelper
 
 class Recorder:
-    def __init__(self, output_folder="tools/recorder/output", process_names=None):
+    def __init__(self, output_folder="recorder/output", process_names=None):
         self.output_folder = output_folder
         self.images_folder = f"{self.output_folder}/images"
         self.json_file = f"{self.output_folder}/annotations.json"

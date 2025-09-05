@@ -1,5 +1,6 @@
 import os
 import argparse
+import time
 from google import genai
 from google.genai import types
 from pydantic import BaseModel
@@ -27,23 +28,38 @@ def ask_gemini(recording_folder: str) -> str:
     client = genai.Client(api_key=api_key)
 
     # Read the system prompt
-    with open('tools/recorder/recording_to_script.md', 'r') as f:
+    with open('recorder/recording_to_script.md', 'r') as f:
         system_prompt = f.read()
 
     # Find and upload the recording files
     uploaded_files = []
-    for file_name in os.listdir(recording_folder):
-        file_path = os.path.join(recording_folder, file_name)
-        if file_name.endswith(('.mp4', '.json', '.png')):
-            print(f"Uploading file: {file_path}")
-            uploaded_file = client.files.upload(file=file_path)
-            uploaded_files.append(uploaded_file)
+    jsons = []
+    #get all files recursively in the recording folder
+    for root, dirs, files in os.walk(recording_folder):
+        for file_name in files:
+            file_path = os.path.join(root, file_name)
+            if file_name.endswith(('mp4','.png', 'json')):
+                if file_name.endswith('json'):
+                    #append aits content to jsons
+                    with open(file_path, 'r') as jf:
+                        content = jf.read()
+                        jsons.append(f"{file_name}\n```json\n{content}\n```")
+                    continue
+                print(f"Uploading file: {file_path}")
+                uploaded_file = client.files.upload(file=file_path)
+                uploaded_files.append(uploaded_file)
+                
+                #wait for the file to become active
+                while uploaded_file.state.name != 'ACTIVE':
+                    print(f"Waiting for file {file_name} to become active...")
+                    time.sleep(2)
+                    uploaded_file = client.files.get(name=uploaded_file.name)
 
     if not uploaded_files:
         raise FileNotFoundError("No recording files found in the specified folder.")
 
     # Create the prompt
-    prompt_parts = [system_prompt] + uploaded_files
+    prompt_parts = uploaded_files + jsons
 
     # Call the Gemini API
     print("Calling Gemini 2.5 Pro to generate the script...")
@@ -52,6 +68,7 @@ def ask_gemini(recording_folder: str) -> str:
         model=model,
         contents=prompt_parts,
         config=types.GenerateContentConfig(
+            system_instruction=system_prompt,
             response_mime_type='application/json',
             response_schema=PythonScript,
         ),
