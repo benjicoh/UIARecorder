@@ -108,5 +108,35 @@ class TestGeminiChatServer(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("No active chat session", json.loads(response.data)['error'])
 
+    @patch('os.path.isdir', return_value=True)
+    @patch('os.walk')
+    def test_upload_folder_success(self, mock_walk, mock_isdir):
+        # Mock os.walk to return a predefined directory structure
+        mock_walk.return_value = [
+            ('/fake/dir', ('subdir',), ('file1.txt', 'file2.jpg')),
+            ('/fake/dir/subdir', (), ('file3.txt', 'file4.png')),
+        ]
+
+        # First, start a new chat
+        self.client_app.post('/gemini/newchat')
+
+        response = self.client_app.post(
+            '/gemini/uploadfolder',
+            content_type='application/json',
+            data=json.dumps({
+                "folder": "/fake/dir",
+                "allowed_extensions": [".txt", ".png"]
+            })
+        )
+
+        self.assertEqual(response.status_code, 200)
+        response_data = json.loads(response.data)
+        self.assertIn("Folder processed. Found and uploaded 3 files.", response_data['message'])
+        self.assertEqual(self.mock_client.files.upload.call_count, 3)
+        # Check that upload was called with the correct file paths
+        self.mock_client.files.upload.assert_any_call(file='/fake/dir/file1.txt')
+        self.mock_client.files.upload.assert_any_call(file='/fake/dir/subdir/file3.txt')
+        self.mock_client.files.upload.assert_any_call(file='/fake/dir/subdir/file4.png')
+
 if __name__ == '__main__':
     unittest.main()

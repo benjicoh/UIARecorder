@@ -2,16 +2,68 @@
 
 This directory contains various tools for UI automation, recording, and playback. It is structured as a Python package to allow for shared modules.
 
-## Ask Gemini (`ask_gemini.py`)
+## Gemini Server (`gemini_chat_server.py`)
 
-A tool that uses Google's Gemini Pro LLM to generate a Python test script from a folder of UIA recording files (JSON, screenshots, video). It uploads relevant files, sends them to Gemini, and saves the generated script.
+A Flask-based server that provides an API for interacting with Google's Gemini Pro LLM. It can be used to generate Python test scripts from a folder of UIA recording files (JSON, screenshots, video).
 
-### Usage
+### Running the server
 ```bash
-python -m tools.ask_gemini -r recorder/output -o my_script.py
+export GEMINI_API_KEY="YOUR_API_KEY"
+python -m tools.gemini_chat_server
 ```
-- `-r, --recording_folder`: Path to the folder containing recording files (JSON, PNG, MP4).
-- `-o, --output_file`: (Optional) Path to save the generated script. Default is `../user_scripts/test_scenario.py`.
+
+### Endpoints
+
+#### `POST /gemini/newchat`
+Starts a new chat session, clearing the history of any previous conversations or uploaded files.
+
+**Example:**
+```bash
+curl -X POST http://127.0.0.1:5000/gemini/newchat
+```
+
+#### `POST /gemini/uploadfile`
+Uploads a single file to the current chat session.
+
+**Example:**
+```bash
+curl -X POST -F "file=@/path/to/your/file.png" http://127.0.0.1:5000/gemini/uploadfile
+```
+
+#### `POST /gemini/uploadfolder`
+Uploads all files in a folder (and its subfolders) that have the allowed extensions.
+
+**Request Body (JSON):**
+```json
+{
+  "folder": "/path/to/your/folder",
+  "allowed_extensions": [".json", ".png", ".mp4"]
+}
+```
+
+**Example:**
+```bash
+curl -X POST -H "Content-Type: application/json" \
+     -d '{"folder": "recorder/output", "allowed_extensions": [".json", ".png", ".mp4"]}' \
+     http://127.0.0.1:5000/gemini/uploadfolder
+```
+
+#### `POST /gemini/sendmessage`
+Sends a message (and any uploaded files) to the Gemini model and returns the response.
+
+**Request Body (JSON):**
+```json
+{
+  "message": "Generate a python script based on the recording."
+}
+```
+
+**Example:**
+```bash
+curl -X POST -H "Content-Type: application/json" \
+     -d '{"message": "Generate a python script based on the recording."}' \
+     http://127.0.0.1:5000/gemini/sendmessage
+```
 
 ## UIA Dumper (`uia_dumper.py`)
 
