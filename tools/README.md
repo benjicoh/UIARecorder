@@ -9,65 +9,23 @@ export GEMINI_API_KEY="YOUR_API_KEY"
 python -m tools.mcp_server
 ```
 
-### Endpoints
+## Gemini Tools
 
-#### `POST /gemini/newchat`
-Starts a new chat session, clearing the history of any previous conversations or uploaded files.
+A set of tools for interacting with Google's Gemini Pro LLM. They can be used to generate Python test scripts from a folder of UIA recording files (JSON, screenshots, video).
 
-**Example:**
-```bash
-curl -X POST http://127.0.0.1:5000/gemini/newchat
-```
+The following tools are available via the MCP server:
 
-#### `POST /gemini/uploadfile`
-Uploads a single file to the current chat session.
-
-**Example:**
-```bash
-curl -X POST -F "file=@/path/to/your/file.png" http://127.0.0.1:5000/gemini/uploadfile
-```
-
-#### `POST /gemini/uploadfolder`
-Uploads all files in a folder (and its subfolders) that have the allowed extensions.
-
-**Request Body (JSON):**
-```json
-{
-  "folder": "/path/to/your/folder",
-  "allowed_extensions": [".json", ".png", ".mp4"]
-}
-```
-
-**Example:**
-```bash
-curl -X POST -H "Content-Type: application/json" \
-     -d '{"folder": "recorder/output", "allowed_extensions": [".json", ".png", ".mp4"]}' \
-     http://127.0.0.1:5000/gemini/uploadfolder
-```
-
-#### `POST /gemini/sendmessage`
-Sends a message (and any uploaded files) to the Gemini model and returns the response.
-
-**Request Body (JSON):**
-```json
-{
-  "message": "Generate a python script based on the recording."
-}
-```
-
-**Example:**
-```bash
-curl -X POST -H "Content-Type: application/json" \
-     -d '{"message": "Generate a python script based on the recording."}' \
-     http://127.0.0.1:5000/gemini/sendmessage
-```
+- **`gemini_new_chat`**: Starts a new chat session, clearing history.
+- **`gemini_upload_file`**: Uploads a single file to the current chat session.
+- **`gemini_upload_folder`**: Uploads all files in a folder (and its subfolders) with allowed extensions.
+- **`gemini_send_message`**: Sends a message (and any uploaded files) to the Gemini model and returns the response.
 
 ## UIA Dumper (`uia_dumper.py`)
 
 A tool to dump the UI Automation (UIA) tree of a running application to a JSON file. This is useful for inspecting the UI hierarchy and element properties. This tool is also available via the `dump_ui_tree` MCP tool.
 
 ### Usage
-```powershell
+```bash
 # Dump UI tree for a window
 python -m tools.uia_dumper -w "My Window Title" -o dump.json
 
@@ -86,7 +44,7 @@ python -m tools.uia_dumper -p "my_process.exe" -o dump.json -s
 This tool records user interactions (mouse clicks, key presses) with an application and saves them as a sequence of events in a JSON file, along with screenshots of the interacted elements. This tool is also available via the `start_recording` and `stop_recording` MCP tools.
 
 ### Usage
-```powershell
+```bash
 python -m tools.recorder -p myapp.exe anotherapp.exe
 ```
 - `-p, --process_names`: (Optional) Filter recording by one or more process names.
@@ -99,8 +57,8 @@ This tool plays back a recorded scenario, which consists of one or more test cas
 
 ### Usage
 The main entry point is `player.py`.
-```powershell
-python -m tools.player -sc path\to\your\scenario.json
+```bash
+python -m tools.player -sc path/to/your/scenario.json
 ```
 - `-s, --script`: Path to the test script to run.
 - `-sc, --scenario`: Path to the scenario JSON to run.

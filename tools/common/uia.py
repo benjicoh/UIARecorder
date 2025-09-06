@@ -35,16 +35,12 @@ def get_element_info(element, element_ids=None, screenshot_dir=None):
     # --- Element ID ---
     try:
         runtime_id = element.GetRuntimeId()
-        if element_ids is not None:
-            if runtime_id not in element_ids:
-                element_ids[runtime_id] = f"element-{len(element_ids) + 1}"
-            element_id = element_ids[runtime_id]
-        else:
-            element_id = runtime_id
+        #join all parts of the runtime_id into a single string
+        runtime_id = '.'.join(str(i) for i in runtime_id) if isinstance(runtime_id, tuple) else str(runtime_id)
     except Exception:
         return None
 
-    info = {'id': element_id}
+    info = {'id': runtime_id}
 
     # --- Basic Properties (with robust error handling) ---
     def get_prop(name, getter):

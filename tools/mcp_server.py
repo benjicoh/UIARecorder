@@ -1,7 +1,7 @@
 from fastmcp import FastMCP
-from . import gemini_chat
+import gemini_chat
 
-mcp = FastMCP("Tool Server")
+mcp = FastMCP("UIAutomation Tools Server")
 
 @mcp.tool
 def dump_ui_tree(process_name: str = None, window_title: str = None, output_file: str = None, whitelist: list[str] = None, screenshots: bool = False) -> str:
@@ -16,7 +16,7 @@ def dump_ui_tree(process_name: str = None, window_title: str = None, output_file
         screenshots: Enable capturing screenshots of elements.
     """
     try:
-        from .uia_dumper import dump_uia_tree as dumper_func
+        import uia_dumper
     except ImportError as e:
         return f"Error importing uia_dumper: {e}. This tool is likely Windows-only."
 
@@ -25,7 +25,7 @@ def dump_ui_tree(process_name: str = None, window_title: str = None, output_file
     if not output_file:
         return "Error: output_file must be provided."
 
-    return dumper_func(
+    return uia_dumper.dump_uia_tree(
         process_name=process_name,
         window_title=window_title,
         output_file=output_file,
@@ -43,10 +43,10 @@ def start_recording(whitelist: list[str] = None, output_folder: str = "recorder/
         output_folder: The folder to save the recording data.
     """
     try:
-        from . import recorder
+        import recorder_tool
     except ImportError as e:
-        return f"Error importing recorder: {e}. This tool is likely Windows-only."
-    return recorder.start_recording(whitelist=whitelist, output_folder=output_folder)
+        return f"Error importing recorders: {e}. This tool is likely Windows-only."
+    return recorder_tool.start_recording(whitelist=whitelist, output_folder=output_folder)
 
 @mcp.tool
 def stop_recording() -> str:
@@ -54,10 +54,10 @@ def stop_recording() -> str:
     Stops the current recording session.
     """
     try:
-        from . import recorder
+        import recorder_tool
     except ImportError as e:
-        return f"Error importing recorder: {e}. This tool is likely Windows-only."
-    return recorder.stop_recording()
+        return f"Error importing recorder_tool: {e}. This tool is likely Windows-only."
+    return recorder_tool.stop_recording()
 
 @mcp.tool
 def run_script(script_path: str, output_folder: str = "output", no_video: bool = False, variables: dict = None) -> str:
@@ -71,10 +71,10 @@ def run_script(script_path: str, output_folder: str = "output", no_video: bool =
         variables: Variables to pass to the test case.
     """
     try:
-        from . import player
+        import player_tool
     except ImportError as e:
-        return f"Error importing player: {e}. This tool is likely Windows-only."
-    return player.run_script(script_path, output_folder, no_video, variables)
+        return f"Error importing player_tool: {e}. This tool is likely Windows-only."
+    return player_tool.run_script(script_path, output_folder, no_video, variables)
 
 @mcp.tool
 def run_scenario(scenario_path: str, output_folder: str = "output") -> str:
@@ -86,10 +86,10 @@ def run_scenario(scenario_path: str, output_folder: str = "output") -> str:
         output_folder: Path to the output folder.
     """
     try:
-        from . import player
+        import player_tool
     except ImportError as e:
         return f"Error importing player: {e}. This tool is likely Windows-only."
-    return player.run_scenario(scenario_path, output_folder)
+    return player_tool.run_scenario(scenario_path, output_folder)
 
 @mcp.tool
 def gemini_new_chat() -> str:

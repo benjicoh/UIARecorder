@@ -1,5 +1,5 @@
 import argparse
-from .recorder.main_recorder import Recorder
+from recorder.main_recorder import Recorder
 
 recorder_instance = None
 

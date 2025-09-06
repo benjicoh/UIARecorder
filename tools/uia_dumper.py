@@ -13,8 +13,22 @@ import os
 import argparse
 import json
 import sys
-from .common.uia import get_element_info, get_process_name
+from common.uia import get_element_info, get_process_name
 
+def serialize_rects(obj):
+    """
+    Recursively convert Rect objects to dictionaries in the given object.
+    """
+    import uiautomation as auto
+    if isinstance(obj, auto.Rect):
+        return {'left': obj.left, 'top': obj.top, 'right': obj.right, 'bottom': obj.bottom}
+    elif isinstance(obj, dict):
+        return {k: serialize_rects(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [serialize_rects(v) for v in obj]
+    else:
+        return obj
+    
 def traverse_element_tree(element, whitelist=None, screenshot_dir=None):
     """
     Recursively traverses the UI Automation tree and builds a dictionary representation.
@@ -83,9 +97,9 @@ def dump_uia_tree(process_name=None, window_title=None, output_file=None, whitel
         tree = traverse_element_tree(root, whitelist=whitelist, screenshot_dir=screenshot_dir)
         if tree:
             trees.append(tree)
-
+    trees_serialized = serialize_rects(trees)
     with open(output_file, 'w', encoding='utf-8') as f:
-        json.dump(trees, f, ensure_ascii=False, indent=2)
+        json.dump(trees_serialized, f, ensure_ascii=False, indent=2)
 
     result_message = f"UI tree dumped to {output_file}"
     if screenshot_dir:

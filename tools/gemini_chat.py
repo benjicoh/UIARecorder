@@ -23,10 +23,8 @@ def configure_gemini():
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         raise ValueError("GEMINI_API_KEY environment variable not set.")
-    genai.configure(api_key=api_key)
-    client = genai.GenerativeModel(
-        model_name="gemini-1.5-flash",
-        system_instruction=get_system_prompt(),
+    client = genai.Client(
+        api_key=api_key,
     )
 
 def get_system_prompt():
@@ -100,3 +98,11 @@ def send_message_to_gemini(message: str):
 
     uploaded_files = []
     return response.text
+
+if __name__ == "__main__":
+    # Example usage
+    new_chat_session()
+    upload_folder_to_gemini("c:\\Sources\\AgenticAI\\MCPServers\\Win32UICrawlerMcp\\tools\\recorder\\output", [
+        ".mp4"
+    ])
+    
