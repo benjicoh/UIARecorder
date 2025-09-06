@@ -3,6 +3,8 @@ import time
 import tempfile
 from flask import Flask, request, jsonify
 import google.genai as genai
+from google.genai import types
+
 from pydantic import BaseModel
 
 
@@ -45,6 +47,9 @@ def new_chat():
             configure_gemini()
         chat_session = client.chats.create(
             model="gemini-2.5-pro",
+            config=types.GenerateContentConfig(
+                system_instruction=get_system_prompt()
+            )
         )
         uploaded_files = []
         return jsonify({"message": "New chat session started."}), 200
@@ -176,6 +181,9 @@ if __name__ == '__main__':
     configure_gemini()
     chat_session = client.chats.create(
         model="gemini-2.5-pro",
+        config=types.GenerateContentConfig(
+            system_instruction=get_system_prompt()
+        )
     )
     print("Default chat session started.")
 
