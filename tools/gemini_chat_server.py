@@ -1,30 +1,24 @@
 import os
-import io
-import json
 import time
 import tempfile
 from flask import Flask, request, jsonify
 import google.genai as genai
-from google.genai.types import content_types
 
 # --- Globals ---
 app = Flask(__name__)
+client = None
 chat_session = None
 uploaded_files = []
-model = None
 
 # --- Gemini Configuration ---
 def configure_gemini():
     """Configures the Gemini API key."""
-    global model
+    global client
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         raise ValueError("GEMINI_API_KEY environment variable not set.")
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel(
-        model_name="gemini-1.5-pro-latest",
-        system_instruction=get_system_prompt()
-    )
+    # No need for genai.configure, the client will use the environment variable
+    client = genai.Client()
 
 
 def get_system_prompt():
@@ -38,11 +32,13 @@ def get_system_prompt():
 @app.route('/gemini/newchat', methods=['POST'])
 def new_chat():
     """Starts a new chat session, clearing history."""
-    global chat_session, uploaded_files, model
+    global chat_session, uploaded_files, client
     try:
-        if model is None:
+        if client is None:
             configure_gemini()
-        chat_session = model.start_chat()
+        chat_session = client.chats.create(
+            model="gemini-2.5-pro",
+        )
         uploaded_files = []
         return jsonify({"message": "New chat session started."}), 200
     except Exception as e:
@@ -51,7 +47,7 @@ def new_chat():
 @app.route('/gemini/uploadfile', methods=['POST'])
 def upload_file():
     """Uploads a file to Gemini for the current chat session."""
-    global uploaded_files
+    global uploaded_files, client
     if 'file' not in request.files:
         return jsonify({"error": "No file part"}), 400
     file = request.files['file']
@@ -61,17 +57,14 @@ def upload_file():
         try:
             print(f"Uploading file: {file.filename}")
             # The google.generativeai.upload_file function expects a file path.
-            # To handle in-memory uploads from a web request, we save the file
-            # to a temporary location on disk and then pass the path to the SDK.
             with tempfile.NamedTemporaryFile(delete=False, suffix=file.filename) as temp_file:
                 file.save(temp_file.name)
-                gemini_file = genai.upload_file(path=temp_file.name, display_name=file.filename)
+                gemini_file = client.files.upload(file=temp_file.name)
 
-                # Wait for the file to become active
                 while gemini_file.state.name != 'ACTIVE':
                     print(f"Waiting for file {file.filename} to become active...")
                     time.sleep(2)
-                    gemini_file = genai.get_file(name=gemini_file.name)
+                    gemini_file = client.files.get(name=gemini_file.name)
 
                 uploaded_files.append(gemini_file)
 
@@ -107,7 +100,7 @@ def send_message():
 
         prompt_parts.append(message_text)
 
-        response = chat_session.send_message(prompt_parts)
+        response = chat_session.send_message(content=prompt_parts)
 
         # Clear uploaded files after sending the message, as they are now part of the history
         uploaded_files = []
@@ -121,8 +114,9 @@ def send_message():
 
 if __name__ == '__main__':
     configure_gemini()
-    # To start a default chat session on server startup
-    chat_session = model.start_chat()
+    chat_session = client.chats.create(
+        model="gemini-2.5-pro",
+    )
     print("Default chat session started.")
 
     app.run(host='0.0.0.0', port=5000)
