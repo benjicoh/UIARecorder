@@ -13,7 +13,7 @@ import os
 import argparse
 import json
 import sys
-from common.uia import get_element_info, get_process_name
+from .common.uia import get_element_info, get_process_name
 
 def traverse_element_tree(element, whitelist=None, screenshot_dir=None):
     """
@@ -47,6 +47,54 @@ def traverse_element_tree(element, whitelist=None, screenshot_dir=None):
 
     return None
 
+def dump_uia_tree(process_name=None, window_title=None, output_file=None, whitelist=None, screenshots=False):
+    """
+    Dumps the UI Automation tree for a given process or window to a JSON file.
+    """
+    screenshot_dir = None
+    if screenshots:
+        # Create screenshots dir relative to the output file
+        screenshot_dir = os.path.join(os.path.dirname(os.path.abspath(output_file)), 'screenshots')
+        os.makedirs(screenshot_dir, exist_ok=True)
+
+    roots = []
+    root_control = auto.GetRootControl()
+    if process_name:
+        # Find the process by name
+        for w in root_control.GetChildren():
+            if get_process_name(w) and get_process_name(w).lower() == process_name.lower():
+                roots.append(w)
+                w.SetActive()
+                
+        if len(roots) == 0:
+            return f"Process '{process_name}' not found."
+    elif window_title:
+        # Find the window by title
+        for w in root_control.GetChildren():
+            if w.Name and window_title.lower() in w.Name.lower():
+                roots = [w]
+                w.SetActive()
+                break
+        if len(roots) == 0:
+            return f"Window with title containing '{window_title}' not found."
+
+    trees = []
+    for root in roots:
+        tree = traverse_element_tree(root, whitelist=whitelist, screenshot_dir=screenshot_dir)
+        if tree:
+            trees.append(tree)
+
+    with open(output_file, 'w', encoding='utf-8') as f:
+        json.dump(trees, f, ensure_ascii=False, indent=2)
+
+    result_message = f"UI tree dumped to {output_file}"
+    if screenshot_dir:
+        result_message += f"\nScreenshots saved to {screenshot_dir}"
+
+    # Play notification sound
+    print('\007')
+    return result_message
+
 def main():
     parser = argparse.ArgumentParser(description="Dump UI Automation tree to JSON.", formatter_class=argparse.RawTextHelpFormatter)
 
@@ -64,51 +112,14 @@ def main():
 
     args = parser.parse_args()
 
-    screenshot_dir = None
-    if args.screenshots:
-        # Create screenshots dir relative to the output file
-        screenshot_dir = os.path.join(os.path.dirname(os.path.abspath(args.output)), 'screenshots')
-        os.makedirs(screenshot_dir, exist_ok=True)
-
-
-    roots = []
-    root_control = auto.GetRootControl()
-    if args.process:
-        # Find the process by name
-        for w in root_control.GetChildren():
-            if get_process_name(w) and get_process_name(w).lower() == args.process.lower():
-                roots.append(w)
-                w.SetActive()
-                
-        if len(roots) == 0:
-            print(f"Process '{args.process}' not found.", file=sys.stderr)
-            sys.exit(1)
-    elif args.window:
-        # Find the window by title
-        for w in root_control.GetChildren():
-            if w.Name and args.window.lower() in w.Name.lower():
-                roots = [w]
-                w.SetActive()
-                break
-        if len(roots) == 0:
-            print(f"Window with title containing '{args.window}' not found.", file=sys.stderr)
-            sys.exit(1)
-
-    trees = []
-    for root in roots:
-        tree = traverse_element_tree(root, whitelist=args.whitelist, screenshot_dir=screenshot_dir)
-        if tree:
-            trees.append(tree)
-
-    with open(args.output, 'w', encoding='utf-8') as f:
-        json.dump(trees, f, ensure_ascii=False, indent=2)
-
-    print(f"UI tree dumped to {args.output}")
-    if screenshot_dir:
-        print(f"Screenshots saved to {screenshot_dir}")
-
-    # Play notification sound
-    print('\007')
+    result = dump_uia_tree(
+        process_name=args.process,
+        window_title=args.window,
+        output_file=args.output,
+        whitelist=args.whitelist,
+        screenshots=args.screenshots
+    )
+    print(result)
 
 if __name__ == "__main__":
     main()
