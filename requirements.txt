@@ -12,5 +12,5 @@ pytest
 mock
 psutil
 Flask
-google-generativeai
+google-genai==1.33.0
 pydantic
