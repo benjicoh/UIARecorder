@@ -4,6 +4,15 @@ import tempfile
 from flask import Flask, request, jsonify
 import google.genai as genai
 from google.genai import types
+
+from pydantic import BaseModel
+
+
+# --- Pydantic Models ---
+class CodeResponse(BaseModel):
+    """A Pydantic model for the structured response from the Gemini API."""
+    code: str
+
 # --- Globals ---
 app = Flask(__name__)
 client = None
@@ -149,8 +158,14 @@ def send_message():
             prompt_parts.extend(uploaded_files)
 
         prompt_parts.append(message_text)
-        
-        response = chat_session.send_message(prompt_parts)
+
+        response = chat_session.send_message(
+            content=prompt_parts,
+            generation_config={
+                "response_mime_type": "application/json",
+                "response_schema": CodeResponse,
+            }
+        )
 
         # Clear uploaded files after sending the message, as they are now part of the history
         uploaded_files = []
@@ -158,7 +173,7 @@ def send_message():
         # The user wants a structured JSON response.
         # The 'text' attribute of the response contains the model's output.
         # If the model is prompted to return JSON, this text can be parsed.
-        return jsonify({"response": response.text})
+        return jsonify({"response": response.candidates[0].content.parts[0].text})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
