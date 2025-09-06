@@ -79,6 +79,53 @@ def upload_file():
     return jsonify({"error": "File upload failed."}), 500
 
 
+@app.route('/gemini/uploadfolder', methods=['POST'])
+def upload_folder():
+    """Uploads all files in a folder (and subfolders) with allowed extensions."""
+    global uploaded_files, client
+    data = request.get_json()
+    if not data or 'folder' not in data or 'allowed_extensions' not in data:
+        return jsonify({"error": "Missing 'folder' or 'allowed_extensions' in request body."}), 400
+
+    folder_path = data['folder']
+    allowed_extensions = data['allowed_extensions']
+
+    if not os.path.isdir(folder_path):
+        return jsonify({"error": f"Folder not found: {folder_path}"}), 400
+
+    uploaded_file_details = []
+
+    try:
+        for root, _, files in os.walk(folder_path):
+            for filename in files:
+                if any(filename.endswith(ext) for ext in allowed_extensions):
+                    file_path = os.path.join(root, filename)
+                    try:
+                        print(f"Uploading file: {file_path}")
+                        gemini_file = client.files.upload(file=file_path)
+
+                        while gemini_file.state.name != 'ACTIVE':
+                            print(f"Waiting for file {filename} to become active...")
+                            time.sleep(2)
+                            gemini_file = client.files.get(name=gemini_file.name)
+
+                        uploaded_files.append(gemini_file)
+                        uploaded_file_details.append({
+                            "file_name": filename,
+                            "file_uri": gemini_file.uri
+                        })
+                    except Exception as e:
+                        print(f"Could not upload file {file_path}: {e}")
+
+        return jsonify({
+            "message": f"Folder processed. Found and uploaded {len(uploaded_file_details)} files.",
+            "uploaded_files": uploaded_file_details
+        }), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route('/gemini/sendmessage', methods=['POST'])
 def send_message():
     """Sends a message to the Gemini model and returns the response."""
