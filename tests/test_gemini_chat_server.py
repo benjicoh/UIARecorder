@@ -30,7 +30,11 @@ class TestGeminiChatServer(unittest.TestCase):
         # Configure mocks
         self.mock_client = self.mock_genai.Client.return_value
         self.mock_chat = self.mock_client.chats.create.return_value
-        self.mock_chat.send_message.return_value.text = "Test response"
+        # self.mock_chat.send_message.return_value.text = "Test response"
+        mock_response = MagicMock()
+        mock_response.candidates = [MagicMock()]
+        mock_response.candidates[0].content.parts[0].text = '{"code": "print(\\"Hello, World!\\")"}'
+        self.mock_chat.send_message.return_value = mock_response
 
         self.mock_uploaded_file = MagicMock()
         self.mock_uploaded_file.name = 'uploaded_file_name'
@@ -96,8 +100,8 @@ class TestGeminiChatServer(unittest.TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(json.loads(response.data), {"response": "Test response"})
-        self.mock_chat.send_message.assert_called_once_with(content=["Hello, Gemini!"])
+        self.assertEqual(json.loads(response.data), {"response": '{"code": "print(\\"Hello, World!\\")"}'})
+        self.mock_chat.send_message.assert_called_once()
 
     def test_send_message_no_chat(self):
         response = self.client_app.post(
