@@ -14,3 +14,4 @@ psutil
 Flask
 google-genai==1.33.0
 pydantic
+fastmcp

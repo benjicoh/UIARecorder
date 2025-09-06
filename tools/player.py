@@ -2,8 +2,36 @@ import argparse
 import os
 from datetime import datetime
 
-from player.main_player import Player
-from player.scenario_runner import ScenarioRunner
+from .player.main_player import Player
+from .player.scenario_runner import ScenarioRunner
+
+def run_script(script_path: str, output_folder: str = "output", no_video: bool = False, variables: dict = None):
+    """
+    Runs a single test script.
+    """
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    script_name = os.path.splitext(os.path.basename(script_path))[0]
+    output_folder = os.path.join(output_folder, f"{script_name}_{timestamp}")
+
+    player = Player(
+        script_path=script_path,
+        output_folder=output_folder,
+        record_video=not no_video,
+        variables=variables
+    )
+    player.run()
+    return f"Test script '{script_path}' executed. Output saved to '{output_folder}'"
+
+def run_scenario(scenario_path: str, output_folder: str = "output"):
+    """
+    Runs a test scenario.
+    """
+    runner = ScenarioRunner(
+        scenario_path=scenario_path,
+        output_folder=output_folder
+    )
+    runner.run()
+    return f"Scenario '{scenario_path}' executed. Output saved to '{runner.output_folder}'"
 
 def main():
     parser = argparse.ArgumentParser(description="Run a test script or a scenario.")
@@ -16,23 +44,9 @@ def main():
     args = parser.parse_args()
 
     if args.script:
-        # Create a unique output folder for the test run
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        script_name = os.path.splitext(os.path.basename(args.script))[0]
-        output_folder = os.path.join(args.output, f"{script_name}_{timestamp}")
-
-        player = Player(
-            script_path=args.script,
-            output_folder=output_folder,
-            record_video=not args.no_video
-        )
-        player.run()
+        run_script(args.script, args.output, args.no_video)
     elif args.scenario:
-        runner = ScenarioRunner(
-            scenario_path=args.scenario,
-            output_folder=args.output
-        )
-        runner.run()
+        run_scenario(args.scenario, args.output)
 
 if __name__ == "__main__":
     main()
