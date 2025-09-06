@@ -11,3 +11,6 @@ numpy
 pytest
 mock
 psutil
+Flask
+google-generativeai
+pydantic
