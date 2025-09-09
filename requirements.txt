@@ -15,3 +15,6 @@ Flask
 google-genai==1.33.0
 pydantic
 fastmcp
+langchain==0.3.27
+langchain-google-genai==2.1.10
+comtypes==1.4.12
