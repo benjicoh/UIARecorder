@@ -4,7 +4,7 @@ This document provides instructions for agents working with this codebase.
 
 ## Gemini API
 
-This project uses the new Google AI for Python SDK (`google-generativeai`). When working with the Gemini API, please refer to the following documentation:
+This project uses the new Google AI for Python SDK (`google-genai`). When working with the Gemini API, please refer to the following documentation:
 
 *   **Files API**: https://ai.google.dev/gemini-api/docs/files
 *   **Text Generation**: https://ai.google.dev/gemini-api/docs/text-generation
