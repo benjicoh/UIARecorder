@@ -13,12 +13,26 @@ def run_agent(initial_prompt: str):
 
     graph = create_graph()
 
-    events = graph.stream(
-        {"messages": [HumanMessage(content=initial_prompt)]},
-    )
+    initial_state = {
+        "messages": [HumanMessage(content=initial_prompt)],
+        "multimodal_prompt_parts": []
+    }
+
+    events = graph.stream(initial_state)
+
     for event in events:
-        for value in event.values():
-            print("Assistant:", value["messages"][-1].content)
+        if "messages" in event:
+            for message in event["messages"]:
+                if hasattr(message, 'content') and message.content:
+                    print("Assistant:", message.content)
+                if hasattr(message, 'tool_calls') and message.tool_calls:
+                    print("Tool Calls:", message.tool_calls)
+
 
 if __name__ == "__main__":
-    run_agent("Start by generating a script from the recording at 'tools/recorder/output'.")
+    initial_prompt = (
+        "Please generate a python script based on the recording in 'tools/recorder/output'. "
+        "The recording consists of a video file and a JSON file with UI events. "
+        "Use the `prepare_multimodal_prompt_from_folder` tool with the folder path 'tools/recorder/output' and extensions ['.mp4', '.json']"
+    )
+    run_agent(initial_prompt)
