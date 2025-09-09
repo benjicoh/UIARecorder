@@ -1,22 +1,24 @@
 import sys
 import os
+import subprocess
+import json
+from typing import Annotated, TypedDict
 
 # Add the project root to the Python path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 sys.path.insert(0, project_root)
 
-import subprocess
-from langchain.agents import AgentExecutor, create_react_agent
-from langchain_core.prompts import PromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.tools import tool
-
-# --- Tools ---
+from langchain_core.messages import BaseMessage, SystemMessage
+from langgraph.graph import StateGraph, START, END
+from langgraph.graph.message import add_messages
+from langgraph.prebuilt import ToolNode, tools_condition
 
 from tools.uia_dumper import dump_uia_tree
 from tools.gemini_chat import new_chat_session, upload_folder_to_gemini, send_message_to_gemini
 
-@tool
+# --- Tools ---
+
 def run_python_script(script_path: str):
     """Runs a python script and returns the output."""
     if not os.path.exists(script_path):
@@ -33,7 +35,6 @@ def run_python_script(script_path: str):
     except subprocess.CalledProcessError as e:
         return f"Error running script:\n{e.stderr}"
 
-@tool
 def dump_ui(window_title: str, output_file: str, screenshots: bool = False):
     """Dumps the UI tree of a window to a JSON file."""
     return dump_uia_tree(
@@ -42,21 +43,14 @@ def dump_ui(window_title: str, output_file: str, screenshots: bool = False):
         screenshots=screenshots
     )
 
-# --- Agent ---
-
-@tool
 def start_new_gemini_chat_session():
     """Starts a new Gemini chat session."""
     return new_chat_session()
 
-@tool
 def upload_to_gemini(folder_path: str, allowed_extensions: list[str]):
     """Uploads files to Gemini."""
     return upload_folder_to_gemini(folder_path, allowed_extensions)
 
-import json
-
-@tool
 def send_gemini_message(message: str):
     """
     Sends a message to Gemini and returns the generated code.
@@ -69,17 +63,19 @@ def send_gemini_message(message: str):
     except json.JSONDecodeError:
         return f"Error: Could not decode Gemini's response: {response_text}"
 
-@tool
 def write_file(file_path: str, content: str):
     """Writes content to a file."""
     with open(file_path, "w") as f:
         f.write(content)
     return f"File '{file_path}' written successfully."
 
-# --- Agent ---
+# --- Graph ---
 
-def create_agent():
-    """Creates the ReAct agent."""
+class State(TypedDict):
+    messages: Annotated[list, add_messages]
+
+def create_graph():
+    """Creates the agent graph."""
 
     # --- LLM ---
     llm = ChatGoogleGenerativeAI(model="gemini-2.5-pro")
@@ -93,9 +89,10 @@ def create_agent():
         send_gemini_message,
         write_file
     ]
+    llm_with_tools = llm.bind_tools(tools)
 
     # --- Prompt ---
-    prompt_template = """
+    prompt = """
     # Instructions
     You are an agent that automates UI interaction based on user recordings.
     Your goal is to generate a python script, run it, and refine it until it runs successfully.
@@ -109,33 +106,25 @@ def create_agent():
     6.  If the script runs successfully, you are done.
     7.  If the script fails, dump the UI of the application, and send the UI dump, the error log, and a screenshot to Gemini to get a refined script.
     8.  Repeat from step 4 until the script runs successfully.
-
-    You have access to the following tools:
-    {tools}
-
-    You have access to the following tool names:
-    {tool_names}
-
-    # Conversation
-    ## The following is the conversation history. Use it to help you respond.
-    {chat_history}
-
-    # User question
-    ## This is the user's question. Use it to determine which tool to use.
-    {input}
-
-    # Thought process
-    ## This is your thought process. Write down your thoughts, then use a tool to help you respond.
-    {agent_scratchpad}
     """
 
-    prompt = PromptTemplate.from_template(prompt_template)
+    # --- Graph ---
+    graph_builder = StateGraph(State)
 
-    # --- Agent ---
-    agent = create_react_agent(
-        llm=llm,
-        tools=tools,
-        prompt=prompt
+    def chatbot(state: State):
+        messages_with_prompt = [SystemMessage(content=prompt)] + state["messages"]
+        return {"messages": [llm_with_tools.invoke(messages_with_prompt)]}
+
+    graph_builder.add_node("chatbot", chatbot)
+
+    tool_node = ToolNode(tools=tools)
+    graph_builder.add_node("tools", tool_node)
+
+    graph_builder.add_conditional_edges(
+        "chatbot",
+        tools_condition,
     )
+    graph_builder.add_edge("tools", "chatbot")
+    graph_builder.add_edge(START, "chatbot")
 
-    return AgentExecutor(agent=agent, tools=tools, verbose=True)
+    return graph_builder.compile()
