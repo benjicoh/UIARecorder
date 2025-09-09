@@ -1,13 +1,19 @@
+import sys
 import os
+
+# Add the project root to the Python path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+sys.path.insert(0, project_root)
+
 import shutil
 import time
 import json
 import psutil
 
-from .element_screenshotter import ElementScreenshotter
-from .events import InputListener
-from .media import MediaRecorder
-from .uia import UIAHelper
+from tools.recorder.element_screenshotter import ElementScreenshotter
+from tools.recorder.events import InputListener
+from tools.recorder.media import MediaRecorder
+from tools.recorder.uia import UIAHelper
 
 class Recorder:
     def __init__(self, output_folder="recorder/output", whitelist=None):

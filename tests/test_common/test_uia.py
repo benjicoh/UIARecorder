@@ -1,6 +1,13 @@
+import sys
+import os
+
+# Add the project root to the Python path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+sys.path.insert(0, project_root)
+
 import unittest
 from unittest.mock import MagicMock, patch
-import sys
+import psutil
 
 class TestUia(unittest.TestCase):
 
@@ -8,7 +15,6 @@ class TestUia(unittest.TestCase):
         # Mock the entire modules that are platform-specific
         self.MOCK_MODULES = {
             'uiautomation': MagicMock(),
-            'psutil': MagicMock(),
             'comtypes': MagicMock(),
         }
 
@@ -21,24 +27,17 @@ class TestUia(unittest.TestCase):
         global get_process_name, get_element_info
 
         # Also reset the mocks before each test
-        self.MOCK_MODULES['psutil'].reset_mock()
         self.MOCK_MODULES['uiautomation'].reset_mock()
         self.MOCK_MODULES['comtypes'].reset_mock()
-
-        # Set up specific return values for psutil mock
-        self.mock_psutil = self.MOCK_MODULES['psutil']
-        self.mock_process = self.mock_psutil.Process
-        self.mock_process.return_value.name.return_value = "test_process.exe"
-        # Make psutil.NoSuchProcess an exception class for the test
-        self.mock_psutil.NoSuchProcess = type('NoSuchProcess', (Exception,), {})
-        self.mock_process.side_effect = None # Reset side effect
 
     def tearDown(self):
         # Stop patching
         self.patcher.stop()
 
-    def test_get_process_name(self):
+    @patch('tools.common.uia.psutil.Process')
+    def test_get_process_name(self, mock_process):
         # Arrange
+        mock_process.return_value.name.return_value = 'test_process.exe'
         mock_element = MagicMock()
         mock_element.ProcessId = 123
 
@@ -47,16 +46,18 @@ class TestUia(unittest.TestCase):
 
         # Assert
         self.assertEqual(process_name, "test_process.exe")
-        self.mock_process.assert_called_once_with(123)
+        mock_process.assert_called_once_with(123)
 
-    def test_get_process_name_no_such_process(self):
+    @patch('tools.common.uia.psutil.Process')
+    def test_get_process_name_no_such_process(self, mock_process):
         # Arrange
+        mock_process.side_effect = psutil.NoSuchProcess
         mock_element = MagicMock()
         mock_element.ProcessId = 123
-        self.mock_process.side_effect = self.mock_psutil.NoSuchProcess
 
         # Act
-        process_name = get_process_name(mock_element)
+        with patch('tools.common.uia.psutil.NoSuchProcess', new=Exception):
+            process_name = get_process_name(mock_element)
 
         # Assert
         self.assertIsNone(process_name)

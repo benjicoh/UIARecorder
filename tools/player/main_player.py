@@ -1,13 +1,20 @@
-import importlib.util
-import os
 import sys
+import os
+
+# Add the project root to the Python path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+sys.path.insert(0, project_root)
+
+import importlib.util
 import traceback
 from datetime import datetime
 import logging
 
-from player.exceptions import TestCaseNotFound, InvalidTestCase
-from player.logger import get_logger
-from player.test_case import BaseTestCase
+from tools.player.exceptions import TestCaseNotFound, InvalidTestCase
+from tools.player.logger import get_logger
+from tools.player.test_case import BaseTestCase
+from tools.recorder.media import MediaRecorder
+
 
 class Player:
     def __init__(self, script_path: str, output_folder: str, variables: dict = None, record_video: bool = True, logger: logging.Logger = None):
@@ -19,7 +26,6 @@ class Player:
         self.record_video = record_video
         self.video_recorder = None
         if self.record_video:
-            from recorder.media import MediaRecorder
             self.video_recorder = MediaRecorder(self.output_folder, record_audio=False)
 
     def _setup_logger(self):

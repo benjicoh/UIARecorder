@@ -1,6 +1,11 @@
-import logging
 import sys
 import os
+
+# Add the project root to the Python path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+sys.path.insert(0, project_root)
+
+import logging
 
 class IndentFormatter(logging.Formatter):
     def __init__(self, fmt=None, indent_char=' ', indent_level=0):

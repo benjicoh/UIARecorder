@@ -1,5 +1,15 @@
+import sys
+import os
+
+# Add the project root to the Python path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, project_root)
+
 from fastmcp import FastMCP
-import gemini_chat
+from tools import gemini_chat
+from tools import uia_dumper
+from tools import recorder_tool
+from tools import player_tool
 
 mcp = FastMCP("UIAutomation Tools Server")
 
@@ -15,11 +25,6 @@ def dump_ui_tree(process_name: str = None, window_title: str = None, output_file
         whitelist: Filter: Only include elements from these process names.
         screenshots: Enable capturing screenshots of elements.
     """
-    try:
-        import uia_dumper
-    except ImportError as e:
-        return f"Error importing uia_dumper: {e}. This tool is likely Windows-only."
-
     if not process_name and not window_title:
         return "Error: Either process_name or window_title must be provided."
     if not output_file:
@@ -42,10 +47,6 @@ def start_recording(whitelist: list[str] = None, output_folder: str = "recorder/
         whitelist: Filter recording by process name(s).
         output_folder: The folder to save the recording data.
     """
-    try:
-        import recorder_tool
-    except ImportError as e:
-        return f"Error importing recorders: {e}. This tool is likely Windows-only."
     return recorder_tool.start_recording(whitelist=whitelist, output_folder=output_folder)
 
 @mcp.tool
@@ -53,10 +54,6 @@ def stop_recording() -> str:
     """
     Stops the current recording session.
     """
-    try:
-        import recorder_tool
-    except ImportError as e:
-        return f"Error importing recorder_tool: {e}. This tool is likely Windows-only."
     return recorder_tool.stop_recording()
 
 @mcp.tool
@@ -70,10 +67,6 @@ def run_script(script_path: str, output_folder: str = "output", no_video: bool =
         no_video: Disable video recording.
         variables: Variables to pass to the test case.
     """
-    try:
-        import player_tool
-    except ImportError as e:
-        return f"Error importing player_tool: {e}. This tool is likely Windows-only."
     return player_tool.run_script(script_path, output_folder, no_video, variables)
 
 @mcp.tool
@@ -85,10 +78,6 @@ def run_scenario(scenario_path: str, output_folder: str = "output") -> str:
         scenario_path: Path to the scenario JSON to run.
         output_folder: Path to the output folder.
     """
-    try:
-        import player_tool
-    except ImportError as e:
-        return f"Error importing player: {e}. This tool is likely Windows-only."
     return player_tool.run_scenario(scenario_path, output_folder)
 
 @mcp.tool

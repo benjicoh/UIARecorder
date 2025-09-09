@@ -1,6 +1,12 @@
+import sys
+import os
+
+# Add the project root to the Python path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+sys.path.insert(0, project_root)
+
 import uiautomation as auto
 import psutil
-import os
 
 def get_process_name(element):
     """
@@ -10,7 +16,12 @@ def get_process_name(element):
     if not element:
         return None
     try:
-        return psutil.Process(element.ProcessId).name()
+        print(f"get_process_name: element={element}, ProcessId={element.ProcessId}")
+        process = psutil.Process(element.ProcessId)
+        print(f"get_process_name: process={process}")
+        name = process.name()
+        print(f"get_process_name: name={name}")
+        return name
     except psutil.NoSuchProcess:
         return None
 
@@ -36,7 +47,7 @@ def get_element_info(element, element_ids=None, screenshot_dir=None):
     try:
         runtime_id = element.GetRuntimeId()
         #join all parts of the runtime_id into a single string
-        runtime_id = '.'.join(str(i) for i in runtime_id) if isinstance(runtime_id, tuple) else str(runtime_id)
+        runtime_id = '_'.join(str(i) for i in runtime_id) if isinstance(runtime_id, tuple) else str(runtime_id)
     except Exception:
         return None
 
@@ -101,8 +112,7 @@ def get_element_info(element, element_ids=None, screenshot_dir=None):
             if not info['is_offscreen'] and element.BoundingRectangle:
                 os.makedirs(screenshot_dir, exist_ok=True)
                 # Use a more readable ID for the filename
-                id_str = '_'.join(str(i) for i in runtime_id) if isinstance(runtime_id, tuple) else str(runtime_id)
-                screenshot_path = os.path.join(screenshot_dir, f'{id_str}.png')
+                screenshot_path = os.path.join(screenshot_dir, f'{runtime_id}.png')
                 element.ToBitmap().ToFile(screenshot_path)
                 info['screenshot'] = screenshot_path
             else:

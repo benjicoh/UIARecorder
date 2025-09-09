@@ -1,12 +1,15 @@
 import sys
+import os
+
+# Add the project root to the Python path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+sys.path.insert(0, project_root)
+
 import uiautomation as auto
 import time
 import pyautogui
 import threading
-import os
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from common.uia import get_element_info
+from tools.common.uia import get_element_info
 
 class UIAHelper:
     def __init__(self):
