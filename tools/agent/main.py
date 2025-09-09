@@ -78,7 +78,7 @@ def create_graph():
     """Creates the agent graph."""
 
     # --- LLM ---
-    llm = ChatGoogleGenerativeAI(model="gemini-2.5-pro")
+    llm = ChatGoogleGenerativeAI(model="gemini-2.5-pro", google_api_key=os.getenv("GEMINI_API_KEY"))
 
     # --- Tools ---
     tools = [

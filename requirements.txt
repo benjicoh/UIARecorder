@@ -1,5 +1,5 @@
-uiautomation==2.0.29
-Pillow==11.3.0
+uiautomation
+Pillow
 opencv-python
 pyautogui
 sounddevice
@@ -12,10 +12,10 @@ pytest
 mock
 psutil
 Flask
-google-genai==1.33.0
+google-genai
 pydantic
 fastmcp
-langgraph==0.1.0
-langchain-core==0.2.0
-langchain-google-genai==2.1.10
-comtypes==1.4.12
+langgraph
+langchain-core
+langchain-google-genai
+comtypes
