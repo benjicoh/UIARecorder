@@ -1,13 +1,19 @@
-import json
+import sys
 import os
+
+# Add the project root to the Python path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+sys.path.insert(0, project_root)
+
+import json
 from datetime import datetime
 import logging
 import pyautogui
 import uiautomation as auto
 
-from player.main_player import Player
-from player.logger import get_logger
-from uia_dumper import traverse_element_tree
+from tools.player.main_player import Player
+from tools.player.logger import get_logger
+from tools.uia_dumper import traverse_element_tree
 
 
 class ScenarioRunner:

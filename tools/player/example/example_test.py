@@ -1,5 +1,12 @@
+import sys
+import os
+
+# Add the project root to the Python path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+sys.path.insert(0, project_root)
+
 import time
-from player.test_case import BaseTestCase
+from tools.player.test_case import BaseTestCase
 
 class TestCase(BaseTestCase):
     def setup(self):

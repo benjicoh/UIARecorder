@@ -1,9 +1,15 @@
-import argparse
+import sys
 import os
+
+# Add the project root to the Python path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, project_root)
+
+import argparse
 from datetime import datetime
 
-from .player.main_player import Player
-from .player.scenario_runner import ScenarioRunner
+from tools.player.main_player import Player
+from tools.player.scenario_runner import ScenarioRunner
 
 def run_script(script_path: str, output_folder: str = "output", no_video: bool = False, variables: dict = None):
     """

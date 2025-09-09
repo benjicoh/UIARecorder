@@ -1,3 +1,10 @@
+import sys
+import os
+
+# Add the project root to the Python path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+sys.path.insert(0, project_root)
+
 import threading
 import time
 import pyautogui
@@ -6,8 +13,7 @@ import cv2
 import sounddevice as sd
 from scipy.io.wavfile import write as write_wav
 import subprocess
-import os
-from . import overlay_drawer
+from tools.recorder import overlay_drawer
 
 class MediaRecorder:
     def __init__(self, output_folder, record_audio=True):

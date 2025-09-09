@@ -1,29 +1,21 @@
-import unittest
-from unittest.mock import patch, MagicMock
 import sys
 import os
+
+# Add the project root to the Python path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+sys.path.insert(0, project_root)
+
+import unittest
+from unittest.mock import patch, MagicMock
 
 
 # Mock the recorder dependency
 MOCK_MODULES = {
-    'recorder.media': MagicMock(),
+    'tools.recorder.media': MagicMock(),
 }
 
 # Dummy BaseTestCase for tests to use
-class BaseTestCase:
-    def __init__(self, logger=None, variables=None):
-        pass
-    def setup(self): pass
-    def run(self): pass
-    def teardown(self): pass
-
-# Add it to sys.modules so the player can import it
-# We need to mock the entire player package structure
-mock_player_pkg = MagicMock()
-mock_player_pkg.test_case.BaseTestCase = BaseTestCase
-sys.modules['player'] = mock_player_pkg
-sys.modules['player.test_case'] = mock_player_pkg.test_case
-
+from tools.player.test_case import BaseTestCase
 
 @patch.dict('sys.modules', MOCK_MODULES)
 class TestMainPlayer(unittest.TestCase):
@@ -35,12 +27,6 @@ class TestMainPlayer(unittest.TestCase):
         if 'tools.player.main_player' in sys.modules:
             del sys.modules['tools.player.main_player']
 
-        # The main_player module expects 'player.exceptions' and 'player.logger' to exist
-        # Let's ensure they are in the mocked player package
-        sys.modules['player.exceptions'] = MagicMock()
-        sys.modules['player.logger'] = MagicMock()
-
-
         from tools.player.main_player import Player
         global Player
 
@@ -48,7 +34,7 @@ class TestMainPlayer(unittest.TestCase):
         self.script_path = 'dummy_test_script.py'
         with open(self.script_path, 'w') as f:
             f.write("""
-from player.test_case import BaseTestCase
+from tools.player.test_case import BaseTestCase
 class TestCase(BaseTestCase):
     def run(self):
         print("Running the dummy test")

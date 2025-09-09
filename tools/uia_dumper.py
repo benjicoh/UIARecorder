@@ -8,12 +8,17 @@ Usage examples:
     # Dump the UI tree for a process by name and capture screenshots
     python -m tools.uia_dumper -p explorer.exe -o explorer_ui.json -s
 """
-import uiautomation as auto
+import sys
 import os
+
+# Add the project root to the Python path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, project_root)
+
+import uiautomation as auto
 import argparse
 import json
-import sys
-from common.uia import get_element_info, get_process_name
+from tools.common.uia import get_element_info, get_process_name
 
 def serialize_rects(obj):
     """
