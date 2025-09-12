@@ -56,7 +56,7 @@ For each new UI element detected in the hierarchy, a screenshot of that element 
 - It is useful to identify the main window of the application, and activate it at the start of the script.
 
 ## Logging and Output
-- The logging format is `%(asctime)s - %(levelname)s - %(message)s`
+- The logging format is `%(asctime)s - %(filename)s:%(lineno)d - %(levelname)s - %(message)s`
 - Use `logging.info()` to log the script's progress to standard output. This is useful for tracking the script's execution flow.
 - Use `logging.warning()` to log non-critical errors. These are issues that do not prevent the script from completing its task.
 - Use `logging.error()` to log critical errors that prevent the script from continuing.
