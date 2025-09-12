@@ -14,6 +14,9 @@ import sounddevice as sd
 from scipy.io.wavfile import write as write_wav
 import subprocess
 from tools.recorder import overlay_drawer
+from tools.common.logger import get_logger
+
+logger = get_logger(__name__)
 
 class MediaRecorder:
     def __init__(self, output_folder, record_audio=True):
@@ -62,7 +65,7 @@ class MediaRecorder:
             try:
                 subprocess.run(cmd, check=True, capture_output=True, text=True)
             except subprocess.CalledProcessError as e:
-                print(f"[MediaRecorder] ffmpeg error: {e.stderr}")
+                logger.error(f"ffmpeg error: {e.stderr}")
 
             if os.path.exists(self.temp_video_file):
                 os.remove(self.temp_video_file)
@@ -77,12 +80,12 @@ class MediaRecorder:
                     self.video_file
                 ]
                 try:
-                    print("[MediaRecorder] Converting video to MP4...")
+                    logger.info("Converting video to MP4...")
                     subprocess.run(cmd, check=True, capture_output=True, text=True)
                 except (subprocess.CalledProcessError, FileNotFoundError) as e:
                     stderr = e.stderr if hasattr(e, 'stderr') else "ffmpeg not found"
-                    print(f"[MediaRecorder] ffmpeg error: {stderr}")
-                    print("[MediaRecorder] Falling back to renaming AVI file.")
+                    logger.error(f"ffmpeg error: {stderr}")
+                    logger.warning("Falling back to renaming AVI file.")
                     # Fallback to renaming if ffmpeg fails or is not installed
                     os.rename(self.temp_video_file, f"{self.output_folder}/video.avi")
                 finally:
@@ -106,7 +109,7 @@ class MediaRecorder:
         }
 
     def _record_video(self):
-        print("[MediaRecorder] Video recording thread started.")
+        logger.info("Video recording thread started.")
         self.video_writer = cv2.VideoWriter(self.temp_video_file, self.fourcc, 20.0, (self.screen_size.width, self.screen_size.height))
         while self.is_recording:
             try:
@@ -133,12 +136,12 @@ class MediaRecorder:
 
                 self.video_writer.write(frame)
             except Exception as e:
-                print(f"[MediaRecorder] Error during video frame capture: {e}")
+                logger.error(f"Error during video frame capture: {e}")
                 time.sleep(0.1)
-        print("[MediaRecorder] Video recording thread stopped.")
+        logger.info("Video recording thread stopped.")
 
     def _record_audio(self):
-        print("[MediaRecorder] Audio recording thread started.")
+        logger.info("Audio recording thread started.")
         try:
             samplerate = 44100
             channels = 1
@@ -146,12 +149,12 @@ class MediaRecorder:
 
             def callback(indata, frames, time, status):
                 if status:
-                    print(f"[MediaRecorder] Audio status: {status}")
+                    logger.warning(f"Audio status: {status}")
                 self.audio_frames.append(indata.copy())
 
             with sd.InputStream(samplerate=samplerate, channels=channels, callback=callback):
                 while self.is_recording:
                     time.sleep(0.1)
         except Exception as e:
-            print(f"[MediaRecorder] Audio recording failed: {e}")
-        print("[MediaRecorder] Audio recording thread stopped.")
+            logger.error(f"Audio recording failed: {e}")
+        logger.info("Audio recording thread stopped.")

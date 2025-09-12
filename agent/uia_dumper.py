@@ -3,6 +3,9 @@ import psutil
 import json
 import os
 import argparse
+from tools.common.logger import get_logger
+
+logger = get_logger(__name__)
 
 def get_process_name(element):
     """
@@ -161,7 +164,7 @@ def dump_ui(process_name=None, window_title=None, output_file=None, whitelist=No
     if screenshot_dir:
         result_message += f"\nScreenshots saved to {screenshot_dir}"
 
-    print('\007')
+    logger.info('\007')
     return result_message
 
 def main():
@@ -180,7 +183,7 @@ def main():
         whitelist=args.whitelist,
         screenshots=args.screenshots
     )
-    print(result)
+    logger.info(result)
 
 if __name__ == "__main__":
     main()

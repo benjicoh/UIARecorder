@@ -11,7 +11,7 @@ from datetime import datetime
 import logging
 
 from tools.player.exceptions import TestCaseNotFound, InvalidTestCase
-from tools.player.logger import get_logger
+from tools.common.logger import get_logger
 from tools.player.test_case import BaseTestCase
 from tools.recorder.media import MediaRecorder
 

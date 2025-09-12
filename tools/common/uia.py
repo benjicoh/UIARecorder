@@ -7,6 +7,9 @@ sys.path.insert(0, project_root)
 
 import uiautomation as auto
 import psutil
+from tools.common.logger import get_logger
+
+logger = get_logger(__name__)
 
 def get_process_name(element):
     """
@@ -16,11 +19,11 @@ def get_process_name(element):
     if not element:
         return None
     try:
-        print(f"get_process_name: element={element}, ProcessId={element.ProcessId}")
+        logger.debug(f"get_process_name: element={element}, ProcessId={element.ProcessId}")
         process = psutil.Process(element.ProcessId)
-        print(f"get_process_name: process={process}")
+        logger.debug(f"get_process_name: process={process}")
         name = process.name()
-        print(f"get_process_name: name={name}")
+        logger.debug(f"get_process_name: name={name}")
         return name
     except psutil.NoSuchProcess:
         return None
