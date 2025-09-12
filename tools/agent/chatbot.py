@@ -16,6 +16,7 @@ if os.getenv("GEMINI_API_KEY") is None:
 @tool
 def multiply(first_number: int, second_number: int):
     """Multiplies two numbers."""
+    print (f"Multiplying {first_number} and {second_number}")
     return first_number * second_number
 
 class State(TypedDict):
@@ -23,7 +24,7 @@ class State(TypedDict):
 
 graph_builder = StateGraph(State)
 
-llm = ChatGoogleGenerativeAI(model="gemini-1.5-pro-latest")
+llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", google_api_key=os.getenv("GEMINI_API_KEY"))
 
 tools = [multiply]
 llm_with_tools = llm.bind_tools(tools)
