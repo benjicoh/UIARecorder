@@ -3,21 +3,35 @@ import argparse
 import subprocess
 import time
 import json
+from pydantic import BaseModel
 from google import genai
 from google.genai import types
 
+# --- Constants ---
+MAX_REFINEMENT_ATTEMPTS = 3
+GENERATED_SCRIPT_PATH = "user_scripts/generated_script.py"
+UI_DUMP_PATH = "user_scripts/ui_dump.json"
+
 # --- Configuration ---
 try:
-    client = genai.Client()
+    client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 except Exception as e:
     print(f"Error creating client: {e}")
     print("Please make sure you have set up your API key or ADC correctly.")
     exit()
 
-# --- Constants ---
-MAX_REFINEMENT_ATTEMPTS = 3
-GENERATED_SCRIPT_PATH = "output/generated_script.py"
-UI_DUMP_PATH = "output/ui_dump.json"
+# -- Structured Output --
+class CodeResponse(BaseModel):
+    code: str
+
+# --- Prompts ---
+try:
+    cur_path = os.path.dirname(os.path.abspath(__file__))
+    with open(os.path.join(cur_path, 'prompt.md'), 'r', encoding='utf-8') as f:
+        system_prompt = f.read()
+except FileNotFoundError:
+    print("Error: `agent/prompt.md` not found.")
+    exit()
 
 # --- Tools ---
 
@@ -66,13 +80,18 @@ def process_model_turn(chat, current_parts, tools):
     """Handles a single turn of conversation with the model, including tool calls."""
     while True:
         response = chat.send_message(
-            contents=current_parts,
-            config=types.GenerateContentConfig(tools=tools)
+            current_parts,
+            config=types.GenerateContentConfig(tools=tools, 
+                                               system_instruction=system_prompt)
         )
 
         if not response.function_calls:
-            return response.text # End of turn, return the final text
-
+            # first we look for ```python ... ``` block
+            python_code = response.text.split("```python")
+            if len(python_code) > 1:
+                python_code = python_code[1].split("```")[0].strip()
+            return python_code
+            
         function_calls = response.function_calls
         tool_parts = []
         print("\n--- Executing Tools ---")
@@ -106,38 +125,31 @@ def main():
     parser.add_argument("recording_dir", help="Path to the recording directory.")
     args = parser.parse_args()
 
-    # --- Setup ---
-    os.makedirs("output", exist_ok=True)
-
-    try:
-        with open('agent/prompt.md', 'r', encoding='utf-8') as f:
-            system_prompt = f.read()
-    except FileNotFoundError:
-        print("Error: `agent/prompt.md` not found.")
-        return
-
-    chat = client.chats.create(model='gemini-1.5-flash')
+    chat = client.chats.create(model='gemini-2.5-flash')
     tools = [
         run_python_script,
         write_file,
-        read_file,
-        {"url_context": {}},
+        read_file
     ]
 
     # --- Initial Prompt Construction ---
-    initial_prompt_parts = [system_prompt]
+    initial_prompt_parts = []
     print(f"Analyzing data in: {args.recording_dir}")
 
     # Simplified file upload logic
     files_to_upload = []
-    images_dir = os.path.join(args.recording_dir, 'images')
     for dirpath, _, filenames in os.walk(args.recording_dir):
         for filename in filenames:
-            if filename.endswith((".json", ".mp4", ".png")):
+            if filename.endswith((".json", ".mp4", ".png", ".txt")):
                 files_to_upload.append(os.path.join(dirpath, filename))
 
     for file_path in files_to_upload:
         print(f"Uploading {os.path.basename(file_path)}...")
+        #if ends with json move it json.txt
+        if file_path.endswith('.json'):
+            new_path = file_path + '.txt'
+            os.rename(file_path, new_path)
+            file_path = new_path
         try:
             uploaded_file = client.files.upload(file=file_path)
             # Wait for the file to be processed.

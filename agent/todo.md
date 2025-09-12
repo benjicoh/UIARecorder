@@ -1,0 +1,5 @@
+- Do we really need tools ??
+  - We can just upload recordings
+  - Get the script back
+  - Run it, if it fails dump the state and upload to gemini again
+  - Iterate and run again for N number of times or until it passes
