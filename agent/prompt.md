@@ -56,13 +56,12 @@ For each new UI element detected in the hierarchy, a screenshot of that element 
 - It is useful to identify the main window of the application, and activate it at the start of the script.
 
 ## Logging and Output
-- Use `print()` to log the script's progress to standard output. This is useful for tracking the script's execution flow.
+- The logging format is `%(asctime)s - %(levelname)s - %(message)s`
+- Use `logging.info()` to log the script's progress to standard output. This is useful for tracking the script's execution flow.
 - Use `logging.warning()` to log non-critical errors. These are issues that do not prevent the script from completing its task.
 - Use `logging.error()` to log critical errors that prevent the script from continuing.
-- **To signal that the script has completed successfully, print the following line at the very end of the script:**
-  ```
-  print("scenario_passed=True")
-  ```
+- **To signal that the script has completed successfully, print the following line at the very end of the script:** - `Scenario completed successfully`
+  
 
 ## Identifying elements correctly
 - Use the `name`, `automation_id`, `class_name`, and `control_type` properties from the JSON file to uniquely identify elements.

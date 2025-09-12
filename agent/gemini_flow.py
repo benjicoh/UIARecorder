@@ -13,6 +13,7 @@ MAX_REFINEMENT_ATTEMPTS = 3
 GENERATED_SCRIPT_PATH = "user_scripts/generated_script.py"
 GENERATED_SCRIPT_LOG_PATH = "user_scripts/generated_script.log.txt"
 UI_DUMP_PATH = "user_scripts/ui_dump.json.txt"
+MODEL = "gemini-2.5-pro"
 
 # --- Configuration ---
 try:
@@ -130,7 +131,7 @@ def main():
     parser.add_argument("-w", "--window-title", help="The window title of the target application.")
     args = parser.parse_args()
 
-    chat = client.chats.create(model='gemini-2.5-flash')
+    chat = client.chats.create(model=MODEL)
 
     # --- Initial Prompt Construction ---
     initial_prompt_parts = []
@@ -178,14 +179,13 @@ def main():
         write_file(GENERATED_SCRIPT_LOG_PATH, log_output)
 
         # Check for success marker in stdout
-        if "scenario_passed=True" in run_result['stdout']:
+        if "Scenario completed successfully" in run_result['stdout']:
             print("\n--- Script Executed Successfully! ---")
             print(log_output)
             return  # Success!
 
         print("\n--- Script Failed! Initiating Refinement ---")
-        print(f"Error Details:\n{log_output}")
-        error_logs = log_output
+        print(f"For details see log: {GENERATED_SCRIPT_LOG_PATH}")
 
         # Dump the UI for context
         print("Dumping current UI state...")
