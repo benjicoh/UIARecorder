@@ -13,7 +13,7 @@ This project uses the new Google AI for Python SDK (`google-genai`). When workin
 
 Please ensure that all code interacting with the Gemini API is up-to-date with the latest SDK version and follows the best practices outlined in the documentation.
 
-The model currently in use is `gemini-2.5-pro`.
+The model currently in use is `gemini-2.5-flash`.
 
 ## Windows-only Dependencies
 

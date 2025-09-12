@@ -1,53 +1,53 @@
-# Copilot Instructions for UIARecorder (Win32UICrawlerMcp)
+# Copilot Instructions for the UI Automation Project
 
 ## Project Overview
-- This codebase is a Windows-only UI automation platform for recording, playing back, and analyzing user interactions with desktop applications.
-- Major components:
-  - `agent/`: Orchestrates flows, integrates Gemini AI, and manages agent logic.
-  - `tools/`: Core automation tools, including UIA tree dumping, event recording, and playback.
-  - `tools/player/`: Scenario runner and test case framework for automated UI testing.
-  - `tools/recorder/`: Captures user events and screenshots, outputs annotated data.
+This codebase is a Windows-only UI automation platform for recording, playing back, and generating test scripts for desktop applications.
+- **`agent/`**: Contains the AI agent that uses the Gemini API to generate Python automation scripts from recordings.
+- **`tools/`**: Contains the core tools for recording and playing back UI interactions.
+  - **`tools/recorder/`**: Captures user interactions (mouse, keyboard), screen video, and UI element data.
+  - **`tools/player/`**: Executes test scripts and scenarios.
+- **`tools/common/`**: Shared utilities for logging and UI automation.
 
-## Key Workflows
-- **Run MCP Server**: Exposes all tools via HTTP API. Start with:
-  ```powershell
-  $env:GEMINI_API_KEY="YOUR_API_KEY"; python -m tools.mcp_server
+## Key Workflows & Commands
+
+- **Record User Interactions**: Use `tools/recorder_tool.py` to capture a user session.
+  ```bash
+  python -m tools.recorder_tool -wh "process_name.exe"
   ```
-- **Dump UI Automation Tree**: Use `tools/uia_dumper.py` to export UI hierarchy and screenshots:
-  ```powershell
-  python -m tools.uia_dumper -w "Window Title" -o dump.json
-  python -m tools.uia_dumper -p "process.exe" -o dump.json -s
+  - Press `Alt+Shift+R` to start/stop recording. Press `Esc` to exit.
+  - Output is saved to `recorder/output/`.
+
+- **Play Back a Test**: Use `tools/player_tool.py` to run a test script or a scenario.
+  ```bash
+  # Run a single script
+  python -m tools.player_tool -s path/to/test_script.py
+
+  # Run a scenario
+  python -m tools.player_tool -sc path/to/scenario.json
   ```
-- **Record User Interactions**: Use `tools/recorder/` to capture events and screenshots:
-  ```powershell
-  python -m tools.recorder -p process.exe
+
+- **Generate a Script with the Agent**: Use `agent/gemini_flow.py` to generate a script from a recording.
+  ```bash
+  python -m agent.gemini_flow "path/to/recording_directory" -p "process_name.exe"
   ```
-- **Play Back Scenarios**: Write test cases in `tools/player/` using the `BaseTestCase` pattern:
-  ```python
-  from tools.player.test_case import BaseTestCase
-  class TestCase(BaseTestCase):
-      def setup(self): pass
-      def run(self): pass
-      def teardown(self): pass
+
+- **Dump UI Automation Tree**: Use `agent/uia_dumper.py` to inspect the UI of an application.
+  ```bash
+  python -m agent.uia_dumper -w "Window Title" -o dump.json
   ```
-  - Use `self.logger` for structured logging in tests.
 
 ## Conventions & Patterns
-- All test cases must subclass `BaseTestCase` and implement `run(self)`.
-- Logging is standardized via `self.logger` (console + file output).
-- Windows-only: The `uiautomation` dependency and related tools require Windows for development and testing.
-- Gemini API integration uses `google-genai` (see [Gemini API docs](https://ai.google.dev/gemini-api/docs)).
-- Data files (JSON, screenshots, video) are stored in `tools/recorder/output/` and referenced in player scenarios.
+- **Test Cases**: All test scripts must contain a class `TestCase` that inherits from `tools.player.test_case.BaseTestCase`.
+- **Logging**: Use the provided `self.logger` instance within test cases for standardized logging.
+- **Windows-Only**: The project relies on the `uiautomation` library and is only compatible with Windows.
+- **Gemini API**: The agent uses the `google-genai` SDK to interact with the Gemini API. The model in use is `gemini-2.5-flash`.
+- **Data Flow**: The recorder produces data that is used by the agent to generate scripts. These scripts are then executed by the player.
 
-## Integration Points
-- MCP server exposes tools as HTTP endpoints for automation and AI workflows.
-- Gemini tools support file/folder upload, chat, and code generation for UI test scripts.
-- UIA tree and event data are used to generate and validate automated test scenarios.
-
-## Examples
-- See `tools/player/example/` for sample scenarios and test scripts.
-- Refer to `tools/README.md` and `AGENTS.md` for tool usage and agent-specific instructions.
+## Important Files
+- **`AGENTS.md`**: Provides high-level instructions for AI agents working with this codebase.
+- **`tools/README.md`**: The main README for the tools, with detailed usage instructions.
+- **`tools/player/README.md`**: Explains how to create test cases and scenarios for the player.
+- **`tools/player/example/`**: Contains example scripts and scenarios.
 
 ---
-
 **Feedback requested:** Are any workflows, conventions, or integration points unclear or missing? Please specify areas needing more detail or examples.

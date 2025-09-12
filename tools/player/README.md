@@ -69,15 +69,16 @@ The player can run a scenario composed of multiple test cases. A scenario is def
   "test_cases": [
     {
       "name": "Example Test",
-      "script": "tools/player/example/example_test.py",
+      "script": "path/to/your/test_script.py",
       "variables": {
         "username": "admin",
-        "password": "password123"
+        "delay": "2"
       }
     }
   ]
 }
 ```
+The path to the script should be relative to the current working directory, or an absolute path.
 
 ### Variables
 
