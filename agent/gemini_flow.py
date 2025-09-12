@@ -1,3 +1,4 @@
+
 import os
 import argparse
 import subprocess
@@ -10,7 +11,8 @@ from google.genai import types
 # --- Constants ---
 MAX_REFINEMENT_ATTEMPTS = 3
 GENERATED_SCRIPT_PATH = "user_scripts/generated_script.py"
-UI_DUMP_PATH = "user_scripts/ui_dump.json"
+GENERATED_SCRIPT_LOG_PATH = "user_scripts/generated_script.log.txt"
+UI_DUMP_PATH = "user_scripts/ui_dump.json.txt"
 
 # --- Configuration ---
 try:
@@ -34,6 +36,26 @@ except FileNotFoundError:
     exit()
 
 # --- Helper Functions ---
+def send_message_with_retries(chat, prompt_parts, config, max_retries=3, retry_delay=2):
+    """
+    Sends a message using chat.send_message, retries up to max_retries if a 503 error is returned.
+    Returns the response or raises the last exception.
+    """
+    for attempt in range(1, max_retries + 1):
+        try:
+            response = chat.send_message(prompt_parts, config=config)
+            return response
+        except Exception as e:
+            # Check for 503 error in exception message
+            if hasattr(e, 'status_code') and e.status_code == 503:
+                print(f"503 Service Unavailable. Retry {attempt}/{max_retries}...")
+                time.sleep(retry_delay)
+            elif '503' in str(e):
+                print(f"503 Service Unavailable. Retry {attempt}/{max_retries}...")
+                time.sleep(retry_delay)
+            else:
+                raise
+    raise Exception(f"Failed after {max_retries} retries due to repeated 503 errors.")
 
 def run_python_script(script_path: str):
     """
@@ -42,9 +64,12 @@ def run_python_script(script_path: str):
     """
     if not os.path.exists(script_path):
         return {'stderr': f"Error: Script not found at {script_path}"}
+    # Try to use venv python if available
+    venv_python = os.path.join(os.path.dirname(__file__), "..", ".venv", "Scripts", "python.exe")
+    python_executable = venv_python if os.path.exists(venv_python) else "python"
     try:
         result = subprocess.run(
-            ["python", script_path],
+            [python_executable, script_path],
             capture_output=True,
             text=True,
             check=True,
@@ -65,6 +90,32 @@ def write_file(file_path: str, content: str):
         f.write(content)
     return f"File '{file_path}' written successfully."
 
+def upload_file(client, file_path):
+    """
+    Uploads a file using the Gemini client, handles .json renaming, and waits for processing.
+    Returns the uploaded file object or None if failed.
+    """
+    # If ends with .json, rename to .json.txt
+    if file_path.endswith('.json'):
+        new_path = file_path + '.txt'
+        os.rename(file_path, new_path)
+        file_path = new_path
+    try:
+        uploaded_file = client.files.upload(file=file_path)
+        # Wait for the file to be processed.
+        while uploaded_file.state.name == "PROCESSING":
+            print(".", end="", flush=True)
+            time.sleep(2)
+            uploaded_file = client.files.get(name=uploaded_file.name)
+        print() # Newline after processing dots
+        if uploaded_file.state.name == "FAILED":
+            print(f"Error: File upload failed for {file_path}. Uploading the next file.")
+            return None
+        return uploaded_file
+    except Exception as e:
+        print(f"\nError uploading file {file_path}: {e}")
+        return None
+
 # --- Main Flow ---
 
 def main():
@@ -75,11 +126,12 @@ def main():
     parser.add_argument("-w", "--window-title", help="The window title of the target application.")
     args = parser.parse_args()
 
-    chat = client.chats.create(model='gemini-1.5-flash')
+    chat = client.chats.create(model='gemini-2.5-flash')
 
     # --- Initial Prompt Construction ---
     initial_prompt_parts = []
     print(f"Analyzing data in: {args.recording_dir}")
+
 
     # Simplified file upload logic
     files_to_upload = []
@@ -90,41 +142,25 @@ def main():
 
     for file_path in files_to_upload:
         print(f"Uploading {os.path.basename(file_path)}...")
-        #if ends with json move it json.txt
-        if file_path.endswith('.json'):
-            new_path = file_path + '.txt'
-            os.rename(file_path, new_path)
-            file_path = new_path
-        try:
-            uploaded_file = client.files.upload(file=file_path)
-            # Wait for the file to be processed.
-            while uploaded_file.state.name == "PROCESSING":
-                print(".", end="", flush=True)
-                time.sleep(2)
-                uploaded_file = client.files.get(name=uploaded_file.name)
-            print() # Newline after processing dots
-
-            if uploaded_file.state.name == "FAILED":
-                print(f"Error: File upload failed for {file_path}. Uploading the next file.")
-                continue
-
+        uploaded_file = upload_file(client, file_path)
+        if uploaded_file:
             initial_prompt_parts.append(uploaded_file)
-        except Exception as e:
-            print(f"\nError uploading file {file_path}: {e}")
-            continue
 
     initial_prompt_parts.append(f"\n\nPlease generate the python script now.")
 
     # --- Initial Generation ---
     print("\nGenerating initial script... (This may take a moment)")
-    response = chat.send_message(
+    response = send_message_with_retries(
+        chat,
         initial_prompt_parts,
-        config=types.GenerateContentConfig(
+        types.GenerateContentConfig(
             response_schema=CodeResponse,
+            response_mime_type="application/json",
             system_instruction=system_prompt
         )
     )
-    write_file(GENERATED_SCRIPT_PATH, response.candidates[0].content.parts[0].function_call.args['code'])
+    code_response : CodeResponse = response.parsed
+    write_file(GENERATED_SCRIPT_PATH, code_response.code)
     print(f"Initial script written to {GENERATED_SCRIPT_PATH}")
 
     # --- Iterative Refinement Loop ---
@@ -132,7 +168,7 @@ def main():
         print(f"\n--- Attempt {i + 1}/{MAX_REFINEMENT_ATTEMPTS}: Running Script ---")
 
         run_result = run_python_script(GENERATED_SCRIPT_PATH)
-
+        write_file(GENERATED_SCRIPT_LOG_PATH, str(run_result))
         if 'stdout' in run_result and 'stderr' not in run_result:
             print("\n--- Script Executed Successfully! ---")
             print(run_result['stdout'])
@@ -160,33 +196,20 @@ def main():
             print("Process name or window title not provided. Skipping UI dump.")
 
         refinement_prompt_parts = [
-            "The previously generated script failed to execute correctly.",
-            f"Error logs:\n```\n{error_logs}\n```",
+            "The previously generated script failed to execute correctly."
         ]
-        if os.path.exists(UI_DUMP_PATH):
-            refinement_prompt_parts.append(f"I have captured the current state of the UI, which is available in the attached file: {UI_DUMP_PATH}. Please analyze the error and the UI dump to provide a corrected version of the script.")
-            # Upload the UI dump file for the model to analyze
-            print(f"Uploading UI dump file: {UI_DUMP_PATH}")
-            try:
-                dump_file = client.files.upload(file=UI_DUMP_PATH)
-                while dump_file.state.name == "PROCESSING":
-                    print(".", end="", flush=True)
-                    time.sleep(2)
-                    dump_file = client.files.get(name=dump_file.name)
-                print()
-
-                if dump_file.state.name == "FAILED":
-                     print(f"Error: UI dump file upload failed.")
-                else:
-                    refinement_prompt_parts.append(dump_file)
-
-            except Exception as e:
-                print(f"\nError uploading UI dump file: {e}")
+        for file in [UI_DUMP_PATH, GENERATED_SCRIPT_LOG_PATH]:
+            if os.path.exists(file):
+                print(f"Uploading file: {file}")
+                uploaded_file = upload_file(client, file)
+                if uploaded_file:
+                    refinement_prompt_parts.append(uploaded_file)
 
         print("\nRequesting script correction from model...")
-        response = chat.send_message(
+        response = send_message_with_retries(
+            chat,
             refinement_prompt_parts,
-            config=types.GenerateContentConfig(
+            types.GenerateContentConfig(
                 response_schema=CodeResponse,
                 system_instruction=system_prompt
             )
@@ -199,3 +222,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    #run_result = run_python_script(GENERATED_SCRIPT_PATH)

@@ -12,7 +12,7 @@
             "program": "${file}",
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
-            "args": "C:\\Sources\\AgenticAI\\MCPServers\\Win32UICrawlerMcp\\tools\\recorder\\output"
+            "args": "./tools/recorder/output -p SystemSettings.exe"
         }
     ]
 }
