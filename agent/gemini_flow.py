@@ -59,27 +59,31 @@ def send_message_with_retries(chat, prompt_parts, config, max_retries=3, retry_d
 
 def run_python_script(script_path: str):
     """
-    Runs a python script.
-    Returns a dictionary with 'stdout' on success or 'stderr' on failure.
+    Runs a python script and captures its output.
+    Returns a dictionary containing 'stdout' and 'stderr'.
     """
     if not os.path.exists(script_path):
-        return {'stderr': f"Error: Script not found at {script_path}"}
+        return {'stdout': '', 'stderr': f"Error: Script not found at {script_path}"}
+
     # Try to use venv python if available
     venv_python = os.path.join(os.path.dirname(__file__), "..", ".venv", "Scripts", "python.exe")
     python_executable = venv_python if os.path.exists(venv_python) else "python"
+
     try:
         result = subprocess.run(
             [python_executable, script_path],
             capture_output=True,
             text=True,
-            check=True,
-            encoding='utf-8'
+            encoding='utf-8',
+            timeout=120  # Add a timeout for safety
         )
-        return {'stdout': result.stdout}
-    except subprocess.CalledProcessError as e:
-        # Combine stdout and stderr for more context on failure
-        error_output = f"STDOUT:\n{e.stdout}\n\nSTDERR:\n{e.stderr}"
-        return {'stderr': error_output}
+        return {'stdout': result.stdout, 'stderr': result.stderr}
+    except subprocess.TimeoutExpired as e:
+        error_output = f"TimeoutExpired: Script execution timed out after 120 seconds.\n"
+        error_output += f"STDOUT:\n{e.stdout}\n\nSTDERR:\n{e.stderr}"
+        return {'stdout': e.stdout or "", 'stderr': error_output}
+    except Exception as e:
+        return {'stdout': '', 'stderr': f"An unexpected error occurred: {e}"}
 
 def write_file(file_path: str, content: str):
     """
@@ -168,15 +172,20 @@ def main():
         print(f"\n--- Attempt {i + 1}/{MAX_REFINEMENT_ATTEMPTS}: Running Script ---")
 
         run_result = run_python_script(GENERATED_SCRIPT_PATH)
-        write_file(GENERATED_SCRIPT_LOG_PATH, str(run_result))
-        if 'stdout' in run_result and 'stderr' not in run_result:
+
+        # Combine stdout and stderr for logging
+        log_output = f"STDOUT:\n{run_result['stdout']}\n\nSTDERR:\n{run_result['stderr']}"
+        write_file(GENERATED_SCRIPT_LOG_PATH, log_output)
+
+        # Check for success marker in stdout
+        if "scenario_passed=True" in run_result['stdout']:
             print("\n--- Script Executed Successfully! ---")
-            print(run_result['stdout'])
-            return # Success!
+            print(log_output)
+            return  # Success!
 
         print("\n--- Script Failed! Initiating Refinement ---")
-        error_logs = run_result.get('stderr', 'No stderr output.')
-        print(f"Error Details:\n{error_logs}")
+        print(f"Error Details:\n{log_output}")
+        error_logs = log_output
 
         # Dump the UI for context
         print("Dumping current UI state...")
