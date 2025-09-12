@@ -1,8 +1,8 @@
-# Ignore the recording folder and its contents
-recording/
-test.py
+# Project additions
 __pycache__/
-@AutomationLog.txt
+.venv/
+recording/
 output/
 user_scripts/
+generated_scripts/
 *.egg-info/

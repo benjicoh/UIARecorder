@@ -13,10 +13,10 @@ logger = get_logger(__name__)
 
 # --- Constants ---
 MAX_REFINEMENT_ATTEMPTS = 3
-GENERATED_SCRIPT_PATH = "user_scripts/generated_script.py"
-GENERATED_SCRIPT_LOG_PATH = "user_scripts/generated_script.log.txt"
-UI_DUMP_PATH = "user_scripts/ui_dump.json.txt"
-MODEL = "gemini-2.5-pro"
+GENERATED_SCRIPT_PATH = "generated_scripts/iteration{i}.py"
+GENERATED_SCRIPT_LOG_PATH = "generated_scripts/iteration{i}.log.txt"
+UI_DUMP_PATH = "generated_scripts/ui_dump{i}.json.txt"
+MODEL = "gemini-2.5-flash"
 
 # --- Configuration ---
 try:
@@ -112,10 +112,9 @@ def upload_file(client, file_path):
         uploaded_file = client.files.upload(file=file_path)
         # Wait for the file to be processed.
         while uploaded_file.state.name == "PROCESSING":
-            logger.info(".", end="", flush=True)
+            logger.info("\tWaiting for file to be processed...")
             time.sleep(2)
             uploaded_file = client.files.get(name=uploaded_file.name)
-        logger.info() # Newline after processing dots
         if uploaded_file.state.name == "FAILED":
             logger.error(f"Error: File upload failed for {file_path}. Uploading the next file.")
             return None
@@ -157,7 +156,7 @@ def main():
     initial_prompt_parts.append(f"\n\nPlease generate the python script now.")
 
     # --- Initial Generation ---
-    logger.info("\nGenerating initial script... (This may take a moment)")
+    logger.info("Generating initial script... (This may take a moment)")
     response = send_message_with_retries(
         chat,
         initial_prompt_parts,
@@ -168,70 +167,76 @@ def main():
         )
     )
     code_response : CodeResponse = response.parsed
-    write_file(GENERATED_SCRIPT_PATH, code_response.code)
-    logger.info(f"Initial script written to {GENERATED_SCRIPT_PATH}")
+    write_file(GENERATED_SCRIPT_PATH.format(i=0), code_response.code)
+    logger.info(f"Initial script written to {GENERATED_SCRIPT_PATH.format(i=0)}")
 
     # --- Iterative Refinement Loop ---
-    for i in range(MAX_REFINEMENT_ATTEMPTS):
-        logger.info(f"\n--- Attempt {i + 1}/{MAX_REFINEMENT_ATTEMPTS}: Running Script ---")
+    for i in range(1, MAX_REFINEMENT_ATTEMPTS + 1):
+        script_path = GENERATED_SCRIPT_PATH.format(i=i)
+        log_path = GENERATED_SCRIPT_LOG_PATH.format(i=i)
+        ui_dump_path = UI_DUMP_PATH.format(i=i)
+        logger.info(f"--- Attempt {i}/{MAX_REFINEMENT_ATTEMPTS}: Running Script ---")
 
-        run_result = run_python_script(GENERATED_SCRIPT_PATH)
+        run_result = run_python_script(GENERATED_SCRIPT_PATH.format(i=i-1))
 
         # Combine stdout and stderr for logging
         log_output = f"STDOUT:\n{run_result['stdout']}\n\nSTDERR:\n{run_result['stderr']}"
-        write_file(GENERATED_SCRIPT_LOG_PATH, log_output)
+        write_file(log_path, log_output)
 
         # Check for success marker in stdout
         if "Scenario completed successfully" in run_result['stdout']:
-            logger.info("\n--- Script Executed Successfully! ---")
+            logger.info("--- Script Executed Successfully! ---")
             logger.info(log_output)
             return  # Success!
 
-        logger.warning("\n--- Script Failed! Initiating Refinement ---")
-        logger.warning(f"For details see log: {GENERATED_SCRIPT_LOG_PATH}")
+        logger.warning("--- Script Failed! Initiating Refinement ---")
+        logger.warning(f"For details see log: {log_path}")
 
         # Dump the UI for context
         logger.info("Dumping current UI state...")
-        command = ["python", "agent/uia_dumper.py", "-o", UI_DUMP_PATH]
-        if args.process_name:
-            command.extend(["-p", args.process_name])
-        elif args.window_title:
-            command.extend(["-w", args.window_title])
-
-        if len(command) > 4:
-            try:
-                dump_result = subprocess.run(command, capture_output=True, text=True, check=True, encoding='utf-8')
-                logger.info(dump_result.stdout)
-            except subprocess.CalledProcessError as e:
-                logger.error(f"Error dumping UI: {e.stderr}")
-        else:
-            logger.warning("Process name or window title not provided. Skipping UI dump.")
+        try:
+            from agent.uia_dumper import dump_ui
+            if args.process_name or args.window_title:
+                result = dump_ui(
+                    process_name=args.process_name,
+                    window_title=args.window_title,
+                    output_file=ui_dump_path,
+                    whitelist=None,
+                    screenshots=False
+                )
+                logger.info(result)
+            else:
+                logger.warning("Process name or window title not provided. Skipping UI dump.")
+        except Exception as e:
+            logger.error(f"Error dumping UI: {e}")
 
         refinement_prompt_parts = [
             "The previously generated script failed to execute correctly."
         ]
-        for file in [UI_DUMP_PATH, GENERATED_SCRIPT_LOG_PATH]:
+        for file in [ui_dump_path, log_path]:
             if os.path.exists(file):
                 logger.info(f"Uploading file: {file}")
                 uploaded_file = upload_file(client, file)
                 if uploaded_file:
                     refinement_prompt_parts.append(uploaded_file)
 
-        logger.info("\nRequesting script correction from model...")
+        logger.info("Requesting script correction from model...")
         response = send_message_with_retries(
             chat,
             refinement_prompt_parts,
             types.GenerateContentConfig(
                 response_schema=CodeResponse,
+                response_mime_type="application/json",
                 system_instruction=system_prompt
             )
         )
-        write_file(GENERATED_SCRIPT_PATH, response.candidates[0].content.parts[0].function_call.args['code'])
-        logger.info(f"Corrected script written to {GENERATED_SCRIPT_PATH}")
+        code_response : CodeResponse = response.parsed
+        write_file(script_path, code_response.code)
+        logger.info(f"Corrected script written to {script_path}")
 
-    logger.warning(f"\n--- Max Retries Reached! ---")
+    logger.warning(f"--- Max Retries Reached! ---")
     logger.warning("Could not fix the script after multiple attempts.")
 
 if __name__ == "__main__":
     main()
-    #run_result = run_python_script(GENERATED_SCRIPT_PATH)
+    

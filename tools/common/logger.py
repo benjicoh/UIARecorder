@@ -39,7 +39,7 @@ def get_logger(name, level=logging.INFO, log_file=None, indent_level=0):
     # Console handler with color and indentation
     ch = colorlog.StreamHandler(sys.stdout)
     console_formatter = IndentAndColorFormatter(
-        '%(asctime)s - %(name)s - %(log_color)s%(levelname)s%(reset)s - %(message)s',
+        '%(asctime)s - %(filename)s:%(lineno)d - %(log_color)s%(levelname)s%(reset)s - %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S',
         reset=True,
         log_colors={
@@ -63,7 +63,7 @@ def get_logger(name, level=logging.INFO, log_file=None, indent_level=0):
             os.makedirs(log_dir)
         fh = logging.FileHandler(log_file)
         file_formatter = IndentFormatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            '%(asctime)s - %(filename)s:%(lineno)d - %(levelname)s - %(message)s',
             indent_level=indent_level
         )
         fh.setFormatter(file_formatter)

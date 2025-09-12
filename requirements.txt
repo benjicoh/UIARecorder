@@ -11,13 +11,7 @@ numpy
 pytest
 mock
 psutil
-Flask
 google-genai
 pydantic
-fastmcp
-langgraph
-langchain-core
-langchain-google-genai
-langgraph-cli[inmem]
 comtypes
 colorlog
