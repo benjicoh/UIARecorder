@@ -6,6 +6,9 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..
 sys.path.insert(0, project_root)
 
 import pyautogui
+from tools.common.logger import get_logger
+
+logger = get_logger(__name__)
 
 class ElementScreenshotter:
     def __init__(self, output_folder):
@@ -34,6 +37,6 @@ class ElementScreenshotter:
             img = pyautogui.screenshot(region=(rect.left, rect.top, width, height))
             img.save(screenshot_path)
             self.seen_element_ids.add(element_id)
-            print(f"[ElementScreenshotter] Captured screenshot for element {element_id} at {screenshot_path}")
+            logger.info(f"Captured screenshot for element {element_id} at {screenshot_path}")
         except Exception as e:
-            print(f"[ElementScreenshotter] Error capturing screenshot for element {element_id}: {e}")
+            logger.error(f"Error capturing screenshot for element {element_id}: {e}")

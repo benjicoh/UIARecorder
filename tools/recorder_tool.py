@@ -7,6 +7,9 @@ sys.path.insert(0, project_root)
 
 import argparse
 from tools.recorder.main_recorder import Recorder
+from tools.common.logger import get_logger
+
+logger = get_logger(__name__)
 
 recorder_instance = None
 
@@ -67,11 +70,11 @@ def main():
                 stop_recording()
             return False
 
-    print("[Main] Press Alt+Shift+R to start/stop recording. Press Esc to exit.")
+    logger.info("Press Alt+Shift+R to start/stop recording. Press Esc to exit.")
     with keyboard.Listener(on_press=on_press, on_release=on_release) as listener:
-        print("[Main] Hotkey listener started.")
+        logger.info("Hotkey listener started.")
         listener.join()
-    print("[Main] Exiting script.")
+    logger.info("Exiting script.")
 
 if __name__ == "__main__":
     main()

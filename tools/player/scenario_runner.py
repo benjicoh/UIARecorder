@@ -12,8 +12,8 @@ import pyautogui
 import uiautomation as auto
 
 from tools.player.main_player import Player
-from tools.player.logger import get_logger
-from tools.uia_dumper import traverse_element_tree
+from tools.common.logger import get_logger
+from agent.uia_dumper import traverse_element_tree
 
 
 class ScenarioRunner:

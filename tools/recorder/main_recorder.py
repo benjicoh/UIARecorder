@@ -9,7 +9,7 @@ import shutil
 import time
 import json
 import psutil
-
+from tools.common.logger import get_logger
 from tools.recorder.element_screenshotter import ElementScreenshotter
 from tools.recorder.events import InputListener
 from tools.recorder.media import MediaRecorder
@@ -17,14 +17,15 @@ from tools.recorder.uia import UIAHelper
 
 class Recorder:
     def __init__(self, output_folder="recorder/output", whitelist=None):
+        self.logger = get_logger(__name__)
         self.output_folder = output_folder
         self.images_folder = f"{self.output_folder}/images"
         self.json_file = f"{self.output_folder}/annotations.json"
-        print(f"[Recorder] Output folder set to: {self.output_folder}")
+        self.logger.info(f"Output folder set to: {self.output_folder}")
 
         self.whitelist = whitelist
         if self.whitelist:
-            print(f"[Recorder] Filtering by process names: {self.whitelist}")
+            self.logger.info(f"Filtering by process names: {self.whitelist}")
         self.is_recording = False
         self.start_time = None
         self.annotations = []
@@ -43,7 +44,7 @@ class Recorder:
             shutil.rmtree(self.output_folder)
         os.makedirs(self.images_folder, exist_ok=True)
 
-        print("[Recorder] Starting recording...")
+        self.logger.info("Starting recording...")
         self.is_recording = True
         self.start_time = time.time()
         self.annotations = []
@@ -51,13 +52,13 @@ class Recorder:
         self.media_recorder.start()
         self.input_listener.start()
 
-        print("[Recorder] Recording started.")
+        self.logger.info("Recording started.")
 
     def stop(self):
         if not self.is_recording:
             return
 
-        print("[Recorder] Stopping recording...")
+        self.logger.info("Stopping recording...")
         self.is_recording = False
 
         self.media_recorder.stop()
@@ -65,9 +66,9 @@ class Recorder:
 
         with open(self.json_file, 'w') as f:
             json.dump(self.annotations, f, indent=4)
-        print(f"[Recorder] Annotations saved to {self.json_file}")
+        self.logger.info(f"Annotations saved to {self.json_file}")
 
-        print("[Recorder] Recording stopped.")
+        self.logger.info("Recording stopped.")
 
     def _get_process_name(self, element):
         if not element:
@@ -122,7 +123,7 @@ class Recorder:
                         self.media_recorder.add_overlay((rect.left, rect.top, rect.right, rect.bottom), element_info['id'], color)
             self._log_annotation("key_release", str(key), hierarchy)
         except Exception as e:
-            print(f"[Recorder] Error in _handle_release: {e}")
+            self.logger.error(f"Error in _handle_release: {e}")
             self._log_annotation("key_release", str(key), None)
 
     def _handle_click(self, x, y, button, pressed):
@@ -145,5 +146,5 @@ class Recorder:
             self.media_recorder.set_clickoverlay(x, y, str(button))
             self._log_annotation("mouse_click", {"x": x, "y": y, "button": str(button), "action": action}, hierarchy)
         except Exception as e:
-            print(f"[Recorder] Error in _handle_click: {e}")
+            self.logger.error(f"Error in _handle_click: {e}")
             self._log_annotation("mouse_click", {"x": x, "y": y, "button": str(button), "action": action}, None)
