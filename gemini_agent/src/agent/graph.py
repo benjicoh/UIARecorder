@@ -1,10 +1,17 @@
 import os
+import sys
+
+# Add the project root to the Python path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+sys.path.insert(0, project_root)
+
 import subprocess
 import mimetypes
 import shutil
+import time
 from typing import Annotated, TypedDict, List
 
-import google.generativeai as genai
+import google.genai as genai
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import SystemMessage, HumanMessage, ToolMessage
 from langgraph.graph import StateGraph, START
@@ -13,8 +20,6 @@ from langgraph.prebuilt import ToolNode, tools_condition
 
 from src.uia_dumper import dump_uia_tree
 
-# --- GenAI Client ---
-genai_client = genai.Client()
 
 # --- Tools ---
 
@@ -67,7 +72,11 @@ def prepare_files_for_prompt(folder_path: str, allowed_extensions: List[str], st
                     file_path = new_file_path
 
                 # Upload the file
-                uploaded_file = genai_client.files.upload(file=file_path)
+                uploaded_file = llm.client.files.upload(file=file_path)
+                # wait for it's processing to finish
+                while uploaded_file.status.name == "PROCESSING":
+                    time.sleep(1)
+                    uploaded_file = llm.client.files.get(uploaded_file.name)
                 uploaded_files.append(uploaded_file)
 
     state["uploaded_files"] = uploaded_files
@@ -81,7 +90,7 @@ class State(TypedDict):
     uploaded_files: list
 
 # --- LLM ---
-llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", google_api_key=os.getenv("GEMINI_API_KEY"))
+llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", google_api_key=os.getenv("GEMINI_API_KEY"))
 
 # --- Tools ---
 tools = [
@@ -93,21 +102,9 @@ tools = [
 llm_with_tools = llm.bind_tools(tools)
 
 # --- Prompt ---
-prompt = """
-# Instructions
-You are an agent that automates UI interaction based on user recordings.
-Your goal is to generate a python script, run it, and refine it until it runs successfully.
-
-Here is the workflow you should follow:
-1.  The user will provide a path to a folder containing a screen recording (e.g., .mp4) and a log of UI events (e.g., .json).
-2.  Use the `prepare_files_for_prompt` tool to prepare these files.
-3.  Generate a python script based on the recording.
-4.  Write the generated script to a file.
-5.  Run the script.
-6.  If the script runs successfully, you are done.
-7.  If the script fails, dump the UI of the application, and send the UI dump, the error log, and a screenshot to get a refined script.
-8.  Repeat from step 4 until the script runs successfully.
-"""
+# read it from file
+with open(os.path.join(os.path.dirname(__file__), 'recording_to_script.md'), 'r', encoding='utf-8') as f:
+    prompt = f.read()
 
 # --- Graph ---
 graph_builder = StateGraph(State)
