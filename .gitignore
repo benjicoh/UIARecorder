@@ -5,3 +5,4 @@ __pycache__/
 @AutomationLog.txt
 output/
 user_scripts/
+*.egg-info/

@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "screen-agent"
+version = "0.1.0"
+dependencies = [
+    "uiautomation",
+    "Pillow",
+    "opencv-python",
+    "pyautogui",
+    "sounddevice",
+    "scipy",
+    "pynput",
+    "imageio",
+    "imageio-ffmpeg",
+    "numpy",
+    "pytest",
+    "mock",
+    "psutil",
+    "Flask",
+    "google-genai",
+    "pydantic",
+    "fastmcp",
+    "langgraph",
+    "langchain-core",
+    "langchain-google-genai",
+    "langgraph-cli[inmem]",
+    "comtypes",
+    "colorlog",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
