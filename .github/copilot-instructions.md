@@ -15,7 +15,7 @@ This codebase is a Windows-only UI automation platform for recording, playing ba
   python -m tools.recorder_tool -wh "process_name.exe"
   ```
   - Press `Alt+Shift+R` to start/stop recording. Press `Esc` to exit.
-  - Output is saved to `recorder/output/`.
+  - Output is saved to `generated_scripts/user_recording/`.
 
 - **Play Back a Test**: Use `tools/player_tool.py` to run a test script or a scenario.
   ```bash

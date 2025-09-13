@@ -12,7 +12,7 @@ from tools.recorder.media import MediaRecorder
 from tools.recorder.uia import UIAHelper
 
 class Recorder:
-    def __init__(self, output_folder="recorder/output", whitelist=None, take_screenshots=False):
+    def __init__(self, output_folder="generated_scripts/user_recording", whitelist=None, take_screenshots=False):
         self.logger = get_logger(__name__)
         self.output_folder = output_folder
         self.images_folder = f"{self.output_folder}/images"

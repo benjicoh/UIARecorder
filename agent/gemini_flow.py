@@ -14,10 +14,11 @@ logger = get_logger(__name__)
 
 # --- Constants ---
 MAX_REFINEMENT_ATTEMPTS = 3
-RUN_OUTPUT_DIR = "run_output/{timestamp}"
-GENERATED_SCRIPT_PATH = "{run_output_dir}/iteration{i}.py"
-GENERATED_SCRIPT_LOG_PATH = "{run_output_dir}/iteration{i}.log.txt"
-UI_DUMP_PATH = "{run_output_dir}/ui_dump{i}.json.txt"
+RUN_OUTPUT_DIR = "generated_scripts/{timestamp}"
+GENERATED_RECORDING_DIR = "{run_output_dir}/iteration{i}/recording"
+GENERATED_SCRIPT_PATH = "{run_output_dir}/iteration{i}/run.py"
+GENERATED_SCRIPT_LOG_PATH = "{run_output_dir}/iteration{i}/log.txt"
+UI_DUMP_PATH = "{run_output_dir}/iteration{i}/ui_dump.json.txt"
 MODEL = "gemini-2.5-flash"
 
 # --- Configuration ---
@@ -31,6 +32,8 @@ except Exception as e:
 # -- Structured Output --
 class CodeResponse(BaseModel):
     code: str
+    failure_reason: str = None
+    comments: str = None
 
 # --- Prompts ---
 try:
@@ -125,6 +128,24 @@ def upload_file(client, file_path):
         logger.error(f"\nError uploading file {file_path}: {e}")
         return None
 
+# Upload all files in a directory matching certain extensions
+def upload_dir_files(client, dir_path, extensions=(".json", ".mp4", ".png", ".txt")):
+    """
+    Uploads all files in a directory (recursively) matching the given extensions.
+    Returns a list of uploaded file objects.
+    """
+    uploaded_files = []
+    files_to_upload = []
+    for dirpath, _, filenames in os.walk(dir_path):
+        for filename in filenames:
+            if filename.endswith(extensions):
+                files_to_upload.append(os.path.join(dirpath, filename))
+    for file_path in files_to_upload:
+        logger.info(f"Uploading {os.path.basename(file_path)}...")
+        uploaded_file = upload_file(client, file_path)
+        if uploaded_file:
+            uploaded_files.append(uploaded_file)
+    return uploaded_files
 # --- Main Flow ---
 
 def main():
@@ -145,19 +166,8 @@ def main():
     initial_prompt_parts = []
     logger.info(f"Analyzing data in: {args.recording_dir}")
 
-
-    # Simplified file upload logic
-    files_to_upload = []
-    for dirpath, _, filenames in os.walk(args.recording_dir):
-        for filename in filenames:
-            if filename.endswith((".json", ".mp4", ".png", ".txt")):
-                files_to_upload.append(os.path.join(dirpath, filename))
-
-    for file_path in files_to_upload:
-        logger.info(f"Uploading {os.path.basename(file_path)}...")
-        uploaded_file = upload_file(client, file_path)
-        if uploaded_file:
-            initial_prompt_parts.append(uploaded_file)
+    # Use the new function to upload files and add to initial_prompt_parts
+    initial_prompt_parts.extend(upload_dir_files(client, args.recording_dir))
 
     initial_prompt_parts.append(f"\n\nPlease generate the python script now.")
 
@@ -183,9 +193,10 @@ def main():
         script_path_curr = GENERATED_SCRIPT_PATH.format(run_output_dir=run_output_dir, i=i)
         log_path = GENERATED_SCRIPT_LOG_PATH.format(run_output_dir=run_output_dir, i=i)
         ui_dump_path = UI_DUMP_PATH.format(run_output_dir=run_output_dir, i=i)
+        generated_recording_dir = GENERATED_RECORDING_DIR.format(run_output_dir=run_output_dir, i=i)
         logger.info(f"--- Attempt {i}/{MAX_REFINEMENT_ATTEMPTS}: Running Script ---")
 
-        recorder = Recorder(output_folder=run_output_dir, take_screenshots=False)
+        recorder = Recorder(output_folder=generated_recording_dir, take_screenshots=False)
         recorder.start()
         run_result = run_python_script(script_path_prev)
         recorder.stop()
@@ -225,13 +236,8 @@ def main():
             "The previously generated script failed to execute correctly."
         ]
         # Upload run output files
-        for file in [ui_dump_path, log_path, os.path.join(run_output_dir, "video.mp4")]:
-            if os.path.exists(file):
-                logger.info(f"Uploading file: {file}")
-                uploaded_file = upload_file(client, file)
-                if uploaded_file:
-                    refinement_prompt_parts.append(uploaded_file)
-
+        uploaded_files = upload_dir_files(client, run_output_dir)
+        refinement_prompt_parts.extend(uploaded_files)
         logger.info("Requesting script correction from model...")
         response = send_message_with_retries(
             chat,

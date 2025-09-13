@@ -12,7 +12,7 @@
             "program": "${file}",
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
-            "args": "./tools/recorder/output -p SystemSettings.exe"
+            "args": "./generated_scripts/user_recording -p SystemSettings.exe"
         }
     ]
 }

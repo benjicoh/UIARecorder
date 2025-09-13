@@ -9,7 +9,7 @@ logger = get_logger(__name__)
 
 recorder_instance = None
 
-def start_recording(whitelist=None, output_folder="recorder/output"):
+def start_recording(whitelist=None, output_folder="generated_scripts/user_recording"):
     """
     Starts a new recording session.
     """
