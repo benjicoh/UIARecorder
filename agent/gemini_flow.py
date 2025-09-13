@@ -163,97 +163,99 @@ def main():
     chat = client.chats.create(model=MODEL)
 
     # --- Initial Prompt Construction ---
-    initial_prompt_parts = []
     logger.info(f"Analyzing data in: {args.recording_dir}")
-
-    # Use the new function to upload files and add to initial_prompt_parts
-    initial_prompt_parts.extend(upload_dir_files(client, args.recording_dir))
-
-    initial_prompt_parts.append(f"\n\nPlease generate the python script now.")
-
-    # --- Initial Generation ---
-    logger.info("Generating initial script... (This may take a moment)")
-    response = send_message_with_retries(
-        chat,
-        initial_prompt_parts,
-        types.GenerateContentConfig(
-            response_schema=CodeResponse,
-            response_mime_type="application/json",
-            system_instruction=system_prompt
-        )
-    )
-    code_response : CodeResponse = response.parsed
-    script_path = GENERATED_SCRIPT_PATH.format(run_output_dir=run_output_dir, i=0)
-    write_file(script_path, code_response.code)
-    logger.info(f"Initial script written to {script_path}")
+    initial_files = upload_dir_files(client, args.recording_dir)
 
     # --- Iterative Refinement Loop ---
-    for i in range(1, MAX_REFINEMENT_ATTEMPTS + 1):
-        script_path_prev = GENERATED_SCRIPT_PATH.format(run_output_dir=run_output_dir, i=i-1)
-        script_path_curr = GENERATED_SCRIPT_PATH.format(run_output_dir=run_output_dir, i=i)
-        log_path = GENERATED_SCRIPT_LOG_PATH.format(run_output_dir=run_output_dir, i=i)
-        ui_dump_path = UI_DUMP_PATH.format(run_output_dir=run_output_dir, i=i)
-        generated_recording_dir = GENERATED_RECORDING_DIR.format(run_output_dir=run_output_dir, i=i)
-        logger.info(f"--- Attempt {i}/{MAX_REFINEMENT_ATTEMPTS}: Running Script ---")
+    last_run_result = None
+    for i in range(MAX_REFINEMENT_ATTEMPTS + 1):
+        logger.info(f"--- Attempt {i+1}/{MAX_REFINEMENT_ATTEMPTS + 1} ---")
 
-        recorder = Recorder(output_folder=generated_recording_dir, take_screenshots=False)
-        recorder.start()
-        run_result = run_python_script(script_path_prev)
-        recorder.stop()
+        # --- 1. Prepare Prompt ---
+        prompt_parts = []
+        if i == 0:
+            logger.info("Generating initial script... (This may take a moment)")
+            prompt_parts.extend(initial_files)
+            prompt_parts.append("\n\nPlease generate the python script now.")
+        else:
+            logger.info("Requesting script correction from model...")
+            prompt_parts.append("The previously generated script failed to execute correctly.")
+            # Upload all files from the run directory for context
+            prompt_parts.extend(upload_dir_files(client, run_output_dir))
 
-        # Combine stdout and stderr for logging
-        log_output = f"STDOUT:\n{run_result['stdout']}\n\nSTDERR:\n{run_result['stderr']}"
-        write_file(log_path, log_output)
-
-        # Check for success marker in stdout
-        if "Scenario completed successfully" in run_result['stdout']:
-            logger.info("--- Script Executed Successfully! ---")
-            logger.info(log_output)
-            return  # Success!
-
-        logger.warning("--- Script Failed! Initiating Refinement ---")
-        logger.warning(f"For details see log: {log_path}")
-
-        # Dump the UI for context
-        logger.info("Dumping current UI state...")
-        try:
-            from agent.uia_dumper import dump_ui
-            if args.process_name or args.window_title:
-                result = dump_ui(
-                    process_name=args.process_name,
-                    window_title=args.window_title,
-                    output_file=ui_dump_path,
-                    whitelist=None,
-                    screenshots=False
-                )
-                logger.info(result)
-            else:
-                logger.warning("Process name or window title not provided. Skipping UI dump.")
-        except Exception as e:
-            logger.error(f"Error dumping UI: {e}")
-
-        refinement_prompt_parts = [
-            "The previously generated script failed to execute correctly."
-        ]
-        # Upload run output files
-        uploaded_files = upload_dir_files(client, run_output_dir)
-        refinement_prompt_parts.extend(uploaded_files)
-        logger.info("Requesting script correction from model...")
+        # --- 2. Generate Script ---
         response = send_message_with_retries(
             chat,
-            refinement_prompt_parts,
+            prompt_parts,
             types.GenerateContentConfig(
                 response_schema=CodeResponse,
                 response_mime_type="application/json",
                 system_instruction=system_prompt
             )
         )
-        code_response : CodeResponse = response.parsed
-        write_file(script_path_curr, code_response.code)
-        logger.info(f"Corrected script written to {script_path_curr}")
+        code_response: CodeResponse = response.parsed
+        script_path = GENERATED_SCRIPT_PATH.format(run_output_dir=run_output_dir, i=i)
+        write_file(script_path, code_response.code)
+        logger.info(f"Script written to {script_path}")
 
+        # --- 3. Run Script ---
+        logger.info(f"Running script: {script_path}")
+        generated_recording_dir = GENERATED_RECORDING_DIR.format(run_output_dir=run_output_dir, i=i)
+        recorder = Recorder(output_folder=generated_recording_dir, take_screenshots=False)
+        recorder.start()
+        last_run_result = run_python_script(script_path)
+        recorder.stop()
+
+        # --- 4. Log Results ---
+        log_path = GENERATED_SCRIPT_LOG_PATH.format(run_output_dir=run_output_dir, i=i)
+        log_output = f"STDOUT:\n{last_run_result['stdout']}\n\nSTDERR:\n{last_run_result['stderr']}"
+
+        # Add failure reason and comments to the log
+        model_feedback = ""
+        if code_response.failure_reason:
+            model_feedback += f"\n\nLLM Failure Reason: {code_response.failure_reason}"
+        if code_response.comments:
+            model_feedback += f"\n\nLLM Comments: {code_response.comments}"
+        if model_feedback:
+            log_output += f"\n\n--- LLM Response ---{model_feedback}"
+        write_file(log_path, log_output)
+        logger.info(f"Log file written to {log_path}")
+
+
+        # --- 5. Check for Success ---
+        if "Scenario completed successfully" in last_run_result['stdout']:
+            logger.info("--- Script Executed Successfully! ---")
+            logger.info(log_output)
+            return  # Success!
+
+        logger.warning("--- Script Failed! ---")
+        if i < MAX_REFINEMENT_ATTEMPTS:
+            logger.warning("Initiating Refinement...")
+            # --- 6. Dump UI for next attempt (if not the last attempt) ---
+            logger.info("Dumping current UI state for context...")
+            ui_dump_path = UI_DUMP_PATH.format(run_output_dir=run_output_dir, i=i)
+            try:
+                from agent.uia_dumper import dump_ui
+                if args.process_name or args.window_title:
+                    result = dump_ui(
+                        process_name=args.process_name,
+                        window_title=args.window_title,
+                        output_file=ui_dump_path,
+                        whitelist=None,
+                        screenshots=False
+                    )
+                    logger.info(result)
+                else:
+                    logger.warning("Process name or window title not provided. Skipping UI dump.")
+            except Exception as e:
+                logger.error(f"Error dumping UI: {e}")
+
+    # --- Final Status Check ---
     logger.warning(f"--- Max Retries Reached! ---")
-    logger.warning("Could not fix the script after multiple attempts.")
+    if last_run_result and "Scenario completed successfully" not in last_run_result['stdout']:
+        logger.warning("Could not fix the script after multiple attempts.")
+        logger.warning(f"Final log output:\n{log_output}")
+
 
 if __name__ == "__main__":
     main()
