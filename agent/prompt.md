@@ -7,11 +7,10 @@
 ### Recording Directory
 - A video file with narration of the test scenario.
 - A json file with the UIA properties of the clicked and focused elements.
-- A series of screenshots for each user interaction, with annotations.
 ### Failed Run Artifacts (Optional)
+- A video of the failed execution.
 - Log file from a previous execution of the generated script, containing errors or failures.
 - A full json snapshot of the application's UI tree from a previous run, useful for refining element selectors.
-- Screenshots from the previous run, useful for visual reference.
 
 ## Output
 - A python script that uses the uiautomation package to automate the described scenario.
@@ -39,12 +38,6 @@ The JSON file contains a list of events, each with the following structure:
 ```
 - Each element in the `element_hierarchy` has a unique `id`.
 - The `patterns` object lists all the UI Automation patterns supported by the element. Refer to this to understand the available actions for an element (e.g., `InvokePattern`, `ValuePattern`).
-
-## Element Screenshots
-For each new UI element detected in the hierarchy, a screenshot of that element is captured and saved in the `recording/images` folder.
-- The screenshot is taken of the element's bounding rectangle.
-- Screenshots are only taken for elements that are on-screen and have a valid, non-zero rectangle.
-- The filename for each screenshot is in the format `{element_id}__{timestamp}.png`, where the timestamp is the number of milliseconds from the start of the recording.
 
 ## Guidelines
 - The script should be robust and able to handle various UI scenarios.

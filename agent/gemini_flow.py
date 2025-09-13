@@ -8,14 +8,16 @@ from pydantic import BaseModel
 from google import genai
 from google.genai import types
 from tools.common.logger import get_logger
+from tools.recorder.main_recorder import Recorder
 
 logger = get_logger(__name__)
 
 # --- Constants ---
 MAX_REFINEMENT_ATTEMPTS = 3
-GENERATED_SCRIPT_PATH = "generated_scripts/iteration{i}.py"
-GENERATED_SCRIPT_LOG_PATH = "generated_scripts/iteration{i}.log.txt"
-UI_DUMP_PATH = "generated_scripts/ui_dump{i}.json.txt"
+RUN_OUTPUT_DIR = "run_output/{timestamp}"
+GENERATED_SCRIPT_PATH = "{run_output_dir}/iteration{i}.py"
+GENERATED_SCRIPT_LOG_PATH = "{run_output_dir}/iteration{i}.log.txt"
+UI_DUMP_PATH = "{run_output_dir}/ui_dump{i}.json.txt"
 MODEL = "gemini-2.5-flash"
 
 # --- Configuration ---
@@ -133,6 +135,10 @@ def main():
     parser.add_argument("-w", "--window-title", help="The window title of the target application.")
     args = parser.parse_args()
 
+    run_output_dir = RUN_OUTPUT_DIR.format(timestamp=time.strftime("%Y%m%d-%H%M%S"))
+    os.makedirs(run_output_dir, exist_ok=True)
+    logger.info(f"Run output directory: {run_output_dir}")
+
     chat = client.chats.create(model=MODEL)
 
     # --- Initial Prompt Construction ---
@@ -167,17 +173,22 @@ def main():
         )
     )
     code_response : CodeResponse = response.parsed
-    write_file(GENERATED_SCRIPT_PATH.format(i=0), code_response.code)
-    logger.info(f"Initial script written to {GENERATED_SCRIPT_PATH.format(i=0)}")
+    script_path = GENERATED_SCRIPT_PATH.format(run_output_dir=run_output_dir, i=0)
+    write_file(script_path, code_response.code)
+    logger.info(f"Initial script written to {script_path}")
 
     # --- Iterative Refinement Loop ---
     for i in range(1, MAX_REFINEMENT_ATTEMPTS + 1):
-        script_path = GENERATED_SCRIPT_PATH.format(i=i)
-        log_path = GENERATED_SCRIPT_LOG_PATH.format(i=i)
-        ui_dump_path = UI_DUMP_PATH.format(i=i)
+        script_path_prev = GENERATED_SCRIPT_PATH.format(run_output_dir=run_output_dir, i=i-1)
+        script_path_curr = GENERATED_SCRIPT_PATH.format(run_output_dir=run_output_dir, i=i)
+        log_path = GENERATED_SCRIPT_LOG_PATH.format(run_output_dir=run_output_dir, i=i)
+        ui_dump_path = UI_DUMP_PATH.format(run_output_dir=run_output_dir, i=i)
         logger.info(f"--- Attempt {i}/{MAX_REFINEMENT_ATTEMPTS}: Running Script ---")
 
-        run_result = run_python_script(GENERATED_SCRIPT_PATH.format(i=i-1))
+        recorder = Recorder(output_folder=run_output_dir, take_screenshots=False)
+        recorder.start()
+        run_result = run_python_script(script_path_prev)
+        recorder.stop()
 
         # Combine stdout and stderr for logging
         log_output = f"STDOUT:\n{run_result['stdout']}\n\nSTDERR:\n{run_result['stderr']}"
@@ -213,7 +224,8 @@ def main():
         refinement_prompt_parts = [
             "The previously generated script failed to execute correctly."
         ]
-        for file in [ui_dump_path, log_path]:
+        # Upload run output files
+        for file in [ui_dump_path, log_path, os.path.join(run_output_dir, "video.mp4")]:
             if os.path.exists(file):
                 logger.info(f"Uploading file: {file}")
                 uploaded_file = upload_file(client, file)
@@ -231,8 +243,8 @@ def main():
             )
         )
         code_response : CodeResponse = response.parsed
-        write_file(script_path, code_response.code)
-        logger.info(f"Corrected script written to {script_path}")
+        write_file(script_path_curr, code_response.code)
+        logger.info(f"Corrected script written to {script_path_curr}")
 
     logger.warning(f"--- Max Retries Reached! ---")
     logger.warning("Could not fix the script after multiple attempts.")

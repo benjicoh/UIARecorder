@@ -12,12 +12,13 @@ from tools.recorder.media import MediaRecorder
 from tools.recorder.uia import UIAHelper
 
 class Recorder:
-    def __init__(self, output_folder="recorder/output", whitelist=None):
+    def __init__(self, output_folder="recorder/output", whitelist=None, take_screenshots=False):
         self.logger = get_logger(__name__)
         self.output_folder = output_folder
         self.images_folder = f"{self.output_folder}/images"
         self.json_file = f"{self.output_folder}/annotations.json"
         self.logger.info(f"Output folder set to: {self.output_folder}")
+        self.take_screenshots = take_screenshots
 
         self.whitelist = whitelist
         if self.whitelist:
@@ -78,7 +79,7 @@ class Recorder:
         timestamp = time.time() - self.start_time
 
         # Take screenshots of new elements
-        if element_hierarchy:
+        if self.take_screenshots and element_hierarchy:
             for element_info in element_hierarchy:
                 self.element_screenshotter.capture_element_screenshot(element_info, timestamp)
 
