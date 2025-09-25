@@ -12,8 +12,8 @@ from tools.recorder.main_recorder import Recorder
 logger = get_logger(__name__)
 
 # --- Constants ---
-MAX_COMPILATION_ATTEMPTS = 3
-MAX_EXECUTION_ATTEMPTS = 3
+MAX_COMPILATION_ATTEMPTS = 4
+MAX_EXECUTION_ATTEMPTS = 4
 RUN_OUTPUT_DIR = "generated_scripts/{timestamp}"
 COMPILATION_ITERATION_DIR = "{run_output_dir}/compilation/iteration{i}"
 EXECUTION_ITERATION_DIR = "{run_output_dir}/execution/iteration{i}"
@@ -22,7 +22,6 @@ FLAUI_PROJECT_DIR = "fla-ui/GeneratedTests"
 FLAUI_PROJECT_PATH = f"{FLAUI_PROJECT_DIR}/FlaUI.Generated.csproj"
 FLAUI_SOURCE_PATH = f"{FLAUI_PROJECT_DIR}/GeneratedTests.cs"
 
-# --- Configuration ---
 # --- Configuration ---
 try:
     client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
@@ -34,7 +33,7 @@ except Exception as e:
 
 # -- Structured Output --
 class CodeResponse(BaseModel):
-    code: str
+    code_lines: list[str]
     failure_reason: str = None
     comments: str = None
 
@@ -69,7 +68,7 @@ def send_message_with_retries(chat, prompt_parts, config, max_retries=3, retry_d
                 raise
     raise Exception(f"Failed after {max_retries} retries due to repeated 503 errors.")
 
-def run_command(command: list[str]):
+def run_command(command: list[str], cwd: str = None) -> dict:
     """
     Runs a command and captures its output.
     Returns a dictionary containing 'stdout' and 'stderr'.
@@ -77,6 +76,7 @@ def run_command(command: list[str]):
     try:
         result = subprocess.run(
             command,
+            cwd=cwd,
             capture_output=True,
             text=True,
             encoding='utf-8',
@@ -90,11 +90,14 @@ def run_command(command: list[str]):
     except Exception as e:
         return {'stdout': '', 'stderr': f"An unexpected error occurred: {e}", 'returncode': -1}
 
-def write_file(file_path: str, content: str):
+def write_file(file_path: str, content: str, with_line_numbers: bool = False) -> str:
     """
     Writes content to a file.
     """
     os.makedirs(os.path.dirname(file_path), exist_ok=True)
+    if with_line_numbers:
+        lines = content.splitlines()
+        content = "\n".join(f"{i+1:04d}: {line}" for i, line in enumerate(lines))
     with open(file_path, "w", encoding='utf-8') as f:
         f.write(content)
     return f"File '{file_path}' written successfully."
@@ -166,44 +169,36 @@ def main():
     # --- Compilation Loop ---
     compilation_success = False
     code_response = None
+    iteration_dir = ""
     for i in range(MAX_COMPILATION_ATTEMPTS):
         logger.info(f"--- Compilation Attempt {i+1}/{MAX_COMPILATION_ATTEMPTS} ---")
-        iteration_dir = COMPILATION_ITERATION_DIR.format(run_output_dir=run_output_dir, i=i)
+        
 
         # --- Generate Script ---
-        if i == 0:
-            response = send_message_with_retries(
-                chat,
-                prompt_parts,
-                types.GenerateContentConfig(
-                    response_schema=CodeResponse,
-                    response_mime_type="application/json",
-                    system_instruction=system_prompt
-                )
-            )
-            code_response: CodeResponse = response.parsed
-        else:
+        if i > 0:
             prompt_parts = ["The previously generated script failed to compile.\nAttached are the compilation logs for analysis and script refinement."]
             prompt_parts.extend(upload_dir_files(client, iteration_dir))
-            response = send_message_with_retries(
-                chat,
-                prompt_parts,
-                types.GenerateContentConfig(
-                    response_schema=CodeResponse,
-                    response_mime_type="application/json",
-                    system_instruction=system_prompt
-                )
+        response = send_message_with_retries(
+            chat,
+            prompt_parts,
+            types.GenerateContentConfig(
+                response_schema=CodeResponse,
+                response_mime_type="application/json",
+                system_instruction=system_prompt
             )
-            code_response: CodeResponse = response.parsed
-
+        )
+            
+        code_response: CodeResponse = response.parsed
+        iteration_dir = COMPILATION_ITERATION_DIR.format(run_output_dir=run_output_dir, i=i)
         # --- Write Script to File ---
-        write_file(f"{FLAUI_SOURCE_PATH}", code_response.code)
+        code = "\n".join(code_response.code_lines)
+        write_file(f"{FLAUI_SOURCE_PATH}", code)
         logger.info(f"Script written to {FLAUI_SOURCE_PATH}")
-        write_file(iteration_dir + "/script.cs", code_response.code)
+        write_file(iteration_dir + "/script.cs.txt", code, True)
 
         # --- Compile Script ---
         logger.info(f"Compiling script: {FLAUI_PROJECT_PATH}")
-        compilation_result = run_command(["dotnet", "build", FLAUI_PROJECT_PATH])
+        compilation_result = run_command(["dotnet", "build"], FLAUI_PROJECT_DIR)
 
         log_path = iteration_dir + "/compilation_log.txt"
         log_output = f"STDOUT:\n{compilation_result['stdout']}\n\nSTDERR:\n{compilation_result['stderr']}"
@@ -233,7 +228,7 @@ def main():
         generated_recording_dir = iteration_dir + "/recordings"
         recorder = Recorder(output_folder=generated_recording_dir, take_screenshots=False)
         recorder.start()
-        execution_result = run_command(["dotnet", "test", FLAUI_PROJECT_PATH])
+        execution_result = run_command(["dotnet", "run"], FLAUI_PROJECT_DIR)
         recorder.stop()
 
         # --- Log Execution Results ---
@@ -242,7 +237,7 @@ def main():
         write_file(log_path, log_output)
         logger.info(f"Execution log file written to {log_path}")
 
-        if "Test Run Successful." in execution_result['stdout'] or "Passed!" in execution_result['stdout']:
+        if "!Passed!" in execution_result['stdout']:
             logger.info("--- Test Executed Successfully! ---")
             execution_success = True
             break
@@ -266,9 +261,10 @@ def main():
         )
         code_response = response.parsed
         # --- Write Script to File ---
-        write_file(f"{FLAUI_SOURCE_PATH}", code_response.code)
+        code = "\n".join(code_response.code_lines)
+        write_file(f"{FLAUI_SOURCE_PATH}", code)
         logger.info(f"Script written to {FLAUI_SOURCE_PATH}")
-        write_file(iteration_dir + "/script.cs", code_response.code)
+        write_file(iteration_dir + "/script.cs.txt", code, True)
 
     if not execution_success:
         logger.error("--- Max Execution Retries Reached! Could not fix the script. ---")
