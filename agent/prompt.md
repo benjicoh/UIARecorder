@@ -47,6 +47,7 @@ The JSON file contains a list of events, each with the following structure:
 - Provide detailed logging of your actions and any errors encountered.
 - Listen to the video's audio, there might be additional context or information that can help with element identification.
 - It is useful to identify the main window of the application, and activate it at the start of the script.
+- Use the API as it is documented in appendix A - UIAutomation Module API Reference.
 
 ## Logging and Output
 - The logging format is `%(asctime)s - %(filename)s:%(lineno)d - %(levelname)s - %(message)s`
@@ -74,9 +75,10 @@ The JSON file contains a list of events, each with the following structure:
 - After generating the script, review it to ensure all elements are correctly identified and the actions are appropriate.
 
 ### Actual Runs Refinement
-If you are provided with a log file from a previous execution and / or a full UI dump, use them to refine the script.
+If you are provided with a log file, video file from a previous execution and / or a full UI dump, use them to refine the script.
 - **Logs**: This file contains the output of a previous run of the generated script. Analyze any errors or failures in the log to identify the root cause. Modify the script to fix these issues. For example, if an element was not found, you may need to adjust the selectors or add a wait condition.
 - **UI Dump**: This file contains a full snapshot of the application's UI tree. Use this as a reference to find more robust selectors for elements that were problematic in the previous run. It can also help you understand the overall structure of the application and discover alternative ways to automate a task.
+- **Video**: The screen recording of the failed run, use it to understand the visual context of the issue.
 ---
 
 ## A Developer's Guide to `uiautomation.py` and its Microsoft COM Underpinnings
@@ -366,3 +368,375 @@ Understanding *when* a search happens is crucial for writing non-flaky scripts.
 3.  **Combine Criteria:** Don't rely on just one property. Combining `Name` and `ControlType`, or `ClassName` and `AutomationId`, makes your search much less likely to find the wrong element.
 4.  **Use `Exists()` for Dynamic UI:** Never assume a control is immediately available. Use `control.Exists(timeout)` to wait for elements that appear after an action.
 5.  **Inspect the UI Tree:** Use tools to understand the structure. The `uiautomation` library itself provides a great one: run `python -m uiautomation -t 0` in your console and hover your mouse over UI elements to see their properties. This will reveal the best properties (`AutomationId`, `ClassName`, etc.) to use for your searches.
+
+# Appendix A : UIAutomaion Module API Reference
+
+This reference outlines the primary components and functionalities of the `uiautomation.py` library, a Python wrapper for Microsoft UI Automation.
+
+---
+
+## I. Global Functions
+
+Functions available directly under the `uiautomation` module.
+
+### Mouse & Keyboard Simulation
+
+*   `uiautomation.Click(x: int, y: int, waitTime: float = 0.5) -> None`
+    *   Simulates a left mouse click at screen coordinates `(x, y)`.
+*   `uiautomation.RightClick(x: int, y: int, waitTime: float = 0.5) -> None`
+    *   Simulates a right mouse click at screen coordinates `(x, y)`.
+*   `uiautomation.DoubleClick(x: int, y: int, waitTime: float = 0.5) -> None`
+    *   Simulates a left mouse double-click at screen coordinates `(x, y)`.
+*   `uiautomation.MoveTo(x: int, y: int, moveSpeed: float = 1, waitTime: float = 0.5) -> None`
+    *   Moves the mouse cursor smoothly to screen coordinates `(x, y)`.
+*   `uiautomation.DragDrop(x1: int, y1: int, x2: int, y2: int, moveSpeed: float = 1, waitTime: float = 0.5) -> None`
+    *   Simulates dragging the left mouse button from `(x1, y1)` to `(x2, y2)`.
+*   `uiautomation.WheelDown(wheelTimes: int = 1, interval: float = 0.05, waitTime: float = 0.5) -> None`
+    *   Simulates scrolling the mouse wheel down.
+*   `uiautomation.WheelUp(wheelTimes: int = 1, interval: float = 0.05, waitTime: float = 0.5) -> None`
+    *   Simulates scrolling the mouse wheel up.
+*   `uiautomation.SendKey(key: int, waitTime: float = 0.5) -> None`
+    *   Simulates pressing and releasing a single virtual key code. Use `uiautomation.Keys` for `key`.
+*   `uiautomation.SendKeys(text: str, interval: float = 0.01, waitTime: float = 0.5, charMode: bool = True, debug: bool = False) -> None`
+    *   Simulates typing a sequence of keys. Supports special keys in curly braces `{}` (e.g., `{Ctrl}a`, `{Enter}`). See docstring for syntax.
+*   `uiautomation.IsKeyPressed(key: int) -> bool`
+    *   Checks if a given virtual key is currently pressed.
+
+### Control Retrieval
+
+*   `uiautomation.GetRootControl() -> PaneControl`
+    *   Returns the root UI Automation element, which is the Desktop window.
+*   `uiautomation.GetFocusedControl() -> Optional[Control]`
+    *   Returns the currently focused UI Automation element.
+*   `uiautomation.GetForegroundControl() -> Control`
+    *   Returns the UI Automation element of the foreground window.
+*   `uiautomation.ControlFromPoint(x: int, y: int) -> Optional[Control]`
+    *   Returns the UI Automation element at the given screen coordinates.
+*   `uiautomation.ControlFromHandle(handle: int) -> Optional[Control]`
+    *   Returns the UI Automation element associated with a given native window handle (`HWND`).
+*   `uiautomation.ControlsAreSame(control1: Control, control2: Control) -> bool`
+    *   Compares two `Control` objects to check if they refer to the same UI element.
+
+### System & Utility
+
+*   `uiautomation.SetGlobalSearchTimeout(seconds: float) -> None`
+    *   Sets the default maximum time (in seconds) the library will wait when searching for controls. (Default: 10s)
+*   `uiautomation.WaitForExist(control: Control, timeout: float) -> bool`
+    *   Waits for a `Control` to exist within the specified `timeout` seconds.
+*   `uiautomation.WaitForDisappear(control: Control, timeout: float) -> bool`
+    *   Waits for a `Control` to disappear within the specified `timeout` seconds.
+*   `uiautomation.LogControl(control: Control, depth: int = 0, showAllName: bool = True, showPid: bool = False) -> None`
+    *   Prints and logs detailed properties of a single `Control` object to the console and log file.
+*   `uiautomation.EnumAndLogControl(control: Control, maxDepth: int = 0xFFFFFFFF, showAllName: bool = True, showPid: bool = False, startDepth: int = 0) -> None`
+    *   Recursively enumerates and logs properties of a control and its descendants.
+*   `uiautomation.GetScreenSize() -> Tuple[int, int]`
+    *   Returns the width and height of the primary screen.
+*   `uiautomation.GetCursorPos() -> Tuple[int, int]`
+    *   Returns the current `(x, y)` screen coordinates of the mouse cursor.
+*   `uiautomation.SetConsoleColor(color: int) -> bool`
+    *   Sets the console text color. Use `uiautomation.ConsoleColor` for `color`.
+*   `uiautomation.ResetConsoleColor() -> bool`
+    *   Resets the console text color to default.
+
+---
+
+## II. Class `Control` (Base UI Automation Element)
+
+The `Control` class is the foundation for all UI Automation elements. It wraps the `IUIAutomationElement` COM interface. All specific control types (`ButtonControl`, `WindowControl`, etc.) inherit from `Control`.
+
+```python
+class Control:
+    def __init__(self,
+                 searchFromControl: Optional['Control'] = None,
+                 searchDepth: int = 0xFFFFFFFF,
+                 searchInterval: float = 0.5,
+                 foundIndex: int = 1,
+                 element=None, # Internal COM element
+                 ControlType: Optional[int] = None,
+                 Name: Optional[str] = None,
+                 SubName: Optional[str] = None,
+                 RegexName: Optional[str] = None,
+                 ClassName: Optional[str] = None,
+                 AutomationId: Optional[str] = None,
+                 Depth: Optional[int] = None,
+                 Compare: Optional[Callable[[TreeNode, int], bool]] = None,
+                 **searchProperties):
+        # ... (initialization details) ...
+```
+
+### Constructor Parameters (Search Criteria)
+
+When you instantiate a `Control` (or any of its subclasses), you are defining a **search query**. The actual search is performed when you first access a property or call a method that requires the underlying UI Automation element to be found.
+
+*   `searchFromControl` (`Control`, optional): The control from which to start the search. If `None`, the search starts from the Desktop (`GetRootControl()`).
+*   `searchDepth` (`int`, default `0xFFFFFFFF`): The maximum depth to search from `searchFromControl`.
+*   `searchInterval` (`float`, default `0.5`): The interval (in seconds) between search attempts when waiting for a control to exist.
+*   `foundIndex` (`int`, default `1`): If multiple controls match the criteria, specifies which one to return (1-based index).
+*   `element` (internal): Used by the library to wrap an existing `IUIAutomationElement`.
+*   `ControlType` (`int`, optional): Matches the control's type (e.g., `uiautomation.ControlType.ButtonControl`).
+*   `Name` (`str`, optional): Matches the control's exact `Name` property.
+*   `SubName` (`str`, optional): Matches if the control's `Name` property contains this substring.
+*   `RegexName` (`str`, optional): Matches if the control's `Name` property matches this regular expression.
+*   `ClassName` (`str`, optional): Matches the control's exact `ClassName` property.
+*   `AutomationId` (`str`, optional): Matches the control's exact `AutomationId` property (highly recommended for stability).
+*   `Depth` (`int`, optional): Matches controls at a *specific* relative depth from `searchFromControl`. Also sets `searchDepth` to this value.
+*   `Compare` (`Callable[[Control, int], bool]`, optional): A custom function that takes the `Control` and its `depth` as arguments, returning `True` for a match.
+*   `**searchProperties`: Additional UIA properties (e.g., `IsKeyboardFocusable=True`) can be passed as keyword arguments for searching.
+
+### Key Properties
+
+These properties provide information about the found UI element. Accessing them might trigger a search if the control hasn't been found yet.
+
+*   `control.Name` (`str`): The display name of the element.
+*   `control.ClassName` (`str`): The Win32 window class name of the element.
+*   `control.AutomationId` (`str`): The unique automation identifier.
+*   `control.ControlType` (`int`): The UI Automation control type ID (e.g., `ControlType.ButtonControl`).
+*   `control.ControlTypeName` (`str`): The string representation of `ControlType`.
+*   `control.BoundingRectangle` (`Rect`): The screen coordinates and size of the element.
+*   `control.NativeWindowHandle` (`int`): The underlying Win32 window handle (`HWND`), if applicable.
+*   `control.ProcessId` (`int`): The ID of the process that owns the element.
+*   `control.IsEnabled` (`bool`): `True` if the element is enabled, `False` otherwise.
+*   `control.IsOffscreen` (`bool`): `True` if the element is not currently visible on screen.
+*   `control.HasKeyboardFocus` (`bool`): `True` if the element has keyboard focus.
+*   `control.IsPassword` (`bool`): `True` if the element is a password input field.
+*   `control.FrameworkId` (`str`): The UI framework that provides the element (e.g., "Win32", "WPF").
+*   `control.HelpText` (`str`): The help text for the element.
+*   `control.Element`: The raw `IUIAutomationElement` COM object (for advanced use).
+
+### Key Methods
+
+*   `control.Exists(maxSearchSeconds: float = 5, searchIntervalSeconds: float = 0.5, printIfNotExist: bool = False) -> bool`
+    *   Explicitly searches for the control. Returns `True` if found within `maxSearchSeconds`, `False` otherwise. Does not raise an exception on failure.
+*   `control.Disappears(maxSearchSeconds: float = 5, searchIntervalSeconds: float = 0.5, printIfNotDisappear: bool = False) -> bool`
+    *   Waits for the control to disappear. Returns `True` if it disappears within `maxSearchSeconds`, `False` otherwise.
+*   `control.Refind(maxSearchSeconds: float = 10, searchIntervalSeconds: float = 0.5, raiseException: bool = True) -> bool`
+    *   Re-searches for the control. If `raiseException` is `True`, a `LookupError` is raised on timeout.
+*   `control.AddSearchProperties(**searchProperties) -> None`
+    *   Adds or updates search criteria for future searches of this control object.
+*   `control.RemoveSearchProperties(**searchProperties) -> None`
+    *   Removes search criteria from this control object.
+*   `control.GetParentControl() -> Optional[Control]`
+    *   Returns the immediate parent `Control` in the UI Automation tree.
+*   `control.GetFirstChildControl() -> Optional[Control]`
+    *   Returns the first child `Control` in the UI Automation tree.
+*   `control.GetNextSiblingControl() -> Optional[Control]`
+    *   Returns the next sibling `Control` in the UI Automation tree.
+*   `control.GetChildren() -> List[Control]`
+    *   Returns a list of all immediate child controls.
+*   `control.MoveCursorToInnerPos(x: Optional[int] = None, y: Optional[int] = None, ratioX: float = 0.5, ratioY: float = 0.5, simulateMove: bool = True) -> Optional[Tuple[int, int]]`
+    *   Moves the mouse cursor to a position relative to the control's bounding rectangle.
+        *   `x`, `y`: Absolute pixel offset from top-left (or right/bottom if negative).
+        *   `ratioX`, `ratioY`: Relative position (0.0 to 1.0) if `x`/`y` are `None`.
+    *   Returns `(screen_x, screen_y)` or `None`.
+*   `control.Click(...)`, `control.RightClick(...)`, `control.DoubleClick(...)`
+    *   These methods use `MoveCursorToInnerPos` then simulate clicks at the specified position within the control. Parameters are identical to `MoveCursorToInnerPos` plus `waitTime`.
+*   `control.SetFocus() -> bool`
+    *   Attempts to set keyboard focus on the control.
+*   `control.SendKey(key: int, waitTime: float = 0.5) -> None`
+    *   Sets focus on the control, then sends a single key press.
+*   `control.SendKeys(text: str, interval: float = 0.01, waitTime: float = 0.5, charMode: bool = True) -> None`
+    *   Sets focus on the control, then sends a string of keys.
+*   `control.GetPattern(patternId: int)`
+    *   The generic method to retrieve a control pattern. `patternId` is from `uiautomation.PatternId`. Returns a pattern-specific object (e.g., `InvokePattern`), or `None` if the pattern is not supported.
+*   `control.ToBitmap(x: int = 0, y: int = 0, width: int = 0, height: int = 0, captureCursor: bool = False) -> Optional[Bitmap]`
+    *   Captures a screenshot of the control (or a part of it) into a `Bitmap` object.
+*   `control.CaptureToImage(savePath: str, x: int = 0, y: int = 0, width: int = 0, height: int = 0, captureCursor: bool = False) -> bool`
+    *   Captures a screenshot of the control (or a part of it) and saves it to a file.
+
+### Control Factory Methods (on `Control` instances)
+
+Every `Control` object also acts as a factory for its child controls. This makes scoped searches very natural.
+
+```python
+# Assuming 'notepad_window' is already a found WindowControl instance
+ok_button = notepad_window.ButtonControl(Name='OK')
+
+# This is equivalent to:
+# ok_button = uiautomation.ButtonControl(Name='OK', searchFromControl=notepad_window)
+```
+
+Each specific control type (e.g., `ButtonControl`, `EditControl`) has a corresponding method on `Control` (and its subclasses) that accepts the same search parameters as the constructor:
+
+*   `control.ButtonControl(...) -> ButtonControl`
+*   `control.EditControl(...) -> EditControl`
+*   `control.WindowControl(...) -> WindowControl`
+*   ... and so on for all `ControlType`s.
+
+---
+
+## III. Specific Control Classes
+
+These classes inherit from `Control` and are associated with a specific `ControlType`. Their constructors implicitly set the `ControlType` parameter. They often include convenience methods for common patterns they support.
+
+**Example: `WindowControl`**
+
+```python
+class WindowControl(Control, TopLevel):
+    def __init__(self, searchFromControl: Optional[Control] = None, ..., **searchProperties):
+        super().__init__(searchFromControl, ..., ControlType=ControlType.WindowControl, ..., **searchProperties)
+
+    # Specific pattern getters for WindowControl (Mandatory patterns)
+    def GetTransformPattern(self) -> TransformPattern: ...
+    def GetWindowPattern(self) -> WindowPattern: ...
+
+    # Specific window management methods (from TopLevel mixin)
+    def SetTopmost(self, isTopmost: bool = True, waitTime: float = 0.5) -> bool: ...
+    def Maximize(self, waitTime: float = 0.5) -> bool: ...
+    def Minimize(self, waitTime: float = 0.5) -> bool: ...
+    def Restore(self, waitTime: float = 0.5) -> bool: ...
+    def SetActive(self, waitTime: float = 0.5) -> bool: ...
+    def Close(self, waitTime: float = 0.5) -> bool: # Also available via GetWindowPattern().Close()
+        """Closes the window using WindowPattern if supported, otherwise tries native APIs."""
+        wp = self.GetWindowPattern()
+        if wp:
+            return wp.Close(waitTime)
+        # Fallback to native window handle if WindowPattern not available/working
+        handle = self.NativeWindowHandle
+        if handle:
+            return uiautomation.PostMessage(handle, 0x0010, 0, 0) # WM_CLOSE
+        return False
+```
+
+**Common Specialized Control Classes and their Pattern Getters:**
+
+*   **`ButtonControl`**:
+    *   `button.GetInvokePattern() -> InvokePattern` (For clicking)
+    *   `button.GetTogglePattern() -> TogglePattern` (For checkboxes/radio buttons styled as buttons)
+*   **`EditControl`**:
+    *   `edit.GetValuePattern() -> ValuePattern` (For getting/setting text)
+    *   `edit.GetTextPattern() -> TextPattern` (For rich text manipulation)
+*   **`CheckBoxControl`**:
+    *   `checkbox.GetTogglePattern() -> TogglePattern` (For checking/unchecking)
+    *   `checkbox.SetChecked(checked: bool) -> bool` (Convenience method)
+*   **`ComboBoxControl`**:
+    *   `combo.GetExpandCollapsePattern() -> ExpandCollapsePattern` (For opening/closing dropdown)
+    *   `combo.GetValuePattern() -> ValuePattern` (For getting/setting current value)
+    *   `combo.Select(itemName: str = '', condition: Optional[Callable[[str], bool]] = None, ...) -> bool` (Convenience method for selecting item)
+*   **`ListItemControl`**:
+    *   `item.GetSelectionItemPattern() -> SelectionItemPattern` (For selecting items in a list/tree)
+    *   `item.GetInvokePattern() -> InvokePattern` (For activating the item)
+    *   `item.GetExpandCollapsePattern() -> ExpandCollapsePattern` (For tree view items)
+
+---
+
+## IV. Control Pattern Classes
+
+These classes wrap the `IUIAutomation...Pattern` COM interfaces. They are obtained via `control.GetPattern(PatternId.<PATTERN_ID>)` or specific `control.Get...Pattern()` methods.
+
+**Example: `InvokePattern`**
+
+```python
+class InvokePattern:
+    def __init__(self, pattern=None): # Internal COM object
+        self.pattern = pattern
+
+    def Invoke(self, waitTime: float = 0.5) -> bool:
+        """
+        Calls IUIAutomationInvokePattern::Invoke to activate the element.
+        Returns True if successful, False otherwise.
+        """
+        # ... COM call ...
+```
+
+**Other Key Pattern Classes:**
+
+*   **`ValuePattern`**:
+    *   `vp.Value` (`str`): Gets the text value.
+    *   `vp.IsReadOnly` (`bool`): Checks if the value is read-only.
+    *   `vp.SetValue(value: str, waitTime: float = 0.5) -> bool`: Sets the text value.
+*   **`TogglePattern`**:
+    *   `tp.ToggleState` (`int`): Gets the current state (`ToggleState.Off`, `ToggleState.On`, `ToggleState.Indeterminate`).
+    *   `tp.Toggle(waitTime: float = 0.5) -> bool`: Cycles through the toggle states.
+    *   `tp.SetToggleState(toggleState: int, waitTime: float = 0.5) -> bool`: Sets the state to a specific `ToggleState`.
+*   **`ExpandCollapsePattern`**:
+    *   `ecp.ExpandCollapseState` (`int`): Gets the current state (`ExpandCollapseState.Expanded`, `Collapsed`, `PartiallyExpanded`, `LeafNode`).
+    *   `ecp.Expand(waitTime: float = 0.5) -> bool`: Expands the element.
+    *   `ecp.Collapse(waitTime: float = 0.5) -> bool`: Collapses the element.
+*   **`WindowPattern`**:
+    *   `wp.WindowVisualState` (`int`): Gets the current visual state (`WindowVisualState.Normal`, `Maximized`, `Minimized`).
+    *   `wp.SetWindowVisualState(state: int, waitTime: float = 0.5) -> bool`: Sets the visual state.
+    *   `wp.Close(waitTime: float = 0.5) -> bool`: Closes the window.
+    *   `wp.WaitForInputIdle(milliseconds: int) -> bool`: Waits for the window to become idle.
+*   **`ScrollPattern`**:
+    *   `sp.HorizontalScrollPercent`, `sp.VerticalScrollPercent` (`float`): Current scroll positions (0-100).
+    *   `sp.HorizontallyScrollable`, `sp.VerticallyScrollable` (`bool`): Whether scrolling is possible.
+    *   `sp.Scroll(horizontalAmount: int, verticalAmount: int, waitTime: float = 0.5) -> bool`: Scrolls by a given amount (`ScrollAmount.LargeIncrement`, `SmallDecrement`, etc.).
+    *   `sp.SetScrollPercent(horizontalPercent: float, verticalPercent: float, waitTime: float = 0.5) -> bool`: Sets scroll position by percentage.
+*   **`SelectionItemPattern`**:
+    *   `sip.IsSelected` (`bool`): Checks if the item is selected.
+    *   `sip.Select(waitTime: float = 0.5) -> bool`: Selects the item (and deselects others in single-selection containers).
+    *   `sip.AddToSelection(waitTime: float = 0.5) -> bool`: Adds the item to selection (in multi-selection containers).
+    *   `sip.RemoveFromSelection(waitTime: float = 0.5) -> bool`: Removes the item from selection.
+*   **`TextPattern`**:
+    *   `tp.DocumentRange` (`TextRange`): The full text range of the document.
+    *   `tp.GetSelection() -> List[TextRange]`: Returns a list of selected text ranges.
+    *   `tp.RangeFromPoint(x: int, y: int) -> Optional[TextRange]`: Gets a text range at a specific point.
+*   **`TextRange`**:
+    *   `tr.GetText(maxLength: int = -1) -> str`: Retrieves text from the range.
+    *   `tr.Select(waitTime: float = 0.5) -> bool`: Selects the text within the range.
+    *   `tr.Move(unit: int, count: int, waitTime: float = 0.5) -> int`: Moves the text range by units (`TextUnit.Character`, `Word`, `Line`, etc.).
+
+---
+
+## V. Utility Classes & Enums
+
+Constants and helper classes for various functionalities.
+
+### Enums for UI Automation
+
+*   `uiautomation.ControlType`: IDs for different UI element types (e.g., `ButtonControl`, `EditControl`, `WindowControl`).
+*   `uiautomation.PatternId`: IDs for control patterns (e.g., `InvokePattern`, `ValuePattern`, `WindowPattern`).
+*   `uiautomation.PropertyId`: IDs for UI Automation element properties (e.g., `NameProperty`, `AutomationIdProperty`, `BoundingRectangleProperty`).
+*   `uiautomation.ToggleState`: States for `TogglePattern` (`Off`, `On`, `Indeterminate`).
+*   `uiautomation.ExpandCollapseState`: States for `ExpandCollapsePattern` (`Expanded`, `Collapsed`).
+*   `uiautomation.WindowVisualState`: Visual states for `WindowPattern` (`Normal`, `Maximized`, `Minimized`).
+*   `uiautomation.TextUnit`: Units for `TextPattern` operations (`Character`, `Word`, `Line`, `Paragraph`, `Document`).
+*   `uiautomation.AccessibleRole`: Roles for `LegacyIAccessiblePattern` (e.g., `PushButton`, `Window`).
+*   `uiautomation.AccessibleState`: States for `LegacyIAccessiblePattern` (e.g., `Selected`, `Focused`, `Checked`).
+
+### Enums for Win32 API
+
+*   `uiautomation.Keys`: Virtual key codes for keyboard events (e.g., `VK_ENTER`, `VK_SHIFT`, `VK_A`).
+*   `uiautomation.ModifierKey`: Modifier key flags for hotkeys (e.g., `Alt`, `Control`, `Shift`, `Win`).
+*   `uiautomation.SW`: ShowWindow commands for window management (e.g., `ShowNormal`, `Maximize`, `Hide`).
+*   `uiautomation.ConsoleColor`: Color codes for console output.
+
+### `Rect` Class
+
+Represents a rectangle, typically a bounding box of a UI element.
+
+*   `Rect(left: int, top: int, right: int, bottom: int)`: Constructor.
+*   `rect.width() -> int`: Width of the rectangle.
+*   `rect.height() -> int`: Height of the rectangle.
+*   `rect.xcenter() -> int`: X-coordinate of the center.
+*   `rect.ycenter() -> int`: Y-coordinate of the center.
+*   `rect.contains(x: int, y: int) -> bool`: Checks if a point `(x, y)` is within the rectangle.
+
+### `Bitmap` Class
+
+A simple image manipulation class, wrapping GDI+ `Gdiplus::Bitmap`.
+
+*   `Bitmap(width: int = 0, height: int = 0)`: Creates a new transparent bitmap.
+*   `Bitmap.FromControl(control: Control, ...) -> Optional['Bitmap']`: Captures a control's image.
+*   `Bitmap.FromFile(filePath: str) -> Optional['Bitmap']`: Loads an image from a file.
+*   `Bitmap.FromBytes(data: Union[bytes, bytearray], format: str = None, width: int = None, height: int = None) -> Optional['Bitmap']`: Creates bitmap from raw pixels or image data.
+*   `bitmap.ToFile(savePath: str, quality: int = None) -> bool`: Saves the bitmap to a file.
+*   `bitmap.ToBytes(format: str, quality: int = None) -> bytearray`: Converts the bitmap to bytes in a specified format.
+*   `bitmap.ToPILImage() -> PIL.Image.Image`: Converts to a PIL Image object.
+*   `bitmap.ToNDArray() -> numpy.ndarray`: Converts to a NumPy array (BGRA).
+*   `bitmap.Width`, `bitmap.Height` (`int`): Dimensions of the bitmap.
+*   `bitmap.GetPixelColor(x: int, y: int) -> int`: Gets ARGB color of a pixel (0xAARRGGBB).
+*   `bitmap.SetPixelColor(x: int, y: int, argb: int) -> bool`: Sets ARGB color of a pixel.
+*   `bitmap.Copy(...) -> MemoryBMP`: Creates a new bitmap from a portion of the current one.
+*   `bitmap.Resize(width: int, height: int) -> MemoryBMP`: Returns a resized copy.
+
+### `Logger` Class
+
+Provides logging and colored console output.
+
+*   `Logger.FilePath` (`str`): Path to the log file (default: `@AutomationLog.txt`).
+*   `Logger.SetLogFile(logFile: Union[TextIOWrapper, str]) -> None`: Sets the log file.
+*   `Logger.Write(log: Any, consoleColor: int = -1, writeToFile: bool = True, printToStdout: bool = True, logFile: Optional[str] = None, printTruncateLen: int = 0) -> None`: Writes a log entry.
+*   `Logger.WriteLine(...)`, `Logger.ColorfullyWrite(...)`, `Logger.ColorfullyWriteLine(...)`, `Logger.Log(...)`, `Logger.ColorfullyLog(...)`: Convenience methods for logging.
+
+---

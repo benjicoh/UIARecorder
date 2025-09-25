@@ -93,7 +93,7 @@ class MediaRecorder:
             "bounding_box": bounding_box,
             "element_id": element_id,
             "color": color,
-            "ttl": 20
+            "ttl": 40
         })
 
     def set_clickoverlay(self, x, y, button):
@@ -101,7 +101,7 @@ class MediaRecorder:
             "x": x,
             "y": y,
             "button": button,
-            "ttl": 20
+            "ttl": 40
         }
 
     def _record_video(self):
