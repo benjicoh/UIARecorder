@@ -1,6 +1,7 @@
 import os
 import argparse
 import time
+import shutil
 from pydantic import BaseModel
 from google.genai import types
 from tools.common.logger import get_logger
@@ -11,6 +12,7 @@ from agent.common_flow import (
     run_command,
     write_file,
     upload_dir_files,
+    dump_ui_tree,
 )
 
 logger = get_logger(__name__)
@@ -22,9 +24,7 @@ RUN_OUTPUT_DIR = "generated_scripts/{timestamp}"
 COMPILATION_ITERATION_DIR = "{run_output_dir}/compilation/iteration{i}"
 EXECUTION_ITERATION_DIR = "{run_output_dir}/execution/iteration{i}"
 MODEL = "gemini-2.5-flash"
-FLAUI_PROJECT_DIR = "fla-ui/TemplateTest"
-FLAUI_PROJECT_PATH = f"{FLAUI_PROJECT_DIR}/TemplateTest.csproj"
-FLAUI_SOURCE_PATH = f"{FLAUI_PROJECT_DIR}/TestClass.cs"
+TEMPLATE_PROJECT_DIR = "fla-ui/TemplateTest"
 
 # --- Configuration ---
 client = initialize_gemini_client()
@@ -59,10 +59,24 @@ def main():
     os.makedirs(run_output_dir, exist_ok=True)
     logger.info(f"Run output directory: {run_output_dir}")
 
+    # --- Copy Template Project ---
+    project_dir = os.path.join(run_output_dir, "TemplateTest")
+    shutil.copytree(TEMPLATE_PROJECT_DIR, project_dir)
+    logger.info(f"Copied template project to {project_dir}")
+
+    flaui_project_path = f"{project_dir}/TemplateTest.csproj"
+    flaui_source_path = f"{project_dir}/TestClass.cs"
+
+    # --- Dump UI Tree ---
+    ui_dump_path = os.path.join(run_output_dir, "ui_dump.json")
+    dump_ui_tree(process_name=args.process_name, window_title=args.window_title, output_file=ui_dump_path)
+    logger.info(f"UI tree dumped to {ui_dump_path}")
+
     chat = client.chats.create(model=MODEL)
 
     logger.info(f"Analyzing data in: {args.recording_dir}")
     initial_files = upload_dir_files(client, args.recording_dir)
+    initial_files.extend(upload_dir_files(client, project_dir))
     prompt_parts = []
     logger.info("Generating initial script... (This may take a moment)")
     prompt_parts.extend(initial_files)
@@ -94,13 +108,13 @@ def main():
         iteration_dir = COMPILATION_ITERATION_DIR.format(run_output_dir=run_output_dir, i=i)
         # --- Write Script to File ---
         code = "\n".join(code_response.code_lines)
-        write_file(f"{FLAUI_SOURCE_PATH}", code)
-        logger.info(f"Script written to {FLAUI_SOURCE_PATH}")
+        write_file(f"{flaui_source_path}", code)
+        logger.info(f"Script written to {flaui_source_path}")
         write_file(iteration_dir + "/script.cs.txt", code, True)
 
         # --- Compile Script ---
-        logger.info(f"Compiling script: {FLAUI_PROJECT_PATH}")
-        compilation_result = run_command(["dotnet", "build"], FLAUI_PROJECT_DIR)
+        logger.info(f"Compiling script: {flaui_project_path}")
+        compilation_result = run_command(["dotnet", "build"], project_dir)
 
         log_path = iteration_dir + "/compilation_log.txt"
         log_output = f"STDOUT:\n{compilation_result['stdout']}\n\nSTDERR:\n{compilation_result['stderr']}"
@@ -126,11 +140,11 @@ def main():
         iteration_dir = EXECUTION_ITERATION_DIR.format(run_output_dir=run_output_dir, i=i + MAX_COMPILATION_ATTEMPTS)
 
         # --- Run Script ---
-        logger.info(f"Running test: {FLAUI_PROJECT_PATH}")
+        logger.info(f"Running test: {flaui_project_path}")
         generated_recording_dir = iteration_dir + "/recordings"
         recorder = Recorder(output_folder=generated_recording_dir, take_screenshots=False)
         recorder.start()
-        execution_result = run_command(["dotnet", "test"], FLAUI_PROJECT_DIR)
+        execution_result = run_command(["dotnet", "test"], project_dir)
         recorder.stop()
 
         # --- Log Execution Results ---
@@ -164,8 +178,8 @@ def main():
         code_response = response.parsed
         # --- Write Script to File ---
         code = "\n".join(code_response.code_lines)
-        write_file(f"{FLAUI_SOURCE_PATH}", code)
-        logger.info(f"Script written to {FLAUI_SOURCE_PATH}")
+        write_file(f"{flaui_source_path}", code)
+        logger.info(f"Script written to {flaui_source_path}")
         write_file(iteration_dir + "/script.cs.txt", code, True)
 
     if not execution_success:

@@ -1,6 +1,7 @@
 import os
 import subprocess
 import time
+import shutil
 from google import genai
 from tools.common.logger import get_logger
 
@@ -129,8 +130,25 @@ def upload_dir_files(client, dir_path, extensions=(".json", ".mp4", ".png", ".tx
         for filename in filenames:
             if filename.endswith(extensions):
                 files_to_upload.append(os.path.join(dirpath, filename))
+
+    # Handle .cs and .csproj files by renaming them to .txt
+    for dirpath, _, filenames in os.walk(dir_path):
+        for filename in filenames:
+            if filename.endswith((".cs", ".csproj")):
+                original_path = os.path.join(dirpath, filename)
+                new_path = original_path + ".txt"
+                shutil.copy(original_path, new_path)
+                files_to_upload.append(new_path)
+
     for file_path in files_to_upload:
         uploaded_file = upload_file(client, file_path)
         if uploaded_file:
             uploaded_files.append(uploaded_file)
     return uploaded_files
+
+def dump_ui_tree(process_name: str = None, window_title: str = None, output_file: str = None):
+    """
+    Dumps the UI Automation tree for a given process or window to a JSON file.
+    """
+    from agent.uia_dumper import dump_ui
+    return dump_ui(process_name=process_name, window_title=window_title, output_file=output_file)
