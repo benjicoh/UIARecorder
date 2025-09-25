@@ -15,7 +15,8 @@ logger = get_logger(__name__)
 MAX_COMPILATION_ATTEMPTS = 3
 MAX_EXECUTION_ATTEMPTS = 3
 RUN_OUTPUT_DIR = "generated_scripts/{timestamp}"
-ITERATION_OUTPUT_DIR = "{run_output_dir}/iteration{i}"
+COMPILATION_ITERATION_DIR = "{run_output_dir}/compilation/iteration{i}"
+EXECUTION_ITERATION_DIR = "{run_output_dir}/execution/iteration{i}"
 MODEL = "gemini-2.5-flash"
 FLAUI_PROJECT_DIR = "fla-ui/GeneratedTests"
 FLAUI_PROJECT_PATH = f"{FLAUI_PROJECT_DIR}/FlaUI.Generated.csproj"
@@ -164,24 +165,41 @@ def main():
 
     # --- Compilation Loop ---
     compilation_success = False
+    code_response = None
     for i in range(MAX_COMPILATION_ATTEMPTS):
         logger.info(f"--- Compilation Attempt {i+1}/{MAX_COMPILATION_ATTEMPTS} ---")
-        iteration_dir = ITERATION_OUTPUT_DIR.format(run_output_dir=run_output_dir, i=i)
+        iteration_dir = COMPILATION_ITERATION_DIR.format(run_output_dir=run_output_dir, i=i)
 
         # --- Generate Script ---
-        response = send_message_with_retries(
-            chat,
-            prompt_parts,
-            types.GenerateContentConfig(
-                response_schema=CodeResponse,
-                response_mime_type="application/json",
-                system_instruction=system_prompt
+        if i == 0:
+            response = send_message_with_retries(
+                chat,
+                prompt_parts,
+                types.GenerateContentConfig(
+                    response_schema=CodeResponse,
+                    response_mime_type="application/json",
+                    system_instruction=system_prompt
+                )
             )
-        )
-        code_response: CodeResponse = response.parsed
+            code_response: CodeResponse = response.parsed
+        else:
+            prompt_parts = ["The previously generated script failed to compile.\nAttached are the compilation logs for analysis and script refinement."]
+            prompt_parts.extend(upload_dir_files(client, iteration_dir))
+            response = send_message_with_retries(
+                chat,
+                prompt_parts,
+                types.GenerateContentConfig(
+                    response_schema=CodeResponse,
+                    response_mime_type="application/json",
+                    system_instruction=system_prompt
+                )
+            )
+            code_response: CodeResponse = response.parsed
+
         # --- Write Script to File ---
         write_file(f"{FLAUI_SOURCE_PATH}", code_response.code)
         logger.info(f"Script written to {FLAUI_SOURCE_PATH}")
+        write_file(iteration_dir + "/script.cs", code_response.code)
 
         # --- Compile Script ---
         logger.info(f"Compiling script: {FLAUI_PROJECT_PATH}")
@@ -190,7 +208,6 @@ def main():
         log_path = iteration_dir + "/compilation_log.txt"
         log_output = f"STDOUT:\n{compilation_result['stdout']}\n\nSTDERR:\n{compilation_result['stderr']}"
         write_file(log_path, log_output)
-        write_file(iteration_dir + "/script.cs", code_response.code)
         logger.info(f"Compilation log file written to {log_path}")
 
         if compilation_result['returncode'] == 0:
@@ -201,10 +218,6 @@ def main():
         logger.warning("--- Compilation Failed! ---")
         if i == MAX_COMPILATION_ATTEMPTS - 1: break
 
-        logger.info("Collecting and sending data for refinement...")
-        prompt_parts = ["The previously generated script failed to compile.\nAttached are the compilation logs for analysis and script refinement."]
-        prompt_parts.extend(upload_dir_files(client, iteration_dir))
-
     if not compilation_success:
         logger.error("--- Max Compilation Retries Reached! Could not compile the script. ---")
         return
@@ -213,11 +226,15 @@ def main():
     execution_success = False
     for i in range(MAX_EXECUTION_ATTEMPTS):
         logger.info(f"--- Execution Attempt {i+1}/{MAX_EXECUTION_ATTEMPTS} ---")
-        iteration_dir = ITERATION_OUTPUT_DIR.format(run_output_dir=run_output_dir, i=i + MAX_COMPILATION_ATTEMPTS)
+        iteration_dir = EXECUTION_ITERATION_DIR.format(run_output_dir=run_output_dir, i=i + MAX_COMPILATION_ATTEMPTS)
 
         # --- Run Script ---
         logger.info(f"Running test: {FLAUI_PROJECT_PATH}")
+        generated_recording_dir = iteration_dir + "/recordings"
+        recorder = Recorder(output_folder=generated_recording_dir, take_screenshots=False)
+        recorder.start()
         execution_result = run_command(["dotnet", "test", FLAUI_PROJECT_PATH])
+        recorder.stop()
 
         # --- Log Execution Results ---
         log_path = iteration_dir + "/execution_log.txt"
@@ -235,7 +252,23 @@ def main():
 
         logger.info("Collecting and sending data for refinement...")
         prompt_parts = ["The previously generated script failed to execute correctly.\nAttached are the logs of the failed run for analysis, and script refinement."]
-        prompt_parts.extend(upload_dir_files(iteration_dir, extensions=(".txt")))
+        prompt_parts.extend(upload_dir_files(client, iteration_dir))
+
+        # --- Generate Script ---
+        response = send_message_with_retries(
+            chat,
+            prompt_parts,
+            types.GenerateContentConfig(
+                response_schema=CodeResponse,
+                response_mime_type="application/json",
+                system_instruction=system_prompt
+            )
+        )
+        code_response = response.parsed
+        # --- Write Script to File ---
+        write_file(f"{FLAUI_SOURCE_PATH}", code_response.code)
+        logger.info(f"Script written to {FLAUI_SOURCE_PATH}")
+        write_file(iteration_dir + "/script.cs", code_response.code)
 
     if not execution_success:
         logger.error("--- Max Execution Retries Reached! Could not fix the script. ---")
