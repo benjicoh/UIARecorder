@@ -15,8 +15,7 @@
 
 ## Output
 - C# code that uses the FlaUI library to automate the described scenario.
-- The code should be placed inside the `GeneratedTest` method.
-- **DO NOT** generate any text other than the C# code.
+- The code should be like the `Code Template` below, fully self-contained and compilable.
 
 ## Recording JSON Format
 The JSON file contains a list of events, each with the following structure:
@@ -48,6 +47,7 @@ The JSON file contains a list of events, each with the following structure:
 - Include comments in the code to explain the logic and flow.
 - Listen to the video's audio, there might be additional context or information that can help with element identification.
 - It is useful to identify the main window of the application, and activate it at the start of the script.
+- Use MSTest logging to provide insights into the script's execution flow (`Logger.LogMessage` under `Microsoft.VisualStudio.TestTools.UnitTesting.Logging`).
 
 ## Identifying elements correctly
 - Use the `Name`, `AutomationId`, `ClassName`, and `ControlType` properties from the JSON file to uniquely identify elements.
@@ -77,3 +77,34 @@ The JSON file contains a list of events, each with the following structure:
 If you are provided with a log file from a previous execution and / or a full UI dump, use them to refine the script.
 - **Logs**: This file contains the output of a previous run of the generated script. Analyze any errors or failures in the log to identify the root cause. Modify the script to fix these issues. For example, if an element was not found, you may need to adjust the selectors or add a wait condition.
 - **UI Dump**: This file contains a full snapshot of the application's UI tree. Use this as a reference to find more robust selectors for elements that were problematic in the previous run. It can also help you understand the overall structure of the application and discover alternative ways to automate a task.
+
+## Code Template
+```csharp
+using FlaUI.Core;
+using FlaUI.Core.AutomationElements;
+using FlaUI.Core.Conditions;
+using FlaUI.UIA3;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Diagnostics;
+
+namespace FlaUI.Generated
+{
+    [TestClass]
+    public class GeneratedTests
+    {
+        private readonly UIA3Automation _automation = new UIA3Automation();
+
+        [TestCleanup]
+        public void Cleanup()
+        {
+            _automation.Dispose();
+        }
+
+        [TestMethod]
+        public void GeneratedTest()
+        {
+            // Test code will be generated here
+        }
+    }
+}
+```

@@ -1,15 +1,13 @@
 import os
-import sys
-sys.path.append(os.getcwd())
 import argparse
 import subprocess
 import time
 import json
 from pydantic import BaseModel
-import google.generativeai as genai
-from google.generativeai import types
+from google import genai
+from google.genai import types
 from tools.common.logger import get_logger
-
+from tools.recorder.main_recorder import Recorder
 
 logger = get_logger(__name__)
 
@@ -18,20 +16,20 @@ MAX_COMPILATION_ATTEMPTS = 3
 MAX_EXECUTION_ATTEMPTS = 3
 RUN_OUTPUT_DIR = "generated_scripts/{timestamp}"
 ITERATION_OUTPUT_DIR = "{run_output_dir}/iteration{i}"
-MODEL = "gemini-1.5-flash-latest"
-FLAUI_PROJECT_DIR = "fla-ui"
+MODEL = "gemini-2.5-flash"
+FLAUI_PROJECT_DIR = "fla-ui/GeneratedTests"
 FLAUI_PROJECT_PATH = f"{FLAUI_PROJECT_DIR}/FlaUI.Generated.csproj"
 FLAUI_SOURCE_PATH = f"{FLAUI_PROJECT_DIR}/GeneratedTests.cs"
 
 # --- Configuration ---
+# --- Configuration ---
 try:
-    if not os.getenv("GEMINI_API_KEY"):
-        raise ValueError("GEMINI_API_KEY environment variable not set.")
-    genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+    client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 except Exception as e:
-    logger.error(f"Error configuring Gemini: {e}")
-    logger.error("Please make sure you have set up your API key.")
+    logger.error(f"Error creating client: {e}")
+    logger.error("Please make sure you have set up your API key or ADC correctly.")
     exit()
+
 
 # -- Structured Output --
 class CodeResponse(BaseModel):
@@ -42,24 +40,28 @@ class CodeResponse(BaseModel):
 # --- Prompts ---
 try:
     cur_path = os.path.dirname(os.path.abspath(__file__))
-    with open(os.path.join(cur_path, '..', FLAUI_PROJECT_DIR, 'prompt.md'), 'r', encoding='utf-8') as f:
+    with open(os.path.join(cur_path, '..', FLAUI_PROJECT_DIR, '..', 'prompt.md'), 'r', encoding='utf-8') as f:
         system_prompt = f.read()
 except FileNotFoundError:
     logger.error(f"Error: `{FLAUI_PROJECT_DIR}/prompt.md` not found.")
     exit()
 
 # --- Helper Functions ---
-def send_message_with_retries(chat, prompt_parts, generation_config, max_retries=3, retry_delay=2):
+def send_message_with_retries(chat, prompt_parts, config, max_retries=3, retry_delay=2):
     """
     Sends a message using chat.send_message, retries up to max_retries if a 503 error is returned.
     Returns the response or raises the last exception.
     """
     for attempt in range(1, max_retries + 1):
         try:
-            response = chat.send_message(prompt_parts, generation_config=generation_config)
+            response = chat.send_message(prompt_parts, config=config)
             return response
         except Exception as e:
-            if '503' in str(e):
+            # Check for 503 error in exception message
+            if hasattr(e, 'status_code') and e.status_code == 503:
+                logger.warning(f"503 Service Unavailable. Retry {attempt}/{max_retries}...")
+                time.sleep(retry_delay)
+            elif '503' in str(e):
                 logger.warning(f"503 Service Unavailable. Retry {attempt}/{max_retries}...")
                 time.sleep(retry_delay)
             else:
@@ -88,32 +90,45 @@ def run_command(command: list[str]):
         return {'stdout': '', 'stderr': f"An unexpected error occurred: {e}", 'returncode': -1}
 
 def write_file(file_path: str, content: str):
+    """
+    Writes content to a file.
+    """
     os.makedirs(os.path.dirname(file_path), exist_ok=True)
     with open(file_path, "w", encoding='utf-8') as f:
         f.write(content)
     return f"File '{file_path}' written successfully."
 
-def upload_file(file_path):
+def upload_file(client, file_path):
+    """
+    Uploads a file using the Gemini client, handles .json renaming, and waits for processing.
+    Returns the uploaded file object or None if failed.
+    """
+    # If ends with .json, rename to .json.txt
     if file_path.endswith('.json'):
         new_path = file_path + '.txt'
         os.rename(file_path, new_path)
         file_path = new_path
     try:
-        logger.info(f"Uploading {os.path.basename(file_path)}...")
-        uploaded_file = genai.upload_file(path=file_path)
+        uploaded_file = client.files.upload(file=file_path)
+        # Wait for the file to be processed.
         while uploaded_file.state.name == "PROCESSING":
             logger.info("\tWaiting for file to be processed...")
             time.sleep(2)
-            uploaded_file = genai.get_file(name=uploaded_file.name)
+            uploaded_file = client.files.get(name=uploaded_file.name)
         if uploaded_file.state.name == "FAILED":
-            logger.error(f"Error: File upload failed for {file_path}.")
+            logger.error(f"Error: File upload failed for {file_path}. Uploading the next file.")
             return None
         return uploaded_file
     except Exception as e:
         logger.error(f"\nError uploading file {file_path}: {e}")
         return None
 
-def upload_dir_files(dir_path, extensions=(".json", ".mp4", ".png", ".txt")):
+# Upload all files in a directory matching certain extensions
+def upload_dir_files(client, dir_path, extensions=(".json", ".mp4", ".png", ".txt")):
+    """
+    Uploads all files in a directory (recursively) matching the given extensions.
+    Returns a list of uploaded file objects.
+    """
     uploaded_files = []
     files_to_upload = []
     for dirpath, _, filenames in os.walk(dir_path):
@@ -121,18 +136,11 @@ def upload_dir_files(dir_path, extensions=(".json", ".mp4", ".png", ".txt")):
             if filename.endswith(extensions):
                 files_to_upload.append(os.path.join(dirpath, filename))
     for file_path in files_to_upload:
-        uploaded_file = upload_file(file_path)
+        logger.info(f"Uploading {os.path.basename(file_path)}...")
+        uploaded_file = upload_file(client, file_path)
         if uploaded_file:
             uploaded_files.append(uploaded_file)
     return uploaded_files
-
-def insert_code_into_template(code: str):
-    with open(FLAUI_SOURCE_PATH, 'r', encoding='utf-8') as f:
-        template = f.read()
-    final_code = template.replace("// Test code will be generated here", code)
-    with open(FLAUI_SOURCE_PATH, 'w', encoding='utf-8') as f:
-        f.write(final_code)
-
 # --- Main Flow ---
 def main():
     parser = argparse.ArgumentParser(description="Gemini UI Automation Agent for FlaUI")
@@ -145,11 +153,10 @@ def main():
     os.makedirs(run_output_dir, exist_ok=True)
     logger.info(f"Run output directory: {run_output_dir}")
 
-    model = genai.GenerativeModel(MODEL, system_instruction=system_prompt)
-    chat = model.start_chat()
+    chat = client.chats.create(model=MODEL)
 
     logger.info(f"Analyzing data in: {args.recording_dir}")
-    initial_files = upload_dir_files(args.recording_dir)
+    initial_files = upload_dir_files(client, args.recording_dir)
     prompt_parts = []
     logger.info("Generating initial script... (This may take a moment)")
     prompt_parts.extend(initial_files)
@@ -165,25 +172,15 @@ def main():
         response = send_message_with_retries(
             chat,
             prompt_parts,
-            generation_config=types.GenerationConfig(
-                response_mime_type="application/json"
+            types.GenerateContentConfig(
+                response_schema=CodeResponse,
+                response_mime_type="application/json",
+                system_instruction=system_prompt
             )
         )
-
-        try:
-            # The model sometimes returns the JSON wrapped in markdown, so we need to clean it up
-            cleaned_json = response.text.strip().replace('```json', '').replace('```', '').strip()
-            code_response = CodeResponse(**json.loads(cleaned_json))
-        except (json.JSONDecodeError, TypeError) as e:
-            logger.error(f"Failed to parse JSON response: {e}")
-            logger.error(f"Raw response: {response.text}")
-            # Prepare for next iteration
-            if i == MAX_COMPILATION_ATTEMPTS - 1: break
-            prompt_parts = ["The previous response was not valid JSON. Please provide the response in the correct JSON format.", response.text]
-            continue
-
+        code_response: CodeResponse = response.parsed
         # --- Write Script to File ---
-        insert_code_into_template(code_response.code)
+        write_file(f"{FLAUI_SOURCE_PATH}", code_response.code)
         logger.info(f"Script written to {FLAUI_SOURCE_PATH}")
 
         # --- Compile Script ---
@@ -193,6 +190,7 @@ def main():
         log_path = iteration_dir + "/compilation_log.txt"
         log_output = f"STDOUT:\n{compilation_result['stdout']}\n\nSTDERR:\n{compilation_result['stderr']}"
         write_file(log_path, log_output)
+        write_file(iteration_dir + "/script.cs", code_response.code)
         logger.info(f"Compilation log file written to {log_path}")
 
         if compilation_result['returncode'] == 0:
@@ -205,7 +203,7 @@ def main():
 
         logger.info("Collecting and sending data for refinement...")
         prompt_parts = ["The previously generated script failed to compile.\nAttached are the compilation logs for analysis and script refinement."]
-        prompt_parts.extend(upload_dir_files(iteration_dir))
+        prompt_parts.extend(upload_dir_files(client, iteration_dir))
 
     if not compilation_success:
         logger.error("--- Max Compilation Retries Reached! Could not compile the script. ---")

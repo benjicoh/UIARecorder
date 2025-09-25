@@ -6,3 +6,6 @@ output/
 user_scripts/
 generated_scripts/
 *.egg-info/
+bin/
+obj/
+*.sln
