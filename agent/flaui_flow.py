@@ -22,9 +22,9 @@ RUN_OUTPUT_DIR = "generated_scripts/{timestamp}"
 COMPILATION_ITERATION_DIR = "{run_output_dir}/compilation/iteration{i}"
 EXECUTION_ITERATION_DIR = "{run_output_dir}/execution/iteration{i}"
 MODEL = "gemini-2.5-flash"
-FLAUI_PROJECT_DIR = "fla-ui/GeneratedTests"
-FLAUI_PROJECT_PATH = f"{FLAUI_PROJECT_DIR}/FlaUI.Generated.csproj"
-FLAUI_SOURCE_PATH = f"{FLAUI_PROJECT_DIR}/GeneratedTests.cs"
+FLAUI_PROJECT_DIR = "fla-ui/TemplateTest"
+FLAUI_PROJECT_PATH = f"{FLAUI_PROJECT_DIR}/TemplateTest.csproj"
+FLAUI_SOURCE_PATH = f"{FLAUI_PROJECT_DIR}/TestClass.cs"
 
 # --- Configuration ---
 client = initialize_gemini_client()
@@ -39,10 +39,10 @@ class CodeResponse(BaseModel):
 # --- Prompts ---
 try:
     cur_path = os.path.dirname(os.path.abspath(__file__))
-    with open(os.path.join(cur_path, '..', FLAUI_PROJECT_DIR, '..', 'prompt.md'), 'r', encoding='utf-8') as f:
+    with open(os.path.join(cur_path, 'flaui_prompt.md'), 'r', encoding='utf-8') as f:
         system_prompt = f.read()
 except FileNotFoundError:
-    logger.error(f"Error: `{FLAUI_PROJECT_DIR}/prompt.md` not found.")
+    logger.error(f"Error: `flaui_prompt.md` not found.")
     exit()
 
 # --- Helper Functions ---
@@ -130,7 +130,7 @@ def main():
         generated_recording_dir = iteration_dir + "/recordings"
         recorder = Recorder(output_folder=generated_recording_dir, take_screenshots=False)
         recorder.start()
-        execution_result = run_command(["dotnet", "run"], FLAUI_PROJECT_DIR)
+        execution_result = run_command(["dotnet", "test"], FLAUI_PROJECT_DIR)
         recorder.stop()
 
         # --- Log Execution Results ---

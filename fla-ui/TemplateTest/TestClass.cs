@@ -3,14 +3,18 @@ using FlaUI.Core;
 using FlaUI.UIA3;
 using FlaUI.Core.AutomationElements;
 
-namespace FlaUI.Generated
+namespace TestAutomationSuite
 {
     [TestClass]
-    public class GeneratedTests
+    public class TestModule
     {
         private UIA3Automation automation;
         private Application app;
 
+        public TestModule(TestContext testContext)
+        {
+            Logger.TestContext = testContext;
+        }
         [TestInitialize]
         public void Setup()
         {
@@ -26,8 +30,9 @@ namespace FlaUI.Generated
         }
 
         [TestMethod]
-        public void TestMethod1()
+        public void Run()
         {
+            Logger.LogInfo("Starting Notepad test");
             // Use the extension method to wait for the editor to appear
             var editor = app.WaitFor(automation, Xpaths.NotepadEditor, 5000);
             Assert.IsNotNull(editor, "The editor should be found.");

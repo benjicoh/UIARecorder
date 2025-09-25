@@ -1,9 +1,11 @@
 using System;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace FlaUI.Generated
+namespace TestAutomationSuite
 {
     public static class Logger
     {
+        public static TestContext TestContext { get; set; }
         public static void LogInfo(string message, [System.Runtime.CompilerServices.CallerFilePath] string file = "", [System.Runtime.CompilerServices.CallerLineNumber] int line = 0)
         {
             Log(message, "INFO", ConsoleColor.Gray, file, line);

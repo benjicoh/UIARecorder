@@ -6,7 +6,7 @@ using FlaUI.UIA3;
 using System;
 using System.Drawing;
 
-namespace FlaUI.Generated
+namespace TestAutomationSuite
 {
     public static class AutomationElementExtensions
     {

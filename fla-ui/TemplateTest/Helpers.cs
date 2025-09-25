@@ -3,7 +3,7 @@ using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Conditions;
 using FlaUI.UIA3;
 
-namespace FlaUI.Generated
+namespace TestAutomationSuite
 {
     public class Helpers
     {

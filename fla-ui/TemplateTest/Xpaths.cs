@@ -1,4 +1,4 @@
-namespace FlaUI.Generated
+namespace TestAutomationSuite
 {
     public static class Xpaths
     {
