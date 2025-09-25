@@ -1,14 +1,18 @@
 
 import os
 import argparse
-import subprocess
 import time
-import json
 from pydantic import BaseModel
-from google import genai
 from google.genai import types
 from tools.common.logger import get_logger
 from tools.recorder.main_recorder import Recorder
+from agent.common_flow import (
+    initialize_gemini_client,
+    send_message_with_retries,
+    run_python_script,
+    write_file,
+    upload_dir_files,
+)
 
 logger = get_logger(__name__)
 
@@ -19,12 +23,7 @@ ITERATION_OUTPUT_DIR = "{run_output_dir}/iteration{i}"
 MODEL = "gemini-2.5-flash"
 
 # --- Configuration ---
-try:
-    client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
-except Exception as e:
-    logger.error(f"Error creating client: {e}")
-    logger.error("Please make sure you have set up your API key or ADC correctly.")
-    exit()
+client = initialize_gemini_client()
 
 # -- Structured Output --
 class CodeResponse(BaseModel):
@@ -42,107 +41,7 @@ except FileNotFoundError:
     exit()
 
 # --- Helper Functions ---
-def send_message_with_retries(chat, prompt_parts, config, max_retries=3, retry_delay=2):
-    """
-    Sends a message using chat.send_message, retries up to max_retries if a 503 error is returned.
-    Returns the response or raises the last exception.
-    """
-    for attempt in range(1, max_retries + 1):
-        try:
-            response = chat.send_message(prompt_parts, config=config)
-            return response
-        except Exception as e:
-            # Check for 503 error in exception message
-            if hasattr(e, 'status_code') and e.status_code == 503:
-                logger.warning(f"503 Service Unavailable. Retry {attempt}/{max_retries}...")
-                time.sleep(retry_delay)
-            elif '503' in str(e):
-                logger.warning(f"503 Service Unavailable. Retry {attempt}/{max_retries}...")
-                time.sleep(retry_delay)
-            else:
-                raise
-    raise Exception(f"Failed after {max_retries} retries due to repeated 503 errors.")
-
-def run_python_script(script_path: str):
-    """
-    Runs a python script and captures its output.
-    Returns a dictionary containing 'stdout' and 'stderr'.
-    """
-    if not os.path.exists(script_path):
-        return {'stdout': '', 'stderr': f"Error: Script not found at {script_path}"}
-
-    # Try to use venv python if available
-    venv_python = os.path.join(os.path.dirname(__file__), "..", ".venv", "Scripts", "python.exe")
-    python_executable = venv_python if os.path.exists(venv_python) else "python"
-
-    try:
-        result = subprocess.run(
-            [python_executable, script_path],
-            capture_output=True,
-            text=True,
-            encoding='utf-8',
-            timeout=120  # Add a timeout for safety
-        )
-        return {'stdout': result.stdout, 'stderr': result.stderr}
-    except subprocess.TimeoutExpired as e:
-        error_output = f"TimeoutExpired: Script execution timed out after 120 seconds.\n"
-        error_output += f"STDOUT:\n{e.stdout}\n\nSTDERR:\n{e.stderr}"
-        return {'stdout': e.stdout or "", 'stderr': error_output}
-    except Exception as e:
-        return {'stdout': '', 'stderr': f"An unexpected error occurred: {e}"}
-
-def write_file(file_path: str, content: str):
-    """
-    Writes content to a file.
-    """
-    os.makedirs(os.path.dirname(file_path), exist_ok=True)
-    with open(file_path, "w", encoding='utf-8') as f:
-        f.write(content)
-    return f"File '{file_path}' written successfully."
-
-def upload_file(client, file_path):
-    """
-    Uploads a file using the Gemini client, handles .json renaming, and waits for processing.
-    Returns the uploaded file object or None if failed.
-    """
-    # If ends with .json, rename to .json.txt
-    if file_path.endswith('.json'):
-        new_path = file_path + '.txt'
-        os.rename(file_path, new_path)
-        file_path = new_path
-    try:
-        uploaded_file = client.files.upload(file=file_path)
-        # Wait for the file to be processed.
-        while uploaded_file.state.name == "PROCESSING":
-            logger.info("\tWaiting for file to be processed...")
-            time.sleep(2)
-            uploaded_file = client.files.get(name=uploaded_file.name)
-        if uploaded_file.state.name == "FAILED":
-            logger.error(f"Error: File upload failed for {file_path}. Uploading the next file.")
-            return None
-        return uploaded_file
-    except Exception as e:
-        logger.error(f"\nError uploading file {file_path}: {e}")
-        return None
-
-# Upload all files in a directory matching certain extensions
-def upload_dir_files(client, dir_path, extensions=(".json", ".mp4", ".png", ".txt")):
-    """
-    Uploads all files in a directory (recursively) matching the given extensions.
-    Returns a list of uploaded file objects.
-    """
-    uploaded_files = []
-    files_to_upload = []
-    for dirpath, _, filenames in os.walk(dir_path):
-        for filename in filenames:
-            if filename.endswith(extensions):
-                files_to_upload.append(os.path.join(dirpath, filename))
-    for file_path in files_to_upload:
-        logger.info(f"Uploading {os.path.basename(file_path)}...")
-        uploaded_file = upload_file(client, file_path)
-        if uploaded_file:
-            uploaded_files.append(uploaded_file)
-    return uploaded_files
+# All helper functions moved to agent/common_flow.py
 # --- Main Flow ---
 
 def main():
