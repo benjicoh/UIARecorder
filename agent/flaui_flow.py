@@ -34,6 +34,7 @@ client = initialize_gemini_client()
 class CodeResponse(BaseModel):
     testcase_code_lines: list[str]
     xpath_code_lines: list[str]
+    application_page_code_lines: list[str]
     failure_reason: str = None
     comments: str = None
 
@@ -50,9 +51,11 @@ except FileNotFoundError:
 def write_response_files(response: CodeResponse, target_dir: str, rename_to_txt: bool = False):
     write_file(os.path.join(target_dir, "TestClass.cs"), "\n".join(response.testcase_code_lines))
     write_file(os.path.join(target_dir, "Xpaths.cs"), "\n".join(response.xpath_code_lines))
+    write_file(os.path.join(target_dir, "ApplicationPage.cs"), "\n".join(response.application_page_code_lines))
     if rename_to_txt:
         os.rename(os.path.join(target_dir, "TestClass.cs"), os.path.join(target_dir, "TestClass.cs.txt"))
         os.rename(os.path.join(target_dir, "Xpaths.cs"), os.path.join(target_dir, "Xpaths.cs.txt"))
+        os.rename(os.path.join(target_dir, "ApplicationPage.cs"), os.path.join(target_dir, "ApplicationPage.cs.txt"))
 
 # --- Main Flow ---
 def main():

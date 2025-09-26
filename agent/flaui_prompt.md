@@ -1,5 +1,5 @@
 ## Goal
-- Generate a robust Windows desktop automation script using C# and the [FlaUI library](https://github.com/FlaUI/FlaUI).
+- Generate a robust Windows desktop automation script using C# and the [FlaUI library](https://github.com/FlaUI/FlaUI), following the Page Object Model (POM) architecture.
 
 ## Inputs
 
@@ -36,8 +36,9 @@ The JSON file contains a list of events, each with the following structure:
 - A full JSON snapshot of the application's UI tree from a previous run, useful for refining element selectors.
 
 ## Output
-- C# code that uses the FlaUI library to automate the described scenario.
-    - A file aimed to replace `TestClass.cs` containing the main test logic.
+- C# code that uses the FlaUI library to automate the described scenario, following the Page Object Model (POM) architecture.
+    - A file aimed to replace `TestClass.cs` containing the test scenario execution logic.
+    - A file aimed to replace `ApplicationPage.cs` containing the page object model, with properties for UI elements and methods for interactions.
     - A file aimed to replace `Xpaths.cs` containing all XPath strings used in the test.
 - The code must have correct indentation for easy reading.
 - The project is an MSTest project.
@@ -60,6 +61,11 @@ The JSON file contains a list of events, each with the following structure:
     - Activate the main window using the extension `window.Activate()`
 - The end of the run **must either call** `Logger.LogPassed` or `Logger.LogFailed` depending on the success of the run.
 
+## Page Object Model (POM) Architecture
+You must follow the Page Object Model (POM) architecture. This means separating the test logic from the UI interaction logic.
+- **`TestClass.cs`**: This class is responsible for the test scenario flow. It should not contain any direct FlaUI element finding logic. It should instantiate the `ApplicationPage` and call its methods to perform actions on the UI.
+- **`ApplicationPage.cs`**: This class represents the main application window. It contains properties that represent UI elements (e.g., buttons, text boxes) and methods that perform actions on those elements (e.g., `ClickSaveButton()`, `EnterUsername(string username)`).
+- **`Xpaths.cs`**: This class contains all the XPath selectors used to find the elements.
 
 ## Identifying elements correctly
 - Use the `Name`, `AutomationId`, `ClassName`, and `ControlType` properties from the JSON file to uniquely identify elements.
@@ -76,15 +82,18 @@ The JSON file contains a list of events, each with the following structure:
 ### Initial Script Generation
 - Based on the narration, video and json, identify the key uia elements involved, and their unique properties.
 - Add new XPath selectors to `Xpaths.cs`.
-- Implement the test logic and replace `TestClass.cs` with the generated code.
+- Implement the element properties and interaction methods in `ApplicationPage.cs`.
+- Implement the test logic in `TestClass.cs` by using the `ApplicationPage`.
 - After generating the script, review it to ensure all elements are correctly identified and the actions are appropriate.
 
 ### Actual Runs Refinement
 If you are provided with a log file from a previous execution and / or a full UI dump, use them to refine the script.
-- **Logs**: This file contains the output of a previous run of the generated script. Analyze any errors or failures in the log to identify the root cause. Modify the script to fix these issues. For example, if an element was not found, you may need to adjust the selectors or add a wait condition.
+- **Logs**: This file contains the output of a previous run of the generated script. Analyze any errors or failures in the log to identify the root cause. Modify the script to fix these issues. For example, if an element was not found, you may need to adjust the selectors in `Xpaths.cs` or add a wait condition in `ApplicationPage.cs`.
 - **UI Dump**: This file contains a full snapshot of the application's UI tree. Use this as a reference to find more robust selectors for elements that were problematic in the previous run. It can also help you understand the overall structure of the application and discover alternative ways to automate a task.
 
 ## Code Template
+
+### `TestClass.cs`
 ```csharp
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using FlaUI.Core;
@@ -116,7 +125,46 @@ namespace TestAutomationSuite
         [TestMethod]
         public void Run()
         {
+            var applicationPage = new ApplicationPage(automation, app);
             // Your test logic goes here.
+            // Example:
+            // Assert.IsTrue(applicationPage.IsLoginButtonVisible(), "Login button should be visible.");
+            // applicationPage.Login("user", "password");
+            // Assert.IsTrue(applicationPage.IsWelcomeMessageVisible(), "Welcome message should be visible after login.");
+        }
+    }
+}
+```
+
+### `ApplicationPage.cs`
+```csharp
+using FlaUI.Core;
+using FlaUI.Core.AutomationElements;
+using FlaUI.UIA3;
+
+namespace TestAutomationSuite
+{
+    public class ApplicationPage
+    {
+        private readonly UIA3Automation automation;
+        private readonly Application app;
+
+        public ApplicationPage(UIA3Automation automation, Application app)
+        {
+            this.automation = automation;
+            this.app = app;
+        }
+
+        // --- Elements ---
+        public Button LoginButton => app.WaitFor(automation, Xpaths.LoginButton, 5000).AsButton();
+        public TextBox UsernameField => app.WaitFor(automation, Xpaths.UsernameField, 5000).AsTextBox();
+
+        // --- Methods ---
+        public void Login(string username, string password)
+        {
+            UsernameField.Enter(username);
+            // ... enter password
+            LoginButton.Click();
         }
     }
 }
