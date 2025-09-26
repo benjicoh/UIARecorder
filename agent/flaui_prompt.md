@@ -39,10 +39,9 @@ The JSON file contains a list of events, each with the following structure:
 - C# code that uses the FlaUI library to automate the described scenario, following the Page Object Model (POM) architecture.
     - A file aimed to replace `TestClass.cs` containing the test scenario execution logic.
     - A file aimed to replace `ApplicationPage.cs` containing the page object model, with properties for UI elements and methods for interactions.
-    - A file aimed to replace `Xpaths.cs` containing all XPath strings used in the test.
 - The code must have correct indentation for easy reading.
 - The project is an MSTest project.
-- The solution contains pre-existing helper classes: `Helpers.cs`, `Logger.cs`, `Xpaths.cs`, and `Extensions.cs`. You should use them.
+- The solution contains pre-existing helper classes: `Helpers.cs`, `Logger.cs`, and `Extensions.cs`. You should use them.
 - The logging must use the `Logger` class.
 
 ## Guidelines
@@ -53,7 +52,7 @@ The JSON file contains a list of events, each with the following structure:
 - Listen to the video's audio, there might be additional context or information that can help with element identification.
 - The `[TestInitialize]` method in `TestClass.cs` will handle launching or attaching to the application. Your main run code should be placed within the `[TestMethod]`.
 - Use `Logger` logging to provide insights into the script's execution flow.
-- Prefer FlaUI `Find*XPath` methods when possible for better readability. Store new XPath strings in the `Xpaths.cs` file.
+- Prefer FlaUI `Find*XPath` methods when possible for better readability. All XPath strings should be defined as consts in the `ApplicationPage.cs` file.
 - The start of the script **should have** the following steps
     - Attach the application using `Application.Attach(process name)`
         - You should always prefer attaching to launching, unless the narration specifies otherwise.
@@ -64,8 +63,7 @@ The JSON file contains a list of events, each with the following structure:
 ## Page Object Model (POM) Architecture
 You must follow the Page Object Model (POM) architecture. This means separating the test logic from the UI interaction logic.
 - **`TestClass.cs`**: This class is responsible for the test scenario flow. It should not contain any direct FlaUI element finding logic. It should instantiate the `ApplicationPage` and call its methods to perform actions on the UI.
-- **`ApplicationPage.cs`**: This class represents the main application window. It contains properties that represent UI elements (e.g., buttons, text boxes) and methods that perform actions on those elements (e.g., `ClickSaveButton()`, `EnterUsername(string username)`).
-- **`Xpaths.cs`**: This class contains all the XPath selectors used to find the elements.
+- **`ApplicationPage.cs`**: This class represents the main application window. It contains properties that represent UI elements (e.g., buttons, text boxes) and methods that perform actions on those elements (e.g., `ClickSaveButton()`, `EnterUsername(string username)`). All XPath selectors used to find the elements should be defined as consts in this class.
 
 ## Identifying elements correctly
 - Use the `Name`, `AutomationId`, `ClassName`, and `ControlType` properties from the JSON file to uniquely identify elements.
@@ -81,7 +79,7 @@ You must follow the Page Object Model (POM) architecture. This means separating 
 
 ### Initial Script Generation
 - Based on the narration, video and json, identify the key uia elements involved, and their unique properties.
-- Add new XPath selectors to `Xpaths.cs`.
+- Add new XPath selectors as constants in `ApplicationPage.cs`.
 - Implement the element properties and interaction methods in `ApplicationPage.cs`.
 - Implement the test logic in `TestClass.cs` by using the `ApplicationPage`.
 - After generating the script, review it to ensure all elements are correctly identified and the actions are appropriate.
@@ -149,6 +147,9 @@ namespace TestAutomationSuite
         private readonly UIA3Automation automation;
         private readonly Application app;
 
+        public const string LoginButtonXPath = "//Button[@Name='Login']";
+        public const string UsernameFieldXPath = "//TextBox[@AutomationId='Username']";
+
         public ApplicationPage(UIA3Automation automation, Application app)
         {
             this.automation = automation;
@@ -156,8 +157,8 @@ namespace TestAutomationSuite
         }
 
         // --- Elements ---
-        public Button LoginButton => app.WaitFor(automation, Xpaths.LoginButton, 5000).AsButton();
-        public TextBox UsernameField => app.WaitFor(automation, Xpaths.UsernameField, 5000).AsTextBox();
+        public Button LoginButton => app.WaitFor(automation, LoginButtonXPath, 5000).AsButton();
+        public TextBox UsernameField => app.WaitFor(automation, UsernameFieldXPath, 5000).AsTextBox();
 
         // --- Methods ---
         public void Login(string username, string password)
@@ -182,25 +183,6 @@ Logger.LogWarning("This is a warning message");
 Logger.LogError("This is an error message");
 Logger.LogPassed("Test passed successfully");
 Logger.LogFailed("Test failed with an error");
-```
-
-### `Xpaths.cs`
-A static class to store all XPath strings. for convention let's use ProcessName as class name
-```csharp
-public static class Notepad
-{
-    
-    public const string TitleBar = "/Window/TitleBar";
-    public const string FileMenu = "//MenuItem[@Name='File']";
-    public const string EditMenu = "//MenuItem[@Name='Edit']";
-    public const string FormatMenu = "//MenuItem[@Name='Format']";
-    public const string ViewMenu = "//MenuItem[@Name='View']";
-    public const string HelpMenu = "//MenuItem[@Name='Help']";
-    
-}
-
-// Usage in a test:
-var editor = app.WaitFor(automation, Notepad.TitleBar, 5000);
 ```
 
 ### `Helpers.cs`

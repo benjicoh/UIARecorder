@@ -33,7 +33,6 @@ client = initialize_gemini_client()
 # -- Structured Output --
 class CodeResponse(BaseModel):
     testcase_code_lines: list[str]
-    xpath_code_lines: list[str]
     application_page_code_lines: list[str]
     failure_reason: str = None
     comments: str = None
@@ -50,11 +49,9 @@ except FileNotFoundError:
 # --- Helper Functions ---
 def write_response_files(response: CodeResponse, target_dir: str, rename_to_txt: bool = False):
     write_file(os.path.join(target_dir, "TestClass.cs"), "\n".join(response.testcase_code_lines))
-    write_file(os.path.join(target_dir, "Xpaths.cs"), "\n".join(response.xpath_code_lines))
     write_file(os.path.join(target_dir, "ApplicationPage.cs"), "\n".join(response.application_page_code_lines))
     if rename_to_txt:
         os.rename(os.path.join(target_dir, "TestClass.cs"), os.path.join(target_dir, "TestClass.cs.txt"))
-        os.rename(os.path.join(target_dir, "Xpaths.cs"), os.path.join(target_dir, "Xpaths.cs.txt"))
         os.rename(os.path.join(target_dir, "ApplicationPage.cs"), os.path.join(target_dir, "ApplicationPage.cs.txt"))
 
 # --- Main Flow ---
@@ -129,6 +126,10 @@ def main():
             # Delete temp dir after first use
             shutil.rmtree(tmp_dir)
         code_response: CodeResponse = response.parsed
+        if code_response.failure_reason:
+            logger.info(f"LLM failure reason: {code_response.failure_reason}")
+        if code_response.comments:
+            logger.info(f"LLM comments: {code_response.comments}")
         iteration_dir = COMPILATION_ITERATION_DIR.format(run_output_dir=run_output_dir, i=i)
         # --- Write Scripts to File ---
         write_response_files(code_response, project_dir)
@@ -137,6 +138,7 @@ def main():
         # --- Compile Script ---
         logger.info(f"Compiling scripts: {flaui_project_path}")
         compilation_result = run_command(["dotnet", "build"], project_dir)
+        logger.info(f"--- Compilation Output ---\n{compilation_result['stdout']}\n{compilation_result['stderr']}\n---")
 
         log_path = iteration_dir + "/compilation_log.txt"
         log_output = f"STDOUT:\n{compilation_result['stdout']}\n\nSTDERR:\n{compilation_result['stderr']}"
@@ -167,6 +169,7 @@ def main():
         recorder = Recorder(output_folder=generated_recording_dir, take_screenshots=False)
         recorder.start()
         execution_result = run_command(["dotnet", "test", "--logger", "console;verbosity=detailed"], project_dir)
+        logger.info(f"--- Execution Output ---\n{execution_result['stdout']}\n{execution_result['stderr']}\n---")
         recorder.stop()
 
         # --- Log Execution Results ---
@@ -203,6 +206,10 @@ def main():
             )
         )
         code_response = response.parsed
+        if code_response.failure_reason:
+            logger.info(f"LLM failure reason: {code_response.failure_reason}")
+        if code_response.comments:
+            logger.info(f"LLM comments: {code_response.comments}")
         # --- Write Script to File ---
         write_response_files(code_response, project_dir)
         write_response_files(code_response, iteration_dir, rename_to_txt=True)
