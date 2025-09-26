@@ -1,5 +1,6 @@
 import os
 import subprocess
+import threading
 import time
 import shutil
 from google import genai
@@ -119,7 +120,7 @@ def upload_file(client, file_path):
         logger.error(f"\nError uploading file {file_path}: {e}")
         return None
 
-def upload_dir_files(client, dir_path, extensions=(".json", ".mp4", ".png", ".txt")):
+def upload_dir_files(client, dir_path, extensions=(".mp4", ".png", ".txt")):
     """
     Uploads all files in a directory (recursively) matching the given extensions.
     Returns a list of uploaded file objects.
@@ -131,14 +132,7 @@ def upload_dir_files(client, dir_path, extensions=(".json", ".mp4", ".png", ".tx
             if filename.endswith(extensions):
                 files_to_upload.append(os.path.join(dirpath, filename))
 
-    # Handle .cs and .csproj files by renaming them to .txt
-    for dirpath, _, filenames in os.walk(dir_path):
-        for filename in filenames:
-            if filename.endswith((".cs", ".csproj")):
-                original_path = os.path.join(dirpath, filename)
-                new_path = original_path + ".txt"
-                shutil.copy(original_path, new_path)
-                files_to_upload.append(new_path)
+    
 
     for file_path in files_to_upload:
         uploaded_file = upload_file(client, file_path)
@@ -146,9 +140,18 @@ def upload_dir_files(client, dir_path, extensions=(".json", ".mp4", ".png", ".tx
             uploaded_files.append(uploaded_file)
     return uploaded_files
 
-def dump_ui_tree(process_name: str = None, window_title: str = None, output_file: str = None):
+def dump_ui_tree(process_name: str = None, window_title: str = None, output_file: str = None, whitelist: list[str] = None, screenshots: bool = False) -> str:
     """
     Dumps the UI Automation tree for a given process or window to a JSON file.
     """
-    from agent.uia_dumper import dump_ui
-    return dump_ui(process_name=process_name, window_title=window_title, output_file=output_file)
+    from agent.uia_dumper import dump_ui, dump_ui_res
+    # run on a different thread to avoid blocking, set a timeout for 10 seconds and abort if exceeds
+    # store the result in a variable
+    thread = threading.Thread(target=dump_ui, args=(process_name, window_title, output_file, whitelist, screenshots), daemon=True)  
+    thread.start()
+    thread.join(timeout=10)
+    if thread.is_alive():
+        return "Error: UI dump timed out after 10 seconds."
+    else:
+        return dump_ui_res
+    

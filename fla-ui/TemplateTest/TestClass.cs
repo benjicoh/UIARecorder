@@ -36,7 +36,7 @@ namespace TestAutomationSuite
             // Use the extension method to wait for the editor to appear
             var editor = app.WaitFor(automation, Xpaths.NotepadEditor, 5000);
             Assert.IsNotNull(editor, "The editor should be found.");
-
+            
             // Type some text into the editor
             var textBox = editor.AsTextBox();
             textBox.Enter("Hello from FlaUI!");

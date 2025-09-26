@@ -6,19 +6,8 @@
 ### Recording Directory
 - A video file with narration of the test scenario.
 - A JSON file with the UIA properties of the clicked and focused elements.
-### Failed Run Artifacts (Optional)
-- A video of the failed execution.
-- Log file from a previous execution of the generated script, containing errors or failures.
-- A full JSON snapshot of the application's UI tree from a previous run, useful for refining element selectors.
 
-## Output
-- C# code that uses the FlaUI library to automate the described scenario. 
-- The code must have correct indentation for easy reading.
-- The generated code will be a replacement of `TestClass.cs` file. The project is an MSTest project.
-- The solution contains pre-existing helper classes: `Helpers.cs`, `Logger.cs`, `Xpaths.cs`, and `Extensions.cs`. You should use them.
-- The logging must use the `Logger` class.
-
-## Recording JSON Format
+### Recording JSON Format
 The JSON file contains a list of events, each with the following structure:
 ```json
 {
@@ -41,6 +30,20 @@ The JSON file contains a list of events, each with the following structure:
 - Each element in the `element_hierarchy` has a unique `id`.
 - The `patterns` object lists all the UI Automation patterns supported by the element. Refer to this to understand the available actions for an element (e.g., `InvokePattern`, `ValuePattern`).
 
+### Failed Run Artifacts (Optional)
+- A video of the failed execution.
+- Log file from a previous execution of the generated script, containing errors or failures.
+- A full JSON snapshot of the application's UI tree from a previous run, useful for refining element selectors.
+
+## Output
+- C# code that uses the FlaUI library to automate the described scenario.
+    - A file aimed to replace `TestClass.cs` containing the main test logic.
+    - A file aimed to replace `Xpaths.cs` containing all XPath strings used in the test.
+- The code must have correct indentation for easy reading.
+- The project is an MSTest project.
+- The solution contains pre-existing helper classes: `Helpers.cs`, `Logger.cs`, `Xpaths.cs`, and `Extensions.cs`. You should use them.
+- The logging must use the `Logger` class.
+
 ## Guidelines
 - The script should be robust and able to handle various UI scenarios.
 - If ambiguity arises in identifying elements, consider using additional properties or a combination of properties to disambiguate.
@@ -52,8 +55,9 @@ The JSON file contains a list of events, each with the following structure:
 - Prefer FlaUI `Find*XPath` methods when possible for better readability. Store new XPath strings in the `Xpaths.cs` file.
 - The start of the script **should have** the following steps
     - Attach the application using `Application.Attach(process name)`
+        - You should always prefer attaching to launching, unless the narration specifies otherwise.
     - Find the main window of the application using `Helpers.GetWindowByName` or `Helpers.GetWindowByAutomationID`
-    - Activate the main window using `window.SetForeground()`
+    - Activate the main window using the extension `window.Activate()`
 - The end of the run **must either call** `Logger.LogPassed` or `Logger.LogFailed` depending on the success of the run.
 
 
@@ -133,15 +137,22 @@ Logger.LogFailed("Test failed with an error");
 ```
 
 ### `Xpaths.cs`
-A static class to store all XPath strings.
+A static class to store all XPath strings. for convention let's use ProcessName as class name
 ```csharp
-public static class Xpaths
+public static class Notepad
 {
-    public const string NotepadEditor = "/Window/Document";
+    
+    public const string TitleBar = "/Window/TitleBar";
+    public const string FileMenu = "//MenuItem[@Name='File']";
+    public const string EditMenu = "//MenuItem[@Name='Edit']";
+    public const string FormatMenu = "//MenuItem[@Name='Format']";
+    public const string ViewMenu = "//MenuItem[@Name='View']";
+    public const string HelpMenu = "//MenuItem[@Name='Help']";
+    
 }
 
 // Usage in a test:
-var editor = app.WaitFor(automation, Xpaths.NotepadEditor, 5000);
+var editor = app.WaitFor(automation, Notepad.TitleBar, 5000);
 ```
 
 ### `Helpers.cs`
@@ -159,13 +170,15 @@ Provides extension methods for `Application` and `AutomationElement`.
 // Waits for the main window to appear and then finds an element by XPath.
 // Throws TimeoutException if the window or element is not found.
 AutomationElement element = app.WaitFor(automation, "//Button[@Name='OK']", 5000);
+
 ```
 
 **`AutomationElementExtensions`**
 ```csharp
 // Waits for a descendant element to appear.
 AutomationElement childElement = parentElement.WaitFor("//ListItem[3]", 2000);
-
+// Wait for an element to be enabled
+element.WaitForProperty(nameof(element.IsEnabled), true, 2000);
 // Clicks an element with a relative offset.
 // Clicks 10 pixels right and 5 pixels down from the top-left corner of the element.
 element.Click(10, 5);

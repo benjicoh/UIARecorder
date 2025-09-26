@@ -12,7 +12,7 @@
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "args": "./generated_scripts/user_recording -p Carto.exe"
+            "args": "./generated_scripts/user_recording -p mspaint.exe"
         }
     ]
 }

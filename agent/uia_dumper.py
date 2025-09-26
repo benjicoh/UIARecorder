@@ -3,9 +3,12 @@ import psutil
 import json
 import os
 import argparse
+import threading
 from tools.common.logger import get_logger
 
 logger = get_logger(__name__)
+
+dump_ui_res : str = ""
 
 def get_process_name(element):
     """
@@ -128,44 +131,45 @@ def dump_ui(process_name=None, window_title=None, output_file=None, whitelist=No
     """
     Dumps the UI Automation tree for a given process or window to a JSON file.
     """
-    screenshot_dir = None
-    if screenshots:
-        screenshot_dir = os.path.join(os.path.dirname(os.path.abspath(output_file)), 'screenshots')
-        os.makedirs(screenshot_dir, exist_ok=True)
+    with auto.UIAutomationInitializerInThread():
+        screenshot_dir = None
+        if screenshots:
+            screenshot_dir = os.path.join(os.path.dirname(os.path.abspath(output_file)), 'screenshots')
+            os.makedirs(screenshot_dir, exist_ok=True)
 
-    roots = []
-    root_control = auto.GetRootControl()
-    if process_name:
-        for w in root_control.GetChildren():
-            if get_process_name(w) and get_process_name(w).lower() == process_name.lower():
-                roots.append(w)
-                w.SetActive()
-        if len(roots) == 0:
-            return f"Process '{process_name}' not found."
-    elif window_title:
-        for w in root_control.GetChildren():
-            if w.Name and window_title.lower() in w.Name.lower():
-                roots = [w]
-                w.SetActive()
-                break
-        if len(roots) == 0:
-            return f"Window with title containing '{window_title}' not found."
+        roots = []
+        root_control = auto.GetRootControl()
+        if process_name:
+            for w in root_control.GetChildren():
+                if get_process_name(w) and get_process_name(w).lower() == process_name.lower():
+                    roots.append(w)
+                    w.SetActive()
+            if len(roots) == 0:
+                return f"Process '{process_name}' not found."
+        elif window_title:
+            for w in root_control.GetChildren():
+                if w.Name and window_title.lower() in w.Name.lower():
+                    roots = [w]
+                    w.SetActive()
+                    break
+            if len(roots) == 0:
+                return f"Window with title containing '{window_title}' not found."
 
-    trees = []
-    for root in roots:
-        tree = traverse_element_tree(root, whitelist=whitelist, screenshot_dir=screenshot_dir)
-        if tree:
-            trees.append(tree)
-    trees_serialized = serialize_rects(trees)
-    with open(output_file, 'w', encoding='utf-8') as f:
-        json.dump(trees_serialized, f, ensure_ascii=False, indent=2)
+        trees = []
+        for root in roots:
+            tree = traverse_element_tree(root, whitelist=whitelist, screenshot_dir=screenshot_dir)
+            if tree:
+                trees.append(tree)
+        trees_serialized = serialize_rects(trees)
+        with open(output_file, 'w', encoding='utf-8') as f:
+            json.dump(trees_serialized, f, ensure_ascii=False, indent=2)
 
-    result_message = f"UI tree dumped to {output_file}"
-    if screenshot_dir:
-        result_message += f"\nScreenshots saved to {screenshot_dir}"
+        dump_ui_res = f"UI tree dumped to {output_file}"
+        if screenshot_dir:
+            dump_ui_res += f"\nScreenshots saved to {screenshot_dir}"
 
-    logger.info('\007')
-    return result_message
+        logger.info('\007')
+        return dump_ui_res
 
 def main():
     parser = argparse.ArgumentParser(description="Dump UI Automation tree to JSON.")
@@ -176,14 +180,20 @@ def main():
     parser.add_argument('-wh', '--whitelist', type=str, nargs='+', help='Process whitelist.')
     parser.add_argument('-s', '--screenshots', action='store_true', help='Enable screenshots.')
     args = parser.parse_args()
-    result = dump_ui(
-        process_name=args.process,
-        window_title=args.window,
-        output_file=args.output,
-        whitelist=args.whitelist,
-        screenshots=args.screenshots
-    )
-    logger.info(result)
+    thread = threading.Thread(target=dump_ui, args=(
+        args.process,
+        args.window,
+        args.output,
+        args.whitelist,
+        args.screenshots
+    ), daemon=True)
+    thread.start()
+    thread.join(timeout=10)
+    if thread.is_alive():
+        logger.error("Error: UI dump timed out after 10 seconds.")
+    else:
+        logger.info(dump_ui_res)
+    
 
 if __name__ == "__main__":
     main()

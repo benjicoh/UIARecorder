@@ -16,7 +16,7 @@ class Recorder:
         self.logger = get_logger(__name__)
         self.output_folder = output_folder
         self.images_folder = f"{self.output_folder}/images"
-        self.json_file = f"{self.output_folder}/annotations.json"
+        self.json_file = f"{self.output_folder}/annotations.json.txt"
         self.logger.info(f"Output folder set to: {self.output_folder}")
         self.take_screenshots = take_screenshots
 
