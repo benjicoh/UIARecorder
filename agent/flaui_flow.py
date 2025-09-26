@@ -18,8 +18,8 @@ from agent.common_flow import (
 logger = get_logger(__name__)
 
 # --- Constants ---
-MAX_COMPILATION_ATTEMPTS = 4
-MAX_EXECUTION_ATTEMPTS = 4
+MAX_COMPILATION_ATTEMPTS = 6
+MAX_EXECUTION_ATTEMPTS = 6
 RUN_OUTPUT_DIR = "generated_scripts/{timestamp}"
 COMPILATION_ITERATION_DIR = "{run_output_dir}/compilation/iteration{i}"
 EXECUTION_ITERATION_DIR = "{run_output_dir}/execution/iteration{i}"

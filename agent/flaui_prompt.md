@@ -43,6 +43,7 @@ The JSON file contains a list of events, each with the following structure:
 - The project is an MSTest project.
 - The solution contains pre-existing helper classes: `Helpers.cs`, `Logger.cs`, and `Extensions.cs`. You should use them.
 - The logging must use the `Logger` class.
+- In the response you can include comments and failure reason to help the user understand the changes.
 
 ## Guidelines
 - The script should be robust and able to handle various UI scenarios.

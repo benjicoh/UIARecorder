@@ -21,14 +21,15 @@ namespace TestAutomationSuite
             var windows = GetAllTopLevelWindows(automation, processId);
             foreach (var window in windows)
             {
-                if (window.Name.Contains(name))
+                try
                 {
-                    return window;
+                    if (window.Name.Contains(name))
+                    {
+                        return window;
+                    }
                 }
-                var foundWindow = window.FindFirstDescendant(cf => cf.ByName(name)).AsWindow();
-                if (foundWindow != null)
+                catch
                 {
-                    return foundWindow;
                 }
             }
             return null;
@@ -40,14 +41,15 @@ namespace TestAutomationSuite
             var windows = GetAllTopLevelWindows(automation, processId);
             foreach (var window in windows)
             {
-                if (window.AutomationId.Contains(automationId))
+                try
                 {
-                    return window;
+                    if (window.AutomationId.Contains(automationId))
+                    {
+                        return window;
+                    }
                 }
-                var foundWindow = window.FindFirstDescendant(cf => cf.ByAutomationId(automationId)).AsWindow();
-                if (foundWindow != null)
+                catch
                 {
-                    return foundWindow;
                 }
             }
             return null;

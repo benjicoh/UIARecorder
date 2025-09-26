@@ -78,11 +78,20 @@ namespace TestAutomationSuite
 
      public static class WindowExtensions
  {
-       public static void Activate(this Window window)
-     {
-         var pattern = window.Patterns.Window?.Pattern;
-         pattern?.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Normal);
-     }
+        public static void Activate(this Window window)
+        {
+            try
+            {
+                var pattern = window.Patterns.Window?.Pattern;
+                pattern?.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Normal);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning($"Failed to restore window {window.Name}\n{ex.Message}");
+                Logger.LogInfo("Trying SetForeground");
+                window.SetForeground();
+            }
+        }
  }
 
     public static class ApplicationExtensions
