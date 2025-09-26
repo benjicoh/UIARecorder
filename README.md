@@ -1,6 +1,6 @@
 # AI-Powered C# UI Automation Generator
 
-This tool records user interactions on Windows and uses a Large Language Model (LLM) to automatically generate a C# UI automation project using the FlaUI library.
+This tool lets a user record their interactions on Windows and uses a Large Language Model (LLM) to automatically generate a C# UI automation project using the FlaUI library and Page Object Model (POM) to try and replicate the user's actions in a robust automation script.
 
 ## How to Install
 
@@ -17,9 +17,9 @@ This tool records user interactions on Windows and uses a Large Language Model (
     pip install -r pyproject.toml
     ```
 3.  **Set up your Gemini API Key:**
-    This project uses the Google Gemini API to generate code. You need to provide your API key as an environment variable named `GOOGLE_API_KEY`.
+    This project uses the Google Gemini API to generate code. You need to provide your API key as an environment variable named `GEMINI_API_KEY`.
     ```powershell
-    $env:GOOGLE_API_KEY = "YOUR_API_KEY"
+    $env:GEMINI_API_KEY = "YOUR_API_KEY"
     ```
     **Note:** This sets the environment variable for the current session only. For a permanent solution, you can set it in your system's environment variables.
 
@@ -53,8 +53,8 @@ The C# project is generated from a template located in `fla-ui/TemplateTest`. Th
 ### Workflow
 
 The end-to-end workflow is as follows:
-1.  The `Record.ps1` script runs `tools/recorder_tool.py` to capture UI events.
+1.  The `Record.ps1` script runs `tools/recorder_tool.py` to capture UI events, screen recording video, and narration.
 2.  The `Generate.ps1` script runs `agent/flaui_flow.py`.
-3.  `agent/flaui_flow.py` reads the recorded data, combines it with the C# template from `fla-ui/TemplateTest` and the prompt from `agent/flaui_prompt.md`.
+3.  [flaui_flow.py](agent/flaui_flow.py) reads the recorded data, combines it with the C# template from `fla-ui/TemplateTest` and the prompt for the [flaui_prompt.md](agent/flaui_prompt.md)
 4.  This information is sent to the Gemini AI, which generates the C# code for the UI automation.
 5.  The script then attempts to compile and run the generated C# project, with a retry mechanism that uses the AI to fix compilation or runtime errors.
