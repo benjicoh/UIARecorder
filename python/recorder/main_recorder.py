@@ -5,11 +5,11 @@ import shutil
 import time
 import json
 import psutil
-from tools.recorder.logger import get_logger
-from tools.recorder.element_screenshotter import ElementScreenshotter
-from tools.recorder.events import InputListener
-from tools.recorder.media import MediaRecorder
-from tools.recorder.uia import UIAHelper
+from python.common.logger import get_logger
+from python.recorder.element_screenshotter import ElementScreenshotter
+from python.recorder.events import InputListener
+from python.recorder.media import MediaRecorder
+from python.common.uia import UIAHelper
 
 class Recorder:
     def __init__(self, output_folder="generated_scripts/user_recording", whitelist=None, take_screenshots=False):

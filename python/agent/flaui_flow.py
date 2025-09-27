@@ -4,9 +4,9 @@ import time
 import shutil
 from pydantic import BaseModel
 from google.genai import types
-from tools.recorder.logger import get_logger
-from tools.recorder.main_recorder import Recorder
-from agent.common_flow import (
+from python.common.logger import get_logger
+from python.recorder.main_recorder import Recorder
+from python.common.common_flow import (
     initialize_gemini_client,
     send_message_with_retries,
     run_command,
