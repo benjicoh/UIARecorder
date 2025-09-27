@@ -4,6 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Recorder"
+        xmlns:viewModels="clr-namespace:Recorder.ViewModels"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         Style="{DynamicResource MaterialDesignWindow}"
         Foreground="White"
@@ -12,25 +13,33 @@
         Height="450"
         Width="800">
     <Grid>
-        <StackPanel Orientation="Horizontal"
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Orientation="Horizontal"
                     HorizontalAlignment="Center"
-                    VerticalAlignment="Center">
+                    VerticalAlignment="Center"
+                    Margin="10">
             <TextBlock Margin="10"
                        FontSize="18"
-                       
                        Text="Record"
                        VerticalAlignment="Center"/>
-            <ToggleButton x:Name="RecordToggleButton"
-                          Width="64"
+            <ToggleButton Width="64"
                           Height="32"
                           VerticalAlignment="Center"
                           HorizontalAlignment="Center"
                           Style="{StaticResource MaterialDesignSwitchDarkToggleButton}"
-                          materialDesign:ButtonProgressAssist.IsIndeterminate="False"
-                          Checked="RecordToggleButton_Checked"
-                          Unchecked="RecordToggleButton_Unchecked">
-
+                          IsChecked="{Binding IsRecording}"
+                          Command="{Binding ToggleRecordingCommand}"
+                          IsEnabled="{Binding IsNotBusy}"
+                          materialDesign:ButtonProgressAssist.IsIndeterminate="False">
             </ToggleButton>
         </StackPanel>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="10">
+            <ItemsControl ItemsSource="{Binding LogMessages}" />
+        </ScrollViewer>
     </Grid>
 </Window>
