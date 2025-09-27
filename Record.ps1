@@ -16,4 +16,4 @@ if (Test-Path ".\.venv\Scripts\python.exe") {
     $python = ".\.venv\Scripts\python.exe"
 }
 
-& $python -m tools.recorder_tool -wh $ProcessName
+& $python -m python.recorder_tool -wh $ProcessName

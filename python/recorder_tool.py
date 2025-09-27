@@ -2,8 +2,8 @@ import sys
 import os
 
 import argparse
-from tools.recorder.main_recorder import Recorder
-from tools.recorder.logger import get_logger
+from python.recorder.main_recorder import Recorder
+from python.common.logger import get_logger
 
 logger = get_logger(__name__)
 
