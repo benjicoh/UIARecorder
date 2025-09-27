@@ -35,6 +35,14 @@
                           Command="{Binding ToggleRecordingCommand}"
                           materialDesign:ButtonProgressAssist.IsIndeterminate="False">
             </ToggleButton>
+            <TextBlock Margin="30,10,10,10"
+                       FontSize="18"
+                       Text="Capture Mode"
+                       VerticalAlignment="Center"/>
+            <ComboBox Width="150"
+                      ItemsSource="{Binding CaptureModes}"
+                      SelectedItem="{Binding SelectedCaptureMode}"
+                      VerticalAlignment="Center"/>
         </StackPanel>
 
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="10">
