@@ -13,6 +13,8 @@ namespace Recorder.Services
         public Rectangle BoundingBox { get; set; }
         public string Text { get; set; }
         public Color Color { get; set; }
+
+        public DateTime Timestamp { get; set; }
     }
 
     public class ClickOverlay
@@ -32,7 +34,7 @@ namespace Recorder.Services
         {
             lock (_lock)
             {
-                _overlays.Add(new Overlay { BoundingBox = boundingBox, Text = text, Color = color });
+                _overlays.Add(new Overlay { BoundingBox = boundingBox, Text = text, Color = color, Timestamp = DateTime.UtcNow });
             }
         }
 
@@ -56,7 +58,8 @@ namespace Recorder.Services
         {
             lock (_lock)
             {
-                return new List<Overlay>(_overlays);
+                _overlays.RemoveAll(c => (DateTime.UtcNow - c.Timestamp).TotalSeconds > 2);
+                return _overlays;
             }
         }
 
@@ -66,7 +69,7 @@ namespace Recorder.Services
             {
                 // Remove old click overlays
                 _clickOverlays.RemoveAll(c => (DateTime.UtcNow - c.Timestamp).TotalSeconds > 1);
-                return new List<ClickOverlay>(_clickOverlays);
+                return _clickOverlays;
             }
         }
 

@@ -68,56 +68,59 @@ namespace Recorder.ViewModels
 
         private void OnMouseClick(object sender, MouseEventArgs e)
         {
-            var element = _uiaService.GetElementFromPoint(e.Location);
-            ElementInfo hierarchy = null;
-            if (element != null)
+            App.StartSTATask(() =>
             {
-                hierarchy = _uiaService.GetElementHierarchy(element);
-                _overlayService.ClearOverlays();
+                var element = _uiaService.GetElementFromPoint(e.Location);
+                ElementInfo hierarchy = null;
+                if (element != null)
+                {
+                    hierarchy = _uiaService.GetElementHierarchy(element);
 
-                var colors = new[] { Color.Red, Color.Blue, Color.Green, Color.Yellow, Color.Orange, Color.Magenta };
-                int i = 0;
-                //while (hierarchy != null)
-                //{
+                    var colors = new[] { Color.Red, Color.Blue, Color.Green, Color.Yellow, Color.Orange, Color.Magenta };
+                    int i = 0;
+                    //while (hierarchy != null)
+                    //{
                     if (!hierarchy.BoundingRectangle.IsEmpty)
                     {
                         _overlayService.AddOverlay(hierarchy.BoundingRectangle, hierarchy.GetIdentifier(), colors[i++ % colors.Length]);
                     }
                     hierarchy = hierarchy.Parent;
-                //}
-            }
-            var location = new OpenCvSharp.Point(e.Location.X, e.Location.Y);
-            _overlayService.AddClickOverlay(location, e.Button.ToString());
-            _annotationService.AddAnnotation(EventType.MouseClick, new { e.X, e.Y, Button = e.Button.ToString() }, hierarchy);
+                    //}
+                }
+                var location = new OpenCvSharp.Point(e.Location.X, e.Location.Y);
+                _overlayService.AddClickOverlay(location, e.Button.ToString());
+                _annotationService.AddAnnotation(EventType.MouseClick, new { e.X, e.Y, Button = e.Button.ToString() }, hierarchy);
+            });
         }
         
 
         private void OnKeyUp(object sender, KeyEventArgs e)
         {
-            var element = _uiaService.GetFocusedElement();
-            ElementInfo hierarchy = null;
-            if (element != null)
+            App.StartSTATask(() =>
             {
-                hierarchy = _uiaService.GetElementHierarchy(element);
-                _overlayService.ClearOverlays();
+                var element = _uiaService.GetFocusedElement();
+                ElementInfo hierarchy = null;
+                if (element != null)
+                {
+                    hierarchy = _uiaService.GetElementHierarchy(element);
 
-                var colors = new[] { Color.Red, Color.Blue, Color.Green, Color.Yellow, Color.Orange, Color.Magenta };
-                int i = 0;
-                //while (hierarchy != null)
-                //{
+                    var colors = new[] { Color.Red, Color.Blue, Color.Green, Color.Yellow, Color.Orange, Color.Magenta };
+                    int i = 0;
+                    //while (hierarchy != null)
+                    //{
 
                     if (!hierarchy.BoundingRectangle.IsEmpty)
                     {
                         var rect = hierarchy.BoundingRectangle;
-                        
+
                         _overlayService.AddOverlay(rect, hierarchy.GetIdentifier(), colors[i++ % colors.Length]);
                     }
                     hierarchy = hierarchy.Parent;
-                //}
+                    //}
 
-            }
-            _annotationService.AddAnnotation(EventType.KeyPress, new { Key = e.KeyCode.ToString() }, hierarchy);
-
+                }
+                _annotationService.AddAnnotation(EventType.KeyPress, new { Key = e.KeyCode.ToString() }, hierarchy);
+            });
 
         }
 

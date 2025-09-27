@@ -144,18 +144,18 @@ namespace Recorder.Services
             try
             {
 
-                if (element.Patterns.Selection.PatternOrDefault != null)
-                {
-                    patterns.Add(new PatternInfo
-                    {
-                        PatternName = "Selection",
-                        Properties = new Dictionary<string, object>()
-                        {
-                            { "CanSelectMultiple", element.Patterns.Selection.Pattern.CanSelectMultiple.ValueOrDefault },
-                            { "IsSelectionRequired", element.Patterns.Selection.Pattern.IsSelectionRequired.ValueOrDefault }
-                        }
-                    });
-                }
+                //if (element.Patterns.Selection.PatternOrDefault != null)
+                //{
+                //    patterns.Add(new PatternInfo
+                //    {
+                //        PatternName = "Selection",
+                //        Properties = new Dictionary<string, object>()
+                //        {
+                //            { "CanSelectMultiple", element.Patterns.Selection.Pattern.CanSelectMultiple.ValueOrDefault },
+                //            { "IsSelectionRequired", element.Patterns.Selection.Pattern.IsSelectionRequired.ValueOrDefault }
+                //        }
+                //    });
+                //}
                 if (element.Patterns.Value.PatternOrDefault != null)
                 {
                     patterns.Add(new PatternInfo
@@ -168,32 +168,32 @@ namespace Recorder.Services
                         }
                     });
                 }
-                if (element.Patterns.Invoke.PatternOrDefault != null)
-                {
-                    patterns.Add(new PatternInfo { PatternName = "Invoke" });
-                }
-                if (element.Patterns.ExpandCollapse.PatternOrDefault != null)
-                {
-                    patterns.Add(new PatternInfo
-                    {
-                        PatternName = "ExpandCollapse",
-                        Properties = new Dictionary<string, object>()
-                        {
-                            { "ExpandCollapseState", element.Patterns.ExpandCollapse.Pattern.ExpandCollapseState.ValueOrDefault.ToString() }
-                        }
-                    });
-                }
-                if (element.Patterns.Toggle.PatternOrDefault != null)
-                {
-                    patterns.Add(new PatternInfo
-                    {
-                        PatternName = "Toggle",
-                        Properties = new Dictionary<string, object>()
-                        {
-                            { "ToggleState", element.Patterns.Toggle.Pattern.ToggleState.ValueOrDefault.ToString() }
-                        }
-                    });
-                }
+                //if (element.Patterns.Invoke.PatternOrDefault != null)
+                //{
+                //    patterns.Add(new PatternInfo { PatternName = "Invoke" });
+                //}
+                //if (element.Patterns.ExpandCollapse.PatternOrDefault != null)
+                //{
+                //    patterns.Add(new PatternInfo
+                //    {
+                //        PatternName = "ExpandCollapse",
+                //        Properties = new Dictionary<string, object>()
+                //        {
+                //            { "ExpandCollapseState", element.Patterns.ExpandCollapse.Pattern.ExpandCollapseState.ValueOrDefault.ToString() }
+                //        }
+                //    });
+                //}
+                //if (element.Patterns.Toggle.PatternOrDefault != null)
+                //{
+                //    patterns.Add(new PatternInfo
+                //    {
+                //        PatternName = "Toggle",
+                //        Properties = new Dictionary<string, object>()
+                //        {
+                //            { "ToggleState", element.Patterns.Toggle.Pattern.ToggleState.ValueOrDefault.ToString() }
+                //        }
+                //    });
+                //}
                 //if (element.Patterns.Scroll.PatternOrDefault != null)
                 //{
                 //    patterns.Add(new PatternInfo
