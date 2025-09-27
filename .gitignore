@@ -1,6 +1,7 @@
 # Project additions
 __pycache__/
 .venv/
+.vs/
 recording/
 output/
 user_scripts/
