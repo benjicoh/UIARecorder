@@ -44,7 +44,7 @@ This tool lets a user record their interactions on Windows and uses a Large Lang
 
 ### AI Prompt
 
-The prompt used to instruct the AI model is located in `agent/flaui_prompt.md`. You can modify this file to change the instructions given to the AI for generating the C# code.
+The prompt used to instruct the AI model is located in [flaui_prompt.md](agent/flaui_prompt.md). You can modify this file to change the instructions given to the AI for generating the C# code.
 
 ### C# Template Project
 
