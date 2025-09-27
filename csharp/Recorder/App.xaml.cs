@@ -5,6 +5,8 @@ using Recorder.Services;
 using Recorder.ViewModels;
 using System;
 using System.Windows;
+using System.Threading.Tasks;
+using System.Threading;
 
 namespace Recorder
 {
@@ -21,8 +23,8 @@ namespace Recorder
         {
             services.AddSingleton<MainViewModel>();
             services.AddTransient<RecordingService>();
-            services.AddSingleton<UiaService>();
-            services.AddSingleton<InputHookService>();
+            services.AddSingleton<ThreadManager>();
+            services.AddSingleton<InputUiaService>();
             services.AddSingleton<OverlayService>();
             services.AddSingleton<AnnotationService>();
 
@@ -42,27 +44,5 @@ namespace Recorder
         }
 
         public IServiceProvider ServiceProvider { get; }
-
-        public static Task StartSTATask(Action action)
-        {
-            var tcs = new TaskCompletionSource<object>();
-            var thread = new Thread(() =>
-            {
-                try
-                {
-                    action();
-                    tcs.SetResult(null);
-                }
-                catch (Exception e)
-                {
-                    tcs.SetException(e);
-                }
-            });
-
-            thread.SetApartmentState(ApartmentState.STA);
-            thread.Start();
-
-            return tcs.Task;
-        }
     }
 }
