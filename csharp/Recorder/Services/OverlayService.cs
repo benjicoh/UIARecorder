@@ -30,19 +30,19 @@ namespace Recorder.Services
         private readonly List<ClickOverlay> _clickOverlays = new List<ClickOverlay>();
         private readonly object _lock = new object();
 
-        public void AddOverlay(Rectangle boundingBox, string text, Color color)
+        public void AddOverlay(Rectangle boundingBox, string text, Color color, DateTime timestamp)
         {
             lock (_lock)
             {
-                _overlays.Add(new Overlay { BoundingBox = boundingBox, Text = text, Color = color, Timestamp = DateTime.UtcNow });
+                _overlays.Add(new Overlay { BoundingBox = boundingBox, Text = text, Color = color, Timestamp = timestamp });
             }
         }
 
-        public void AddClickOverlay(Point position, string button)
+        public void AddClickOverlay(Point position, string button, DateTime timestamp)
         {
             lock (_lock)
             {
-                _clickOverlays.Add(new ClickOverlay { Position = position, Button = button, Timestamp = DateTime.UtcNow });
+                _clickOverlays.Add(new ClickOverlay { Position = position, Button = button, Timestamp = timestamp });
             }
         }
 
@@ -73,11 +73,12 @@ namespace Recorder.Services
             }
         }
 
-        public void DrawOverlays(Mat image, Point captureOrigin)
+        public void DrawOverlays(Mat image, Point captureOrigin, DateTime frameTimestamp)
         {
             lock (_lock)
             {
-                foreach (var overlay in GetOverlays())
+                var overlaysToDraw = GetOverlays().Where(o => frameTimestamp > o.Timestamp && (frameTimestamp - o.Timestamp).TotalSeconds < 2).ToList();
+                foreach (var overlay in overlaysToDraw)
                 {
                     var rect = new OpenCvSharp.Rect(overlay.BoundingBox.X - captureOrigin.X, overlay.BoundingBox.Y - captureOrigin.Y, overlay.BoundingBox.Width, overlay.BoundingBox.Height);
                     var color = new Scalar(overlay.Color.B, overlay.Color.G, overlay.Color.R, overlay.Color.A);
@@ -85,10 +86,11 @@ namespace Recorder.Services
                     Cv2.PutText(image, overlay.Text, new OpenCvSharp.Point(rect.X + 5, rect.Y + 25), HersheyFonts.HersheySimplex, 0.5, color, 2);
                 }
 
-                foreach (var click in GetClickOverlays())
+                var clicksToDraw = GetClickOverlays().Where(c => frameTimestamp > c.Timestamp && (frameTimestamp - c.Timestamp).TotalSeconds < 1).ToList();
+                foreach (var click in clicksToDraw)
                 {
                     var center = new OpenCvSharp.Point(click.Position.X - captureOrigin.X, click.Position.Y - captureOrigin.Y);
-                    var color = new Scalar(0, 255, 0); // Red
+                    var color = new Scalar(0, 255, 0); // Green for click
 
                     using var overlayMat = image.Clone();
                     Cv2.Circle(overlayMat, center, 15, color, -1);
@@ -96,17 +98,22 @@ namespace Recorder.Services
                     Cv2.AddWeighted(overlayMat, alpha, image, 1 - alpha, 0, image);
                 }
             }
-            DrawCursor(image);
+            DrawCursor(image, captureOrigin);
         }
 
-        private void DrawCursor(Mat image)
+        private void DrawCursor(Mat image, Point captureOrigin)
         {
             var color = new Scalar(0, 0, 255); // Red color for the cursor
             int cursorSize = 10;
-            var center = FlaUI.Core.Input.Mouse.Position;
-            Cv2.Line(image, new OpenCvSharp.Point(center.X - cursorSize, center.Y), new OpenCvSharp.Point(center.X + cursorSize, center.Y), color, 2);
-            Cv2.Line(image, new OpenCvSharp.Point(center.X, center.Y - cursorSize), new OpenCvSharp.Point(center.X, center.Y + cursorSize), color, 2);
+            var mousePosition = FlaUI.Core.Input.Mouse.Position;
+            var center = new OpenCvSharp.Point(mousePosition.X - captureOrigin.X, mousePosition.Y - captureOrigin.Y);
 
+            // Ensure the cursor is drawn only if it's within the captured area
+            if (center.X >= 0 && center.X < image.Width && center.Y >= 0 && center.Y < image.Height)
+            {
+                Cv2.Line(image, new OpenCvSharp.Point(center.X - cursorSize, center.Y), new OpenCvSharp.Point(center.X + cursorSize, center.Y), color, 2);
+                Cv2.Line(image, new OpenCvSharp.Point(center.X, center.Y - cursorSize), new OpenCvSharp.Point(center.X, center.Y + cursorSize), color, 2);
+            }
         }
     }
 }

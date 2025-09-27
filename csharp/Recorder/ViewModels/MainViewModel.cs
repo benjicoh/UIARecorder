@@ -66,7 +66,7 @@ namespace Recorder.ViewModels
             _inputHookService.KeyUp += OnKeyUp;
         }
 
-        private void OnMouseClick(object sender, MouseEventArgs e)
+        private void OnMouseClick(object sender, TimestampedMouseEventArgs e)
         {
             App.StartSTATask(() =>
             {
@@ -78,23 +78,19 @@ namespace Recorder.ViewModels
 
                     var colors = new[] { Color.Red, Color.Blue, Color.Green, Color.Yellow, Color.Orange, Color.Magenta };
                     int i = 0;
-                    //while (hierarchy != null)
-                    //{
                     if (!hierarchy.BoundingRectangle.IsEmpty)
                     {
-                        _overlayService.AddOverlay(hierarchy.BoundingRectangle, hierarchy.GetIdentifier(), colors[i++ % colors.Length]);
+                        _overlayService.AddOverlay(hierarchy.BoundingRectangle, hierarchy.GetIdentifier(), colors[i++ % colors.Length], e.Timestamp);
                     }
                     hierarchy = hierarchy.Parent;
-                    //}
                 }
                 var location = new OpenCvSharp.Point(e.Location.X, e.Location.Y);
-                _overlayService.AddClickOverlay(location, e.Button.ToString());
+                _overlayService.AddClickOverlay(location, e.Button.ToString(), e.Timestamp);
                 _annotationService.AddAnnotation(EventType.MouseClick, new { e.X, e.Y, Button = e.Button.ToString() }, hierarchy);
             });
         }
-        
 
-        private void OnKeyUp(object sender, KeyEventArgs e)
+        private void OnKeyUp(object sender, TimestampedKeyEventArgs e)
         {
             App.StartSTATask(() =>
             {
@@ -106,22 +102,16 @@ namespace Recorder.ViewModels
 
                     var colors = new[] { Color.Red, Color.Blue, Color.Green, Color.Yellow, Color.Orange, Color.Magenta };
                     int i = 0;
-                    //while (hierarchy != null)
-                    //{
 
                     if (!hierarchy.BoundingRectangle.IsEmpty)
                     {
                         var rect = hierarchy.BoundingRectangle;
-
-                        _overlayService.AddOverlay(rect, hierarchy.GetIdentifier(), colors[i++ % colors.Length]);
+                        _overlayService.AddOverlay(rect, hierarchy.GetIdentifier(), colors[i++ % colors.Length], e.Timestamp);
                     }
                     hierarchy = hierarchy.Parent;
-                    //}
-
                 }
                 _annotationService.AddAnnotation(EventType.KeyPress, new { Key = e.KeyCode.ToString() }, hierarchy);
             });
-
         }
 
         private bool SetCaptureArea()
@@ -166,12 +156,14 @@ namespace Recorder.ViewModels
             IsBusy = true;
             try
             {
-                if (IsRecording) // Start recording
+                if (!IsRecording) // Start recording
                 {
                     if (!SetCaptureArea())
                     {
                         return;
                     }
+
+                    IsRecording = true;
 
                     var recordingId = $"recording_{DateTime.Now:yyyyMMdd_HHmmss}";
                     var outputPath = Path.Combine("recordings", recordingId);
@@ -184,7 +176,7 @@ namespace Recorder.ViewModels
                     _annotationService.Start();
                     _inputHookService.Start();
 
-                    _recordingTask = App.StartSTATask(async () =>
+                    _recordingTask = Task.Run(async () =>
                     {
                         try
                         {
@@ -219,6 +211,7 @@ namespace Recorder.ViewModels
                         await _recordingTask;
                     }
                     _logger.LogInformation("Recording stopped.");
+                    IsRecording = false;
                 }
             }
             finally
