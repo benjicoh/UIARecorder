@@ -23,15 +23,17 @@ namespace Recorder.Services
         private string _outputPath;
         private readonly ILogger<RecordingService> _logger;
         private readonly OverlayService _overlayService;
+        private readonly ThreadManager _threadManager;
         private readonly ConcurrentQueue<FrameData> _frameQueue = new ConcurrentQueue<FrameData>();
 
-        public RecordingService(ILogger<RecordingService> logger, OverlayService overlayService)
+        public RecordingService(ILogger<RecordingService> logger, OverlayService overlayService, ThreadManager threadManager)
         {
             _logger = logger;
             _overlayService = overlayService;
+            _threadManager = threadManager;
         }
 
-        public async Task StartRecordingAsync(string outputPath, Rectangle captureArea)
+        public void StartRecording(string outputPath, Rectangle captureArea)
         {
             _cancellationTokenSource = new CancellationTokenSource();
             var token = _cancellationTokenSource.Token;
@@ -46,87 +48,76 @@ namespace Recorder.Services
             _tempVideoPath = Path.Combine(outputDir, Guid.NewGuid() + ".mp4");
             _tempAudioPath = Path.Combine(outputDir, Guid.NewGuid() + ".wav");
 
-            var videoTask = RecordVideo(token, captureArea);
-            var audioTask = Task.Run(() => RecordAudio(token));
-
-            await Task.WhenAll(videoTask, audioTask);
-
-            await MergeVideoAndAudio();
+            _threadManager.VideoCaptureThread.EnqueueAction(() => RecordVideo(token, captureArea));
+            _threadManager.AudioCaptureThread.EnqueueAction(() => RecordAudio(token));
         }
 
         public void StopRecording()
         {
             _cancellationTokenSource?.Cancel();
+            _threadManager.StopAll(); // Ensure all threads are stopped
+            MergeVideoAndAudio();
         }
 
-        private async Task RecordVideo(CancellationToken token, Rectangle captureArea)
+        private void RecordVideo(CancellationToken token, Rectangle captureArea)
         {
-            var captureTask = CaptureFramesAsync(token);
-            var processTask = ProcessFramesAsync(token, 20);
-
-            await Task.WhenAll(captureTask, processTask);
+            // This method is executed on the VideoCaptureThread.
+            // We kick off processing on its own thread and start capturing frames directly.
+            _threadManager.VideoProcessingThread.EnqueueAction(() => ProcessFrames(token, 20));
+            CaptureFrames(token);
         }
 
-        private Task CaptureFramesAsync(CancellationToken token)
+        private void CaptureFrames(CancellationToken token)
         {
-            return Task.Run(() =>
+            try
             {
-                try
+                foreach (var frame in ScreenCapture.CaptureScreenFrames(0, 20.0, 0, token))
                 {
-                    foreach (var frame in ScreenCapture.CaptureScreenFrames(0, 20.0, 0, token))
-                    {
-                        if (token.IsCancellationRequested) break;
-                        var mat = Mat.FromPixelData(frame.Height, frame.Width, MatType.CV_8UC4, frame.DataPointer);
-                        _overlayService.DrawCursor(mat);
-                        _frameQueue.Enqueue(new FrameData(mat, DateTime.UtcNow));
-                    }
+                    if (token.IsCancellationRequested) break;
+                    var mat = Mat.FromPixelData(frame.Height, frame.Width, MatType.CV_8UC4, frame.DataPointer);
+                    _overlayService.DrawCursor(mat);
+                    _frameQueue.Enqueue(new FrameData(mat, DateTime.UtcNow));
                 }
-                catch (OperationCanceledException)
-                {
-                    _logger.LogInformation("Frame capture was canceled.");
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "An error occurred during frame capture.");
-                }
-            }, token);
-        }
-
-        private Task ProcessFramesAsync(CancellationToken token, int frameRate)
-        {
-            return Task.Run(() =>
+            }
+            catch (OperationCanceledException)
             {
-                var fourcc = FourCC.FromString("X264");
-                var rect = ScreenCapture.GetScreenSize(0);
-                using var writer = new VideoWriter(_tempVideoPath, fourcc, frameRate, new OpenCvSharp.Size(rect.Width, rect.Height));
-
-                while (!token.IsCancellationRequested || !_frameQueue.IsEmpty)
-                {
-                    if (_frameQueue.TryDequeue(out var frameData))
-                    {
-                        using (var frame = frameData.Frame)
-                        {
-                            _overlayService.DrawOverlays(frame, frameData.Timestamp);
-                            writer.Write(frame);
-                        }
-                    }
-                    else
-                    {
-                        Task.Delay(10).Wait();
-                    }
-                }
-            }, token);
+                _logger.LogInformation("Frame capture was canceled.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred during frame capture.");
+            }
         }
 
-        private async Task RecordAudio(CancellationToken token)
+        private void ProcessFrames(CancellationToken token, int frameRate)
+        {
+            var rect = ScreenCapture.GetScreenSize(0);
+            using var writer = new VideoWriter(_tempVideoPath, FourCC.FromString("X264"), frameRate, new OpenCvSharp.Size(rect.Width, rect.Height));
+
+            while (!token.IsCancellationRequested || !_frameQueue.IsEmpty)
+            {
+                if (_frameQueue.TryDequeue(out var frameData))
+                {
+                    using (var frame = frameData.Frame)
+                    {
+                        _overlayService.DrawOverlays(frame, frameData.Timestamp);
+                        writer.Write(frame);
+                    }
+                }
+                else
+                {
+                    Thread.Sleep(10);
+                }
+            }
+        }
+
+        private void RecordAudio(CancellationToken token)
         {
             try
             {
                 using var waveIn = new WaveInEvent();
                 waveIn.WaveFormat = new WaveFormat(44100, 1);
                 using var writer = new WaveFileWriter(_tempAudioPath, waveIn.WaveFormat);
-
-                var tcs = new TaskCompletionSource<bool>();
 
                 waveIn.DataAvailable += (s, e) =>
                 {
@@ -136,13 +127,15 @@ namespace Recorder.Services
                 waveIn.RecordingStopped += (s, e) =>
                 {
                     writer.Flush();
-                    tcs.TrySetResult(true);
                 };
 
                 using (token.Register(() => waveIn.StopRecording()))
                 {
                     waveIn.StartRecording();
-                    await tcs.Task;
+                    while (!token.IsCancellationRequested)
+                    {
+                        Thread.Sleep(100);
+                    }
                 }
             }
             catch (Exception ex)
@@ -151,14 +144,14 @@ namespace Recorder.Services
             }
         }
 
-        private async Task MergeVideoAndAudio()
+        private void MergeVideoAndAudio()
         {
             bool videoExists = File.Exists(_tempVideoPath);
             bool audioExists = File.Exists(_tempAudioPath) && new FileInfo(_tempAudioPath).Length > 0;
 
             if (videoExists && audioExists)
             {
-                await FFMpegArguments
+                FFMpegArguments
                     .FromFileInput(_tempVideoPath)
                     .AddFileInput(_tempAudioPath)
                     .OutputToFile(_outputPath, true, options => options
@@ -166,7 +159,7 @@ namespace Recorder.Services
                         .WithVideoCodec(VideoCodec.LibX264)
                         .WithAudioCodec(AudioCodec.Aac)
                         .WithFastStart())
-                    .ProcessAsynchronously();
+                    .ProcessSynchronously();
 
                 File.Delete(_tempVideoPath);
                 File.Delete(_tempAudioPath);
@@ -180,9 +173,5 @@ namespace Recorder.Services
                 File.Delete(_tempAudioPath);
             }
         }
-
-       
     }
-
-    
 }
