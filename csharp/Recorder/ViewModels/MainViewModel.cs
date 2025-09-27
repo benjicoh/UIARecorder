@@ -82,7 +82,7 @@ namespace Recorder.ViewModels
                     {
                         _overlayService.AddOverlay(hierarchy.BoundingRectangle, hierarchy.GetIdentifier(), colors[i++ % colors.Length], e.Timestamp);
                     }
-                    hierarchy = hierarchy.Parent;
+                    //hierarchy = hierarchy.Parent;
                 }
                 var location = new OpenCvSharp.Point(e.Location.X, e.Location.Y);
                 _overlayService.AddClickOverlay(location, e.Button.ToString(), e.Timestamp);
@@ -108,7 +108,7 @@ namespace Recorder.ViewModels
                         var rect = hierarchy.BoundingRectangle;
                         _overlayService.AddOverlay(rect, hierarchy.GetIdentifier(), colors[i++ % colors.Length], e.Timestamp);
                     }
-                    hierarchy = hierarchy.Parent;
+                    //hierarchy = hierarchy.Parent;
                 }
                 _annotationService.AddAnnotation(EventType.KeyPress, new { Key = e.KeyCode.ToString() }, hierarchy);
             });
@@ -156,14 +156,13 @@ namespace Recorder.ViewModels
             IsBusy = true;
             try
             {
-                if (!IsRecording) // Start recording
+                if (IsRecording) // Start recording
                 {
                     if (!SetCaptureArea())
                     {
                         return;
                     }
 
-                    IsRecording = true;
 
                     var recordingId = $"recording_{DateTime.Now:yyyyMMdd_HHmmss}";
                     var outputPath = Path.Combine("recordings", recordingId);
@@ -176,7 +175,7 @@ namespace Recorder.ViewModels
                     _annotationService.Start();
                     _inputHookService.Start();
 
-                    _recordingTask = Task.Run(async () =>
+                    _recordingTask = App.StartSTATask(async () =>
                     {
                         try
                         {
@@ -194,7 +193,6 @@ namespace Recorder.ViewModels
                         {
                             await _annotationService.StopAndSaveAsync(annotationsFilePath);
                             _inputHookService.Stop();
-                            _overlayService.ClearOverlays();
                             Application.Current.Dispatcher.Invoke(() =>
                             {
                                 IsRecording = false;

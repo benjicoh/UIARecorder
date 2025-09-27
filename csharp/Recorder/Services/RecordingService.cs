@@ -62,7 +62,7 @@ namespace Recorder.Services
         private async Task RecordVideo(CancellationToken token, Rectangle captureArea)
         {
             var captureTask = CaptureFramesAsync(token);
-            var processTask = ProcessFramesAsync(token, captureArea, 20);
+            var processTask = ProcessFramesAsync(token, 20);
 
             await Task.WhenAll(captureTask, processTask);
         }
@@ -73,10 +73,11 @@ namespace Recorder.Services
             {
                 try
                 {
-                    foreach (var frame in ScreenCapture.CaptureScreenFrames(0, 20, 0, token))
+                    foreach (var frame in ScreenCapture.CaptureScreenFrames(0, 20.0, 0, token))
                     {
                         if (token.IsCancellationRequested) break;
                         var mat = Mat.FromPixelData(frame.Height, frame.Width, MatType.CV_8UC4, frame.DataPointer);
+                        _overlayService.DrawCursor(mat);
                         _frameQueue.Enqueue(new FrameData(mat, DateTime.UtcNow));
                     }
                 }
@@ -91,12 +92,13 @@ namespace Recorder.Services
             }, token);
         }
 
-        private Task ProcessFramesAsync(CancellationToken token, Rectangle captureArea, int frameRate)
+        private Task ProcessFramesAsync(CancellationToken token, int frameRate)
         {
             return Task.Run(() =>
             {
                 var fourcc = FourCC.FromString("X264");
-                using var writer = new VideoWriter(_tempVideoPath, fourcc, frameRate, new OpenCvSharp.Size(captureArea.Width, captureArea.Height));
+                var rect = ScreenCapture.GetScreenSize(0);
+                using var writer = new VideoWriter(_tempVideoPath, fourcc, frameRate, new OpenCvSharp.Size(rect.Width, rect.Height));
 
                 while (!token.IsCancellationRequested || !_frameQueue.IsEmpty)
                 {
@@ -104,10 +106,8 @@ namespace Recorder.Services
                     {
                         using (var frame = frameData.Frame)
                         {
-                            var location = new OpenCvSharp.Point(captureArea.X, captureArea.Y);
-                            _overlayService.DrawOverlays(frame, location, frameData.Timestamp);
-                            var croppedFrame = new Mat(frame, new Rect(captureArea.X, captureArea.Y, captureArea.Width, captureArea.Height));
-                            writer.Write(croppedFrame);
+                            _overlayService.DrawOverlays(frame, frameData.Timestamp);
+                            writer.Write(frame);
                         }
                     }
                     else
