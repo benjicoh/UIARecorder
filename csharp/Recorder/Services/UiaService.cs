@@ -8,36 +8,35 @@ using System.Drawing;
 namespace Recorder.Services
 {
 
+    public class AnnotationEvent
+    {
+        public double Timestamp { get; set; }
+        public string EventType { get; set; }
+        public object EventData { get; set; }
+    }
+
     public class ElementInfo
     {
         public string AutomationID { get; set; }
         public string Name { get; set; }
         public string ControlType { get; set; }
         public Rectangle BoundingRectangle { get; set; }
+        public List<PatternInfo> Patterns { get; set; } = new List<PatternInfo>();
+        public List<ElementInfo> Children { get; set; } = new List<ElementInfo>();
+        public List<AnnotationEvent> Events { get; set; } = new List<AnnotationEvent>();
 
         public string GetIdentifier()
         {
-            if (!string.IsNullOrEmpty(AutomationID))
-            {
-                return $"ID: {AutomationID}";
-            }
-            else if (!string.IsNullOrEmpty(Name))
-            {
-                return $"Name: {Name}";
-            }
-            else if (!string.IsNullOrEmpty(ControlType))
-            {
-                return $"Type: {ControlType}";
-            }
-            else
-            {
-                return "Unknown";
-            }
+            if (!string.IsNullOrEmpty(AutomationID)) return $"ID: {AutomationID}";
+            if (!string.IsNullOrEmpty(Name)) return $"Name: {Name}";
+            if (!string.IsNullOrEmpty(ControlType)) return $"Type: {ControlType}";
+            return "Unknown";
         }
 
-        public List<PatternInfo> Patterns { get; set; } = new List<PatternInfo>();
-
-        public ElementInfo Parent { get; set; }
+        public string GetUniqueKey()
+        {
+            return $"{ControlType}-{Name}-{AutomationID}";
+        }
     }
 
     public class PatternInfo
@@ -71,20 +70,43 @@ namespace Recorder.Services
             {
                 return null;
             }
-            var elementInfo = new ElementInfo
+
+            // First, build the chain up to the root
+            var hierarchy = new List<AutomationElement>();
+            while (element != null)
             {
-                AutomationID = element.GetSafeAutomationID(),
-                Name = element.GetSafeName(),
-                ControlType = element.GetSafeControlType(),
-                BoundingRectangle = element.GetSafeBoundingRectangle(),
-                Patterns = element.GetPatternsInfo()
-            };
-            var parentElement = element.Parent;
-            if (parentElement != null)
-            {
-                elementInfo.Parent = GetElementHierarchy(parentElement);
+                hierarchy.Add(element);
+                element = element.Parent;
             }
-            return elementInfo;
+            hierarchy.Reverse(); // Reverse to have root at the beginning
+
+            // Now, build the ElementInfo tree from the root down
+            ElementInfo rootInfo = null;
+            ElementInfo currentInfo = null;
+
+            foreach (var el in hierarchy)
+            {
+                var newInfo = new ElementInfo
+                {
+                    AutomationID = el.GetSafeAutomationID(),
+                    Name = el.GetSafeName(),
+                    ControlType = el.GetSafeControlType(),
+                    BoundingRectangle = el.GetSafeBoundingRectangle(),
+                    Patterns = el.GetPatternsInfo()
+                };
+
+                if (rootInfo == null)
+                {
+                    rootInfo = newInfo;
+                }
+                else
+                {
+                    currentInfo.Children.Add(newInfo);
+                }
+                currentInfo = newInfo;
+            }
+
+            return rootInfo;
         }
     }
 
