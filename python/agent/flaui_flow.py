@@ -24,7 +24,7 @@ RUN_OUTPUT_DIR = "generated_scripts/{timestamp}"
 COMPILATION_ITERATION_DIR = "{run_output_dir}/compilation/iteration{i}"
 EXECUTION_ITERATION_DIR = "{run_output_dir}/execution/iteration{i}"
 MODEL = "gemini-flash-latest"
-TEMPLATE_PROJECT_DIR = "fla-ui/TemplateTest"
+TEMPLATE_PROJECT_DIR = "csharp/TemplateTest"
 
 # --- Configuration ---
 client = initialize_gemini_client()
