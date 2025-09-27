@@ -43,13 +43,26 @@ namespace Recorder
 
         public IServiceProvider ServiceProvider { get; }
 
-        //protected override void OnStartup(StartupEventArgs e)
-        //{
-        //    base.OnStartup(e);
+        public static Task StartSTATask(Action action)
+        {
+            var tcs = new TaskCompletionSource<object>();
+            var thread = new Thread(() =>
+            {
+                try
+                {
+                    action();
+                    tcs.SetResult(null);
+                }
+                catch (Exception e)
+                {
+                    tcs.SetException(e);
+                }
+            });
 
-        //    var mainWindow = _serviceProvider.GetService<MainWindow>();
-        //    mainWindow.DataContext = _serviceProvider.GetService<MainViewModel>();
-        //    mainWindow.Show();
-        //}
+            thread.SetApartmentState(ApartmentState.STA);
+            thread.Start();
+
+            return tcs.Task;
+        }
     }
 }

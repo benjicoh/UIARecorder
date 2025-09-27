@@ -69,48 +69,56 @@ namespace Recorder.ViewModels
         private void OnMouseClick(object sender, MouseEventArgs e)
         {
             var element = _uiaService.GetElementFromPoint(e.Location);
+            ElementInfo hierarchy = null;
             if (element != null)
             {
-                var hierarchy = _uiaService.GetElementHierarchy(element);
+                hierarchy = _uiaService.GetElementHierarchy(element);
                 _overlayService.ClearOverlays();
-                if (hierarchy != null)
-                {
-                    var colors = new[] { Color.Red, Color.Blue, Color.Green, Color.Yellow, Color.Orange };
-                    for (int i = 0; i < hierarchy.Count; i++)
+
+                var colors = new[] { Color.Red, Color.Blue, Color.Green, Color.Yellow, Color.Orange, Color.Magenta };
+                int i = 0;
+                //while (hierarchy != null)
+                //{
+                    if (!hierarchy.BoundingRectangle.IsEmpty)
                     {
-                        var info = hierarchy[i];
-                        if (info["bounding_rectangle"] is Rectangle rect)
-                        {
-                            _overlayService.AddOverlay(rect, info["id"] as string, colors[i % colors.Length]);
-                        }
+                        _overlayService.AddOverlay(hierarchy.BoundingRectangle, hierarchy.GetIdentifier(), colors[i++ % colors.Length]);
                     }
-                }
-                _overlayService.AddClickOverlay(e.Location, e.Button.ToString());
-                _annotationService.AddAnnotation("mouse_click", new { e.X, e.Y, Button = e.Button.ToString() }, hierarchy);
+                    hierarchy = hierarchy.Parent;
+                //}
             }
+            var location = new OpenCvSharp.Point(e.Location.X, e.Location.Y);
+            _overlayService.AddClickOverlay(location, e.Button.ToString());
+            _annotationService.AddAnnotation(EventType.MouseClick, new { e.X, e.Y, Button = e.Button.ToString() }, hierarchy);
         }
+        
 
         private void OnKeyUp(object sender, KeyEventArgs e)
         {
             var element = _uiaService.GetFocusedElement();
+            ElementInfo hierarchy = null;
             if (element != null)
             {
-                var hierarchy = _uiaService.GetElementHierarchy(element);
+                hierarchy = _uiaService.GetElementHierarchy(element);
                 _overlayService.ClearOverlays();
-                if (hierarchy != null)
-                {
-                     var colors = new[] { Color.Red, Color.Blue, Color.Green, Color.Yellow, Color.Orange };
-                    for (int i = 0; i < hierarchy.Count; i++)
+
+                var colors = new[] { Color.Red, Color.Blue, Color.Green, Color.Yellow, Color.Orange, Color.Magenta };
+                int i = 0;
+                //while (hierarchy != null)
+                //{
+
+                    if (!hierarchy.BoundingRectangle.IsEmpty)
                     {
-                        var info = hierarchy[i];
-                        if (info["bounding_rectangle"] is Rectangle rect)
-                        {
-                            _overlayService.AddOverlay(rect, info["id"] as string, colors[i % colors.Length]);
-                        }
+                        var rect = hierarchy.BoundingRectangle;
+                        
+                        _overlayService.AddOverlay(rect, hierarchy.GetIdentifier(), colors[i++ % colors.Length]);
                     }
-                }
-                _annotationService.AddAnnotation("key_up", new { Key = e.KeyCode.ToString() }, hierarchy);
+                    hierarchy = hierarchy.Parent;
+                //}
+
             }
+            _annotationService.AddAnnotation(EventType.KeyPress, new { Key = e.KeyCode.ToString() }, hierarchy);
+
+
         }
 
         private bool SetCaptureArea()
@@ -155,13 +163,12 @@ namespace Recorder.ViewModels
             IsBusy = true;
             try
             {
-                if (!IsRecording) // Start recording
+                if (IsRecording) // Start recording
                 {
                     if (!SetCaptureArea())
                     {
                         return;
                     }
-                    IsRecording = true;
 
                     var recordingId = $"recording_{DateTime.Now:yyyyMMdd_HHmmss}";
                     var outputPath = Path.Combine("recordings", recordingId);
@@ -174,7 +181,7 @@ namespace Recorder.ViewModels
                     _annotationService.Start();
                     _inputHookService.Start();
 
-                    _recordingTask = Task.Run(async () =>
+                    _recordingTask = App.StartSTATask(async () =>
                     {
                         try
                         {

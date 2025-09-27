@@ -3,12 +3,13 @@ using FFMpegCore.Enums;
 using Microsoft.Extensions.Logging;
 using NAudio.Wave;
 using OpenCvSharp;
-using Sdcb.ScreenCapture;
+using Sdcb;
 using System;
 using System.Drawing;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Point = System.Drawing.Point;
 
 namespace Recorder.Services
 {
@@ -42,7 +43,7 @@ namespace Recorder.Services
             _tempVideoPath = Path.Combine(outputDir, Guid.NewGuid() + ".mp4");
             _tempAudioPath = Path.Combine(outputDir, Guid.NewGuid() + ".wav");
 
-            var videoTask = Task.Run(() => RecordVideo(token, captureArea));
+            var videoTask = App.StartSTATask(() => RecordVideo(token, captureArea));
             var audioTask = Task.Run(() => RecordAudio(token));
 
             await Task.WhenAll(videoTask, audioTask);
@@ -76,12 +77,8 @@ namespace Recorder.Services
             var fourcc = FourCC.FromString("X264");
             using var writer = new VideoWriter(_tempVideoPath, fourcc, frameRate, new OpenCvSharp.Size(captureArea.Width, captureArea.Height));
 
-            var captureOptions = new ScreenCaptureOptions
-            {
-                Region = captureArea,
-            };
 
-            foreach (var frame in ScreenCapture.CaptureScreenFrames(captureOptions, frameRate, token))
+            foreach (var frame in ScreenCapture.CaptureScreenFrames(0, (double)frameRate, 0, token))
             {
                 if (token.IsCancellationRequested)
                 {
@@ -89,34 +86,9 @@ namespace Recorder.Services
                 }
 
                 using var mat = Mat.FromPixelData(frame.Height, frame.Width, MatType.CV_8UC4, frame.DataPointer);
-                DrawOverlays(mat, captureArea.Location);
+                var location = new OpenCvSharp.Point(captureArea.X, captureArea.Y);
+                _overlayService.DrawOverlays(mat, location);
                 writer.Write(mat);
-            }
-        }
-
-        private void DrawOverlays(Mat image, Point captureOrigin)
-        {
-            var overlays = _overlayService.GetOverlays();
-            foreach (var overlay in overlays)
-            {
-                var rect = new OpenCvSharp.Rect(overlay.BoundingBox.X - captureOrigin.X, overlay.BoundingBox.Y - captureOrigin.Y, overlay.BoundingBox.Width, overlay.BoundingBox.Height);
-                var color = new Scalar(overlay.Color.B, overlay.Color.G, overlay.Color.R, overlay.Color.A);
-                Cv2.Rectangle(image, rect, color, 2);
-                Cv2.PutText(image, overlay.Text, new OpenCvSharp.Point(rect.X, rect.Y - 5), HersheyFonts.HersheySimplex, 0.5, color, 2);
-            }
-
-            var clickOverlays = _overlayService.GetClickOverlays();
-            foreach (var click in clickOverlays)
-            {
-                var center = new OpenCvSharp.Point(click.Position.X - captureOrigin.X, click.Position.Y - captureOrigin.Y);
-                var color = new Scalar(0, 0, 255); // Red
-
-                using (var overlayMat = image.Clone())
-                {
-                    Cv2.Circle(overlayMat, center, 15, color, -1);
-                    double alpha = 0.4;
-                    Cv2.AddWeighted(overlayMat, alpha, image, 1 - alpha, 0, image);
-                }
             }
         }
 
@@ -182,5 +154,9 @@ namespace Recorder.Services
                 File.Delete(_tempAudioPath);
             }
         }
+
+       
     }
+
+    
 }

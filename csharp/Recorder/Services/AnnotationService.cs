@@ -7,9 +7,23 @@ using System.Threading.Tasks;
 
 namespace Recorder.Services
 {
+    public enum EventType
+    {
+        MouseClick,
+        KeyPress,
+        Unknown
+    }
+
+    public class AnnotationInfo
+    {
+        public double Timestamp { get; set; }
+        public string EventType { get; set; }
+        public object EventData { get; set; }
+        public ElementInfo ElementHierarchy { get; set; }
+    }
     public class AnnotationService
     {
-        private readonly List<Dictionary<string, object>> _annotations = new List<Dictionary<string, object>>();
+        private readonly List<AnnotationInfo> _annotations = new List<AnnotationInfo>();
         private readonly ILogger<AnnotationService> _logger;
         private DateTime _startTime;
 
@@ -24,15 +38,15 @@ namespace Recorder.Services
             _annotations.Clear();
         }
 
-        public void AddAnnotation(string eventType, object eventData, List<Dictionary<string, object>> elementHierarchy)
+        public void AddAnnotation(EventType eventType, object eventData, ElementInfo elementHierarchy)
         {
             var timestamp = (DateTime.UtcNow - _startTime).TotalSeconds;
-            var annotation = new Dictionary<string, object>
+            var annotation = new AnnotationInfo
             {
-                ["timestamp"] = timestamp,
-                ["event_type"] = eventType,
-                ["event_data"] = eventData,
-                ["element_hierarchy"] = elementHierarchy
+                Timestamp = timestamp,
+                EventType = eventType.ToString(),
+                EventData = eventData,
+                ElementHierarchy = elementHierarchy
             };
             _annotations.Add(annotation);
         }

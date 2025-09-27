@@ -6,6 +6,8 @@ using System.Windows.Media;
 using FlaUI.Core.AutomationElements;
 using FlaUI.UIA3;
 using System.Drawing;
+using Window = System.Windows.Window;
+using Point = System.Windows.Point;
 
 namespace Recorder
 {
