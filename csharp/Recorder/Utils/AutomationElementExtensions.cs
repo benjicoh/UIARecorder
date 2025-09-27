@@ -3,6 +3,7 @@ using Recorder.Models;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Xml.Linq;
 
 namespace Recorder.Utils
 {
@@ -90,6 +91,28 @@ namespace Recorder.Utils
                 // Ignore pattern retrieval errors
             }
             return patterns;
+        }
+
+        public static string GetIdentifier(this AutomationElement element)
+        {
+            
+            var id = element.GetSafeAutomationID();
+            if (!string.IsNullOrEmpty(id))
+            {
+                return $"ID: {id}";
+            }
+            var name = element.GetSafeName();
+            if (!string.IsNullOrEmpty(name))
+            {
+                return $"Name: {name}";
+            }
+            var type = element.GetSafeControlType();
+            if (!string.IsNullOrEmpty(type))
+            {
+                return $"Type: {type}";
+            }
+
+            return "Unknown";
         }
     }
 }

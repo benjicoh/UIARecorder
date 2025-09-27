@@ -20,13 +20,7 @@ namespace Recorder.Models
         public List<ElementInfo> Children { get; set; } = new List<ElementInfo>();
         public List<AnnotationEvent> Events { get; set; } = new List<AnnotationEvent>();
 
-        public string GetIdentifier()
-        {
-            if (!string.IsNullOrEmpty(AutomationID)) return $"ID: {AutomationID}";
-            if (!string.IsNullOrEmpty(Name)) return $"Name: {Name}";
-            if (!string.IsNullOrEmpty(ControlType)) return $"Type: {ControlType}";
-            return "Unknown";
-        }
+        
 
         public string GetUniqueKey()
         {

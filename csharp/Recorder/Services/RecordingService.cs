@@ -25,6 +25,7 @@ namespace Recorder.Services
         private readonly OverlayService _overlayService;
         private readonly ThreadManager _threadManager;
         private readonly ConcurrentQueue<FrameData> _frameQueue = new ConcurrentQueue<FrameData>();
+        private DateTime _startCaptureTime;
 
         public RecordingService(ILogger<RecordingService> logger, OverlayService overlayService, ThreadManager threadManager)
         {
@@ -56,6 +57,7 @@ namespace Recorder.Services
         {
             _cancellationTokenSource?.Cancel();
             _threadManager.StopAll(); // Ensure all threads are stopped
+            _tempVideoPath = _overlayService.AddOverlayToVideo(_tempVideoPath, _startCaptureTime);
             MergeVideoAndAudio();
         }
 
@@ -63,7 +65,7 @@ namespace Recorder.Services
         {
             // This method is executed on the VideoCaptureThread.
             // We kick off processing on its own thread and start capturing frames directly.
-            _threadManager.VideoProcessingThread.EnqueueAction(() => ProcessFrames(token, 20));
+            //_threadManager.VideoProcessingThread.EnqueueAction(() => ProcessFrames(token, 20));
             CaptureFrames(token);
         }
 
@@ -71,12 +73,16 @@ namespace Recorder.Services
         {
             try
             {
+                var rect = ScreenCapture.GetScreenSize(0);
+                using var writer = new VideoWriter(_tempVideoPath, FourCC.FromString("X264"), 20.0, new OpenCvSharp.Size(rect.Width, rect.Height));
+                _startCaptureTime = DateTime.UtcNow;
                 foreach (var frame in ScreenCapture.CaptureScreenFrames(0, 20.0, 0, token))
                 {
                     if (token.IsCancellationRequested) break;
                     var mat = Mat.FromPixelData(frame.Height, frame.Width, MatType.CV_8UC4, frame.DataPointer);
                     _overlayService.DrawCursor(mat);
-                    _frameQueue.Enqueue(new FrameData(mat, DateTime.UtcNow));
+                    
+                    writer.Write(mat);
                 }
             }
             catch (OperationCanceledException)
@@ -86,28 +92,6 @@ namespace Recorder.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "An error occurred during frame capture.");
-            }
-        }
-
-        private void ProcessFrames(CancellationToken token, int frameRate)
-        {
-            var rect = ScreenCapture.GetScreenSize(0);
-            using var writer = new VideoWriter(_tempVideoPath, FourCC.FromString("X264"), frameRate, new OpenCvSharp.Size(rect.Width, rect.Height));
-
-            while (!token.IsCancellationRequested || !_frameQueue.IsEmpty)
-            {
-                if (_frameQueue.TryDequeue(out var frameData))
-                {
-                    using (var frame = frameData.Frame)
-                    {
-                        _overlayService.DrawOverlays(frame, frameData.Timestamp);
-                        writer.Write(frame);
-                    }
-                }
-                else
-                {
-                    Thread.Sleep(10);
-                }
             }
         }
 
@@ -126,7 +110,14 @@ namespace Recorder.Services
 
                 waveIn.RecordingStopped += (s, e) =>
                 {
-                    writer.Flush();
+                    try
+                    {
+                        writer.Flush();
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Problem flushing audio");
+                    }
                 };
 
                 using (token.Register(() => waveIn.StopRecording()))

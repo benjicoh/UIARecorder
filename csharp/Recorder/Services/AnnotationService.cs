@@ -30,9 +30,9 @@ namespace Recorder.Services
             }
         }
 
-        public void AddEvent(ElementInfo elementHierarchy, string eventType, object eventData)
+        public void AddEvent(ElementInfo elementHierarchy, string eventType, object eventData, DateTime time)
         {
-            var timestamp = (DateTime.UtcNow - _startTime).TotalSeconds;
+            var timestamp = (time - _startTime).TotalSeconds;
             var newEvent = new AnnotationEvent
             {
                 Timestamp = timestamp,

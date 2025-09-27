@@ -100,7 +100,7 @@ namespace Recorder.ViewModels
             IsBusy = true;
             try
             {
-                if (!IsRecording) // START
+                if (IsRecording) // START
                 {
                     if (!SetCaptureArea())
                     {
@@ -120,7 +120,6 @@ namespace Recorder.ViewModels
                     _inputUiaService.Start();
                     _recordingService.StartRecording(videoFilePath, _captureArea);
 
-                    IsRecording = true;
                 }
                 else // STOP
                 {
@@ -134,7 +133,6 @@ namespace Recorder.ViewModels
                     });
 
                     _logger.LogInformation("Recording stopped.");
-                    IsRecording = false;
                 }
             }
             finally
