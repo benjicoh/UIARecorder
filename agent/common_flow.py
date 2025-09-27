@@ -4,7 +4,7 @@ import threading
 import time
 import shutil
 from google import genai
-from tools.common.logger import get_logger
+from tools.recorder.logger import get_logger
 
 logger = get_logger(__name__)
 

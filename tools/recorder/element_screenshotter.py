@@ -2,7 +2,7 @@ import sys
 import os
 
 import pyautogui
-from tools.common.logger import get_logger
+from tools.recorder.logger import get_logger
 
 logger = get_logger(__name__)
 

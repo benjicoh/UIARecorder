@@ -5,7 +5,7 @@ import shutil
 import time
 import json
 import psutil
-from tools.common.logger import get_logger
+from tools.recorder.logger import get_logger
 from tools.recorder.element_screenshotter import ElementScreenshotter
 from tools.recorder.events import InputListener
 from tools.recorder.media import MediaRecorder

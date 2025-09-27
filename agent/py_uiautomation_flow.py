@@ -4,7 +4,7 @@ import argparse
 import time
 from pydantic import BaseModel
 from google.genai import types
-from tools.common.logger import get_logger
+from tools.recorder.logger import get_logger
 from tools.recorder.main_recorder import Recorder
 from agent.common_flow import (
     initialize_gemini_client,
