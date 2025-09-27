@@ -33,7 +33,6 @@
                           Style="{StaticResource MaterialDesignSwitchDarkToggleButton}"
                           IsChecked="{Binding IsRecording}"
                           Command="{Binding ToggleRecordingCommand}"
-                          IsEnabled="{Binding IsNotBusy}"
                           materialDesign:ButtonProgressAssist.IsIndeterminate="False">
             </ToggleButton>
         </StackPanel>

@@ -10,13 +10,11 @@ namespace Recorder
 {
     public partial class App : Application
     {
-        private IServiceProvider _serviceProvider;
-
         public App()
         {
             var serviceCollection = new ServiceCollection();
             ConfigureServices(serviceCollection);
-            _serviceProvider = serviceCollection.BuildServiceProvider();
+            ServiceProvider = serviceCollection.BuildServiceProvider();
         }
 
         private void ConfigureServices(IServiceCollection services)
@@ -28,21 +26,26 @@ namespace Recorder
             {
                 builder.AddProvider(new ObservableLoggerProvider(message =>
                 {
-                    var mainViewModel = _serviceProvider.GetService<MainViewModel>();
-                    mainViewModel?.LogMessages.Add(message);
+                    var mainViewModel = ServiceProvider.GetService<MainViewModel>();
+                    App.Current.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, new Action(() =>
+                    {
+                        mainViewModel?.LogMessages.Add(message);
+                    }));
                 }));
             });
-
+            
             services.AddSingleton<MainWindow>();
         }
 
-        protected override void OnStartup(StartupEventArgs e)
-        {
-            base.OnStartup(e);
+        public IServiceProvider ServiceProvider { get; }
 
-            var mainWindow = _serviceProvider.GetService<MainWindow>();
-            mainWindow.DataContext = _serviceProvider.GetService<MainViewModel>();
-            mainWindow.Show();
-        }
+        //protected override void OnStartup(StartupEventArgs e)
+        //{
+        //    base.OnStartup(e);
+
+        //    var mainWindow = _serviceProvider.GetService<MainWindow>();
+        //    mainWindow.DataContext = _serviceProvider.GetService<MainViewModel>();
+        //    mainWindow.Show();
+        //}
     }
 }

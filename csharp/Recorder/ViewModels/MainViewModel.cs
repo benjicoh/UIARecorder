@@ -5,6 +5,7 @@ using Recorder.Services;
 using System;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Windows;
 
@@ -16,9 +17,8 @@ namespace Recorder.ViewModels
         private bool isRecording;
 
         [ObservableProperty]
-        [NotifyPropertyChangedFor(nameof(IsNotBusy))]
         private bool isBusy;
-        public bool IsNotBusy => !isBusy;
+        
 
         private readonly RecordingService _recordingService;
         private readonly ILogger<MainViewModel> _logger;
@@ -31,7 +31,7 @@ namespace Recorder.ViewModels
             _logger = logger;
         }
 
-        [RelayCommand(CanExecute = nameof(IsNotBusy))]
+        [RelayCommand]
         private async Task ToggleRecording()
         {
             IsBusy = true;
@@ -41,7 +41,6 @@ namespace Recorder.ViewModels
                 {
                     var outputPath = Path.Combine("recordings", $"recording_{DateTime.Now:yyyyMMdd_HHmmss}.mp4");
                     _logger.LogInformation("Starting recording to {outputPath}", outputPath);
-
                     _recordingTask = Task.Run(async () =>
                     {
                         try
@@ -75,7 +74,6 @@ namespace Recorder.ViewModels
                     {
                         await _recordingTask;
                     }
-
                     _logger.LogInformation("Recording stopped.");
                 }
             }

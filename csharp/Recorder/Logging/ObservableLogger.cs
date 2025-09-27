@@ -19,8 +19,8 @@ namespace Recorder.Logging
 
         public bool IsEnabled(LogLevel logLevel) => true;
 
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter,
-            [CallerFilePath] string filePath = "", [CallerLineNumber] int lineNumber = 0)
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
+            //[CallerFilePath] string filePath = "", [CallerLineNumber] int lineNumber = 0)
         {
             if (!IsEnabled(logLevel))
             {
@@ -29,7 +29,8 @@ namespace Recorder.Logging
 
             var message = formatter(state, exception);
             var level = logLevel.ToString().ToUpper();
-            var finalMessage = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - {System.IO.Path.GetFileName(filePath)}:{lineNumber} - {level} - {message}";
+            /*{System.IO.Path.GetFileName(filePath)}:{lineNumber}*/
+            var finalMessage = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - {level} - {message}";
 
             _logAction?.Invoke(finalMessage);
         }

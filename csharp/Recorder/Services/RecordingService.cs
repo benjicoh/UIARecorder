@@ -1,15 +1,17 @@
 using FFMpegCore;
+using FFMpegCore.Enums;
 using FFMpegCore.Pipes;
+using Microsoft.Extensions.Logging;
 using NAudio.Wave;
+using OpenCvSharp;
+using Sdcb;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using Sdcb.ScreenCapture;
-using FFMpegCore.Enums;
-using Microsoft.Extensions.Logging;
+using System.Windows.Media.Media3D;
 
 namespace Recorder.Services
 {
@@ -41,8 +43,8 @@ namespace Recorder.Services
             _tempVideoPath = Path.Combine(outputDir, Guid.NewGuid() + ".mp4");
             _tempAudioPath = Path.Combine(outputDir, Guid.NewGuid() + ".wav");
 
-            var videoTask = RecordVideo(token);
-            var audioTask = RecordAudio(token);
+            var videoTask = Task.Run(() => RecordVideo(token));
+            var audioTask = Task.Run(() => RecordAudio(token));
 
             await Task.WhenAll(videoTask, audioTask);
 
@@ -54,20 +56,12 @@ namespace Recorder.Services
             _cancellationTokenSource?.Cancel();
         }
 
-        private async Task RecordVideo(CancellationToken token)
+        private void RecordVideo(CancellationToken token)
         {
             try
             {
-                var frameRate = 20;
-                var videoFrames = GetVideoFrames(token, frameRate);
+                CaptureVideoFrames(token, 20);
 
-                await FFMpegArguments
-                    .FromPipeInput(new RawVideoPipeSource(videoFrames), options => options.WithFramerate(frameRate))
-                    .OutputToFile(_tempVideoPath, true, options => options
-                        .WithVideoCodec(VideoCodec.LibX264)
-                        .WithVideoBitrate(2000)
-                        .WithFastStart())
-                    .ProcessAsynchronously(true, token);
             }
             catch (OperationCanceledException)
             {
@@ -75,17 +69,18 @@ namespace Recorder.Services
             }
         }
 
-        private IEnumerable<IVideoFrame> GetVideoFrames(CancellationToken token, int frameRate)
+        private void CaptureVideoFrames(CancellationToken token, int frameRate)
         {
-            foreach (var frame in ScreenCapture.CaptureScreenFrames(0, frameRate, 0, token))
+            var fourcc = FourCC.FromString("X264");
+            var size = ScreenCapture.GetScreenSize(0);
+            using var writer = new VideoWriter(_tempVideoPath, fourcc, frameRate, new OpenCvSharp.Size(size.Width, size.Height));
+            foreach (var frame in ScreenCapture.CaptureScreenFrames(0, (double)frameRate, 0, token))
             {
                 if (token.IsCancellationRequested)
                 {
-                    yield break;
+                    break;
                 }
-
-                var bmp = new Bitmap(frame.Width, frame.Height, frame.RowPitch, System.Drawing.Imaging.PixelFormat.Format32bppArgb, frame.DataPointer);
-                yield return new BitmapVideoFrameWrapper(bmp);
+                writer.Write(Mat.FromPixelData(frame.Height, frame.Width, MatType.CV_8UC4, frame.DataPointer));
             }
         }
 
@@ -133,7 +128,8 @@ namespace Recorder.Services
                     .FromFileInput(_tempVideoPath)
                     .AddFileInput(_tempAudioPath)
                     .OutputToFile(_outputPath, true, options => options
-                        .WithVideoCodec(VideoCodec.Copy)
+                        .CopyChannel(Channel.Both)
+                        .WithVideoCodec(VideoCodec.LibX264)
                         .WithAudioCodec(AudioCodec.Aac)
                         .WithFastStart())
                     .ProcessAsynchronously();

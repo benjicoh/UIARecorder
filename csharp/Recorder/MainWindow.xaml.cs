@@ -10,6 +10,9 @@ namespace Recorder
         public MainWindow()
         {
             InitializeComponent();
+            //get the singleton from the app.xaml.cs
+            
+            DataContext = (App.Current as App).ServiceProvider.GetService(typeof(ViewModels.MainViewModel));
         }
     }
 }
