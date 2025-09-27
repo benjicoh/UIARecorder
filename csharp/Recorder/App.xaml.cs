@@ -21,6 +21,10 @@ namespace Recorder
         {
             services.AddSingleton<MainViewModel>();
             services.AddTransient<RecordingService>();
+            services.AddSingleton<UiaService>();
+            services.AddSingleton<InputHookService>();
+            services.AddSingleton<OverlayService>();
+            services.AddSingleton<AnnotationService>();
 
             services.AddLogging(builder =>
             {

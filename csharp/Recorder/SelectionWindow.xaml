@@ -1,0 +1,17 @@
+<Window x:Class="Recorder.SelectionWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        WindowState="Maximized"
+        Cursor="Cross">
+    <Grid Name="LayoutRoot" Background="#22FFFFFF">
+        <Canvas Name="SelectionCanvas">
+            <Border x:Name="SelectionRectangle"
+                    BorderBrush="Red"
+                    BorderThickness="2"
+                    Visibility="Collapsed"/>
+        </Canvas>
+    </Grid>
+</Window>

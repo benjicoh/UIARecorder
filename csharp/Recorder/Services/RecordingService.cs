@@ -1,17 +1,14 @@
 using FFMpegCore;
 using FFMpegCore.Enums;
-using FFMpegCore.Pipes;
 using Microsoft.Extensions.Logging;
 using NAudio.Wave;
 using OpenCvSharp;
-using Sdcb;
+using Sdcb.ScreenCapture;
 using System;
-using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows.Media.Media3D;
 
 namespace Recorder.Services
 {
@@ -22,13 +19,15 @@ namespace Recorder.Services
         private string _tempAudioPath;
         private string _outputPath;
         private readonly ILogger<RecordingService> _logger;
+        private readonly OverlayService _overlayService;
 
-        public RecordingService(ILogger<RecordingService> logger)
+        public RecordingService(ILogger<RecordingService> logger, OverlayService overlayService)
         {
             _logger = logger;
+            _overlayService = overlayService;
         }
 
-        public async Task StartRecordingAsync(string outputPath)
+        public async Task StartRecordingAsync(string outputPath, Rectangle captureArea)
         {
             _cancellationTokenSource = new CancellationTokenSource();
             var token = _cancellationTokenSource.Token;
@@ -43,7 +42,7 @@ namespace Recorder.Services
             _tempVideoPath = Path.Combine(outputDir, Guid.NewGuid() + ".mp4");
             _tempAudioPath = Path.Combine(outputDir, Guid.NewGuid() + ".wav");
 
-            var videoTask = Task.Run(() => RecordVideo(token));
+            var videoTask = Task.Run(() => RecordVideo(token, captureArea));
             var audioTask = Task.Run(() => RecordAudio(token));
 
             await Task.WhenAll(videoTask, audioTask);
@@ -56,31 +55,68 @@ namespace Recorder.Services
             _cancellationTokenSource?.Cancel();
         }
 
-        private void RecordVideo(CancellationToken token)
+        private void RecordVideo(CancellationToken token, Rectangle captureArea)
         {
             try
             {
-                CaptureVideoFrames(token, 20);
-
+                CaptureVideoFrames(token, 20, captureArea);
             }
             catch (OperationCanceledException)
             {
                 _logger.LogInformation("Video recording was canceled.");
             }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred during video recording.");
+            }
         }
 
-        private void CaptureVideoFrames(CancellationToken token, int frameRate)
+        private void CaptureVideoFrames(CancellationToken token, int frameRate, Rectangle captureArea)
         {
             var fourcc = FourCC.FromString("X264");
-            var size = ScreenCapture.GetScreenSize(0);
-            using var writer = new VideoWriter(_tempVideoPath, fourcc, frameRate, new OpenCvSharp.Size(size.Width, size.Height));
-            foreach (var frame in ScreenCapture.CaptureScreenFrames(0, (double)frameRate, 0, token))
+            using var writer = new VideoWriter(_tempVideoPath, fourcc, frameRate, new OpenCvSharp.Size(captureArea.Width, captureArea.Height));
+
+            var captureOptions = new ScreenCaptureOptions
+            {
+                Region = captureArea,
+            };
+
+            foreach (var frame in ScreenCapture.CaptureScreenFrames(captureOptions, frameRate, token))
             {
                 if (token.IsCancellationRequested)
                 {
                     break;
                 }
-                writer.Write(Mat.FromPixelData(frame.Height, frame.Width, MatType.CV_8UC4, frame.DataPointer));
+
+                using var mat = Mat.FromPixelData(frame.Height, frame.Width, MatType.CV_8UC4, frame.DataPointer);
+                DrawOverlays(mat, captureArea.Location);
+                writer.Write(mat);
+            }
+        }
+
+        private void DrawOverlays(Mat image, Point captureOrigin)
+        {
+            var overlays = _overlayService.GetOverlays();
+            foreach (var overlay in overlays)
+            {
+                var rect = new OpenCvSharp.Rect(overlay.BoundingBox.X - captureOrigin.X, overlay.BoundingBox.Y - captureOrigin.Y, overlay.BoundingBox.Width, overlay.BoundingBox.Height);
+                var color = new Scalar(overlay.Color.B, overlay.Color.G, overlay.Color.R, overlay.Color.A);
+                Cv2.Rectangle(image, rect, color, 2);
+                Cv2.PutText(image, overlay.Text, new OpenCvSharp.Point(rect.X, rect.Y - 5), HersheyFonts.HersheySimplex, 0.5, color, 2);
+            }
+
+            var clickOverlays = _overlayService.GetClickOverlays();
+            foreach (var click in clickOverlays)
+            {
+                var center = new OpenCvSharp.Point(click.Position.X - captureOrigin.X, click.Position.Y - captureOrigin.Y);
+                var color = new Scalar(0, 0, 255); // Red
+
+                using (var overlayMat = image.Clone())
+                {
+                    Cv2.Circle(overlayMat, center, 15, color, -1);
+                    double alpha = 0.4;
+                    Cv2.AddWeighted(overlayMat, alpha, image, 1 - alpha, 0, image);
+                }
             }
         }
 
@@ -128,7 +164,7 @@ namespace Recorder.Services
                     .FromFileInput(_tempVideoPath)
                     .AddFileInput(_tempAudioPath)
                     .OutputToFile(_outputPath, true, options => options
-                        .CopyChannel(Channel.Both)
+                        .CopyChannel()
                         .WithVideoCodec(VideoCodec.LibX264)
                         .WithAudioCodec(AudioCodec.Aac)
                         .WithFastStart())
@@ -141,8 +177,7 @@ namespace Recorder.Services
             {
                 File.Move(_tempVideoPath, _outputPath);
             }
-
-            if(audioExists && !videoExists)
+            else if (audioExists)
             {
                 File.Delete(_tempAudioPath);
             }
