@@ -44,5 +44,20 @@ namespace Recorder
         }
 
         public IServiceProvider ServiceProvider { get; }
+
+        protected override void OnStartup(StartupEventArgs e)
+        {
+            base.OnStartup(e);
+
+            var mainViewModel = ServiceProvider.GetService<MainViewModel>();
+
+            if (e.Args.Length > 0)
+            {
+                mainViewModel.OutputPath = e.Args[0];
+            }
+
+            var mainWindow = ServiceProvider.GetService<MainWindow>();
+            mainWindow.Show();
+        }
     }
 }

@@ -19,6 +19,9 @@ namespace Recorder.ViewModels
         private bool isRecording;
 
         [ObservableProperty]
+        private string outputPath;
+
+        [ObservableProperty]
         private bool isBusy;
 
         [ObservableProperty]
@@ -100,29 +103,40 @@ namespace Recorder.ViewModels
             IsBusy = true;
             try
             {
-                if (IsRecording) // START
+                if (!IsRecording) // START
                 {
+                    IsRecording = true;
                     if (!SetCaptureArea())
                     {
+                        IsRecording = false; // Revert state if capture is cancelled
                         return;
                     }
 
-                    var recordingId = $"recording_{DateTime.Now:yyyyMMdd_HHmmss}";
-                    var outputPath = Path.Combine("recordings", recordingId);
-                    Directory.CreateDirectory(outputPath);
-                    var videoFilePath = Path.Combine(outputPath, "video.mp4");
-                    _annotationsFilePath = Path.Combine(outputPath, "annotations.json");
+                    string finalOutputPath;
+                    if (!string.IsNullOrEmpty(OutputPath))
+                    {
+                        finalOutputPath = OutputPath;
+                    }
+                    else
+                    {
+                        var recordingId = $"recording_{DateTime.Now:yyyyMMdd_HHmmss}";
+                        finalOutputPath = Path.Combine("recordings", recordingId);
+                    }
 
-                    _logger.LogInformation("Starting recording to {outputPath}", outputPath);
+                    Directory.CreateDirectory(finalOutputPath);
+                    var videoFilePath = Path.Combine(finalOutputPath, "video.mp4");
+                    _annotationsFilePath = Path.Combine(finalOutputPath, "annotations.json");
 
-                    _annotationService.Start();
+                    _logger.LogInformation("Starting recording to {outputPath}", finalOutputPath);
+
                     _threadManager.StartAll();
+                    _annotationService.Start();
                     _inputUiaService.Start();
                     _recordingService.StartRecording(videoFilePath, _captureArea);
-
                 }
                 else // STOP
                 {
+                    IsRecording = false;
                     _logger.LogInformation("Stopping recording...");
 
                     await Task.Run(async () =>
