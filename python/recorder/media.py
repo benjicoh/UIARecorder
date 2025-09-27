@@ -9,8 +9,8 @@ import cv2
 import sounddevice as sd
 from scipy.io.wavfile import write as write_wav
 import subprocess
-from tools.recorder import overlay_drawer
-from tools.recorder.logger import get_logger
+from python.recorder import overlay_drawer
+from python.common.logger import get_logger
 
 logger = get_logger(__name__)
 

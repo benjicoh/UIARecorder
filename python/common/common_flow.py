@@ -4,7 +4,7 @@ import threading
 import time
 import shutil
 from google import genai
-from tools.recorder.logger import get_logger
+from python.common.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -144,14 +144,24 @@ def dump_ui_tree(process_name: str = None, window_title: str = None, output_file
     """
     Dumps the UI Automation tree for a given process or window to a JSON file.
     """
-    from agent.uia_dumper import dump_ui, dump_ui_res
-    # run on a different thread to avoid blocking, set a timeout for 10 seconds and abort if exceeds
-    # store the result in a variable
-    thread = threading.Thread(target=dump_ui, args=(process_name, window_title, output_file, whitelist, screenshots), daemon=True)  
+    from python.common.uia import dump_ui
+
+    result_container = [None]
+    def dump_ui_wrapper():
+        result_container[0] = dump_ui(
+            process_name=process_name,
+            window_title=window_title,
+            output_file=output_file,
+            whitelist=whitelist,
+            screenshots=screenshots
+        )
+
+    thread = threading.Thread(target=dump_ui_wrapper, daemon=True)
     thread.start()
     thread.join(timeout=10)
+
     if thread.is_alive():
         return "Error: UI dump timed out after 10 seconds."
     else:
-        return dump_ui_res
+        return result_container[0]
     

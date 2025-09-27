@@ -2,7 +2,7 @@ import sys
 import os
 
 from pynput import keyboard, mouse
-from tools.recorder.logger import get_logger
+from python.common.logger import get_logger
 
 logger = get_logger(__name__)
 

@@ -16,4 +16,4 @@ if (Test-Path ".\.venv\Scripts\python.exe") {
     $python = ".\.venv\Scripts\python.exe"
 }
 
-& $python -m agent.flaui_flow $Folder -p $ProcessName
+& $python -m python.agent.flaui_flow $Folder -p $ProcessName

@@ -1,14 +1,19 @@
-import uiautomation as auto
-import psutil
-import json
+import sys
 import os
+import json
 import argparse
 import threading
-from tools.recorder.logger import get_logger
+import time
+
+import uiautomation as auto
+import psutil
+import pyautogui
+from python.common.logger import get_logger
 
 logger = get_logger(__name__)
 
-dump_ui_res : str = ""
+
+# --- Core Functions ---
 
 def get_process_name(element):
     """
@@ -18,12 +23,16 @@ def get_process_name(element):
     if not element:
         return None
     try:
+        logger.debug(f"get_process_name: element={element}, ProcessId={element.ProcessId}")
         process = psutil.Process(element.ProcessId)
-        return process.name()
+        logger.debug(f"get_process_name: process={process}")
+        name = process.name()
+        logger.debug(f"get_process_name: name={name}")
+        return name
     except psutil.NoSuchProcess:
         return None
 
-def get_element_info(element, screenshot_dir=None):
+def get_element_info(element, element_ids=None, screenshot_dir=None):
     """
     Extracts comprehensive information from a UI Automation element.
     """
@@ -66,8 +75,25 @@ def get_element_info(element, screenshot_dir=None):
                 patterns[pattern_name + 'Pattern'] = {'Available': True}
          except Exception: pass
 
+    get_pattern('Dock', lambda p: {'DockPosition': str(p.DockPosition)})
+    get_pattern('ExpandCollapse', lambda p: {'ExpandCollapseState': str(p.ExpandCollapseState)})
+    get_pattern('Grid', lambda p: {'RowCount': p.RowCount, 'ColumnCount': p.ColumnCount})
+    get_pattern('GridItem', lambda p: {'Row': p.Row, 'Column': p.Column, 'RowSpan': p.RowSpan, 'ColumnSpan': p.ColumnSpan})
     get_simple_pattern('Invoke')
+    get_pattern('MultipleView', lambda p: {'CurrentView': p.CurrentView, 'SupportedViews': p.GetSupportedViews()})
+    get_pattern('RangeValue', lambda p: {'Value': p.Value, 'IsReadOnly': p.IsReadOnly, 'LargeChange': p.LargeChange, 'SmallChange': p.SmallChange, 'Maximum': p.Maximum, 'Minimum': p.Minimum})
+    get_simple_pattern('ScrollItem')
+    get_pattern('Scroll', lambda p: {'HorizontalScrollPercent': p.HorizontalScrollPercent, 'VerticalScrollPercent': p.VerticalScrollPercent, 'HorizontalViewSize': p.HorizontalViewSize, 'VerticalViewSize': p.VerticalViewSize, 'HorizontallyScrollable': p.HorizontallyScrollable, 'VerticallyScrollable': p.VerticallyScrollable})
+    get_pattern('Selection', lambda p: {'CanSelectMultiple': p.CanSelectMultiple, 'IsSelectionRequired': p.IsSelectionRequired, 'Selection': [item.Name for item in p.GetSelection()]})
+    get_pattern('SelectionItem', lambda p: {'IsSelected': p.IsSelected})
+    get_pattern('Table', lambda p: {'RowCount': p.RowCount, 'ColumnCount': p.ColumnCount, 'RowOrColumnMajor': str(p.RowOrColumnMajor)})
+    get_pattern('TableItem', lambda p: {'Row': p.Row, 'Column': p.Column, 'RowSpan': p.RowSpan, 'ColumnSpan': p.ColumnSpan})
+    get_pattern('Text', lambda p: {'Text': p.DocumentRange.GetText(256)})
+    get_pattern('Toggle', lambda p: {'ToggleState': str(p.ToggleState)})
+    get_pattern('Transform', lambda p: {'CanMove': p.CanMove, 'CanResize': p.CanResize, 'CanRotate': p.CanRotate})
     get_pattern('Value', lambda p: {'Value': p.Value, 'IsReadOnly': p.IsReadOnly})
+    get_pattern('Window', lambda p: {'CanMaximize': p.CanMaximize, 'CanMinimize': p.CanMinimize, 'IsModal': p.IsModal, 'IsTopmost': p.IsTopmost, 'WindowVisualState': str(p.WindowVisualState), 'WindowInteractionState': str(p.WindowInteractionState)})
+
     info['patterns'] = patterns
 
     if screenshot_dir:
@@ -83,6 +109,42 @@ def get_element_info(element, screenshot_dir=None):
             info['screenshot'] = None
 
     return info
+
+# --- UIA Helper Class (for Recorder) ---
+
+class UIAHelper:
+    def __init__(self):
+        self.element_ids = {}
+
+    def get_element_from_point(self, x, y):
+        try:
+            return auto.ControlFromPoint(x, y)
+        except Exception:
+            return None
+
+    def get_focused_element(self):
+        try:
+            return auto.GetFocusedControl()
+        except Exception:
+            return None
+
+    def get_element_hierarchy(self, element, process_names=None):
+        if not element:
+            return None
+        hierarchy = []
+        current = element
+        while current:
+            info = get_element_info(current, element_ids=self.element_ids)
+            if info:
+                if not process_names or (info.get('process_name') and info['process_name'].lower() in [p.lower() for p in process_names]):
+                    hierarchy.append(info)
+            try:
+                current = current.GetParentControl()
+            except Exception:
+                current = None
+        return hierarchy
+
+# --- UI Dumper Functionality (for Agent) ---
 
 def serialize_rects(obj):
     """
@@ -144,7 +206,7 @@ def dump_ui(process_name=None, window_title=None, output_file=None, whitelist=No
                 if get_process_name(w) and get_process_name(w).lower() == process_name.lower():
                     roots.append(w)
                     w.SetActive()
-            if len(roots) == 0:
+            if not roots:
                 return f"Process '{process_name}' not found."
         elif window_title:
             for w in root_control.GetChildren():
@@ -152,7 +214,7 @@ def dump_ui(process_name=None, window_title=None, output_file=None, whitelist=No
                     roots = [w]
                     w.SetActive()
                     break
-            if len(roots) == 0:
+            if not roots:
                 return f"Window with title containing '{window_title}' not found."
 
         trees = []
@@ -164,13 +226,14 @@ def dump_ui(process_name=None, window_title=None, output_file=None, whitelist=No
         with open(output_file, 'w', encoding='utf-8') as f:
             json.dump(trees_serialized, f, ensure_ascii=False, indent=2)
 
-        dump_ui_res = f"UI tree dumped to {output_file}"
+        result_message = f"UI tree dumped to {output_file}"
         if screenshot_dir:
-            dump_ui_res += f"\nScreenshots saved to {screenshot_dir}"
+            result_message += f"\nScreenshots saved to {screenshot_dir}"
 
         logger.info('\007')
-        return dump_ui_res
+        return result_message
 
+# --- Main execution block for dumping UI tree ---
 def main():
     parser = argparse.ArgumentParser(description="Dump UI Automation tree to JSON.")
     target_group = parser.add_mutually_exclusive_group(required=True)
@@ -180,20 +243,25 @@ def main():
     parser.add_argument('-wh', '--whitelist', type=str, nargs='+', help='Process whitelist.')
     parser.add_argument('-s', '--screenshots', action='store_true', help='Enable screenshots.')
     args = parser.parse_args()
-    thread = threading.Thread(target=dump_ui, args=(
-        args.process,
-        args.window,
-        args.output,
-        args.whitelist,
-        args.screenshots
-    ), daemon=True)
+
+    result_container = [None]
+    def dump_ui_wrapper():
+        result_container[0] = dump_ui(
+            args.process,
+            args.window,
+            args.output,
+            args.whitelist,
+            args.screenshots
+        )
+
+    thread = threading.Thread(target=dump_ui_wrapper, daemon=True)
     thread.start()
     thread.join(timeout=10)
+
     if thread.is_alive():
         logger.error("Error: UI dump timed out after 10 seconds.")
-    else:
-        logger.info(dump_ui_res)
-    
+    elif result_container[0]:
+        logger.info(result_container[0])
 
 if __name__ == "__main__":
     main()
