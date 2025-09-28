@@ -11,9 +11,14 @@
         Foreground="White"
         mc:Ignorable="d"
         Title="Recorder"
-        Height="550"
+        SizeToContent="Height"
         Width="800">
     <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
         <tb:TaskbarIcon
             x:Name="TaskbarIcon"
             IconSource="/Resources/recorder.ico"
@@ -26,11 +31,7 @@
             </tb:TaskbarIcon.ContextMenu>
         </tb:TaskbarIcon>
 
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
-
+        
         <StackPanel Grid.Row="0" Orientation="Horizontal"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
@@ -67,7 +68,7 @@
         </StackPanel>
 
         <Expander Grid.Row="1" Header="Logs" IsExpanded="False" Margin="10">
-            <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="200">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="300">
                 <ItemsControl ItemsSource="{Binding LogMessages}" />
             </ScrollViewer>
         </Expander>

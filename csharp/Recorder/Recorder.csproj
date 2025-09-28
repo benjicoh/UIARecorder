@@ -8,10 +8,14 @@
     <UseWPF>true</UseWPF>
   </PropertyGroup>
 
+  <ItemGroup>
+    <None Remove="Resources\recorder.ico" />
+  </ItemGroup>
+
 	<ItemGroup>
 		<PackageReference Include="Sdcb.ScreenCapture" Version="1.0.0" />
-		<PackageReference Include="OpenCvSharp4" Version="4.11.0.20250507"/>
-		<PackageReference Include="OpenCvSharp4.runtime.win" Version="4.11.0.20250507"/>
+		<PackageReference Include="OpenCvSharp4" Version="4.11.0.20250507" />
+		<PackageReference Include="OpenCvSharp4.runtime.win" Version="4.11.0.20250507" />
 		<PackageReference Include="FlaUI.UIA3" Version="5.0.0" />
 		<PackageReference Include="NAudio" Version="2.2.1" />
 		<PackageReference Include="MaterialDesignThemes" Version="5.2.0" />
@@ -21,7 +25,7 @@
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
 		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
 		<PackageReference Include="MouseKeyHook" Version="5.7.1" />
-		<PackageReference Include="Hardcodet.NotifyIcon.Wpf" Version="1.1.0" />
+		<PackageReference Include="Hardcodet.NotifyIcon.Wpf" Version="2.0.1" />
 	</ItemGroup>
 
 	<ItemGroup>

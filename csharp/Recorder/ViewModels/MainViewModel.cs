@@ -211,10 +211,10 @@ namespace Recorder.ViewModels
                     if (_captureArea.IsEmpty)
                     {
                         _logger.LogWarning("Capture area not selected.");
-                        MessageBox.Show("Please select a capture area before recording.", "Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        System.Windows.MessageBox.Show("Please select a capture area before recording.", "Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        IsRecording = false;
                         return;
                     }
-                    IsRecording = true;
                     Application.Current.MainWindow.WindowState = WindowState.Minimized;
 
                     string finalOutputPath;
