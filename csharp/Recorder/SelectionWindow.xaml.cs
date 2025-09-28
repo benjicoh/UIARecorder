@@ -10,6 +10,7 @@ namespace Recorder
     {
         private Point _startPoint;
         public Rectangle SelectedArea { get; private set; }
+        public event EventHandler<Rectangle> RegionSelected;
 
         public SelectionWindow(Screen screen)
         {
@@ -64,7 +65,7 @@ namespace Recorder
                     (int)(rect.Width * dpiScale.M11),
                     (int)(rect.Height * dpiScale.M22)
                 );
-                DialogResult = true;
+                RegionSelected?.Invoke(this, SelectedArea);
                 Close();
             }
         }

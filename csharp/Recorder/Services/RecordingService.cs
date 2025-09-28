@@ -75,18 +75,40 @@ namespace Recorder.Services
         {
             try
             {
-                //var rect = selection.SelectedArea;
-                //if (rect == Rectangle.Empty)
-                var rect = new Rectangle(0, 0, ScreenCapture.GetScreenSize(selection.SelectedMonitor).Width, ScreenCapture.GetScreenSize(selection.SelectedMonitor).Height);
+                var rect = selection.SelectedArea;
+                if (rect.IsEmpty)
+                {
+                    var screenSize = ScreenCapture.GetScreenSize(selection.SelectedMonitor);
+                    rect = new Rectangle(0, 0, screenSize.Width, screenSize.Height);
+                }
+
                 using var writer = new VideoWriter(_tempVideoPath, FourCC.FromString("X264"), 20.0, new OpenCvSharp.Size(rect.Width, rect.Height));
+                if (!writer.IsOpened())
+                {
+                    _logger.LogError("Could not open video writer.");
+                    return;
+                }
                 _startCaptureTime = DateTime.UtcNow;
+
                 foreach (var frame in ScreenCapture.CaptureScreenFrames(selection.SelectedMonitor, 20.0, 0, token))
                 {
                     if (token.IsCancellationRequested) break;
-                    var mat = Mat.FromPixelData(frame.Height, frame.Width, MatType.CV_8UC4, frame.DataPointer);
-                    _overlayService.DrawCursor(mat);
+
+                    using var fullScreenMat = Mat.FromPixelData(frame.Height, frame.Width, MatType.CV_8UC4, frame.DataPointer);
+
+                    // Adjust the rect to be within the bounds of the full screen mat
+                    var cropRect = new OpenCvSharp.Rect(
+                        Math.Max(0, rect.X),
+                        Math.Max(0, rect.Y),
+                        Math.Min(rect.Width, fullScreenMat.Width - rect.X),
+                        Math.Min(rect.Height, fullScreenMat.Height - rect.Y)
+                    );
+
+                    using var croppedMat = new Mat(fullScreenMat, cropRect);
+
+                    _overlayService.DrawCursor(croppedMat, new Point(rect.X, rect.Y));
                     
-                    writer.Write(mat);
+                    writer.Write(croppedMat);
                 }
             }
             catch (OperationCanceledException)

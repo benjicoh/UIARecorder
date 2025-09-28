@@ -85,12 +85,14 @@ namespace Recorder.Services
             }
         }
 
-        public void DrawCursor(Mat image)
+        public void DrawCursor(Mat image, System.Drawing.Point offset = default)
         {
             var color = new Scalar(0, 0, 255); // Red color for the cursor
             int cursorSize = 10;
             var mousePosition = FlaUI.Core.Input.Mouse.Position;
-            var center = new OpenCvSharp.Point(mousePosition.X, mousePosition.Y);
+
+            // Adjust cursor position based on the offset of the captured region
+            var center = new OpenCvSharp.Point(mousePosition.X - offset.X, mousePosition.Y - offset.Y);
 
             // Ensure the cursor is drawn only if it's within the captured area
             if (center.X >= 0 && center.X < image.Width && center.Y >= 0 && center.Y < image.Height)

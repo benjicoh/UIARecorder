@@ -1,87 +1,24 @@
-using FlaUI.Core.AutomationElements;
-using FlaUI.UIA3;
 using Gma.System.MouseKeyHook;
 using Recorder.Utils;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Windows.Threading;
 
-namespace Recorder.Services
-{
-    public class WindowSelector : IDisposable
-    {
-        
-        [DllImport("user32.dll")]
-        private static extern bool GetCursorPos(out POINT lpPoint);
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct POINT
-        {
-            public int X;
-            public int Y;
-
-            public static implicit operator Point(POINT point)
-            {
-                return new Point(point.X, point.Y);
-            }
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct RECT
-        {
-            public int Left;
-            public int Top;
-            public int Right;
-            public int Bottom;
-        }
-
-        //window from point
-        [DllImport("user32.dll")]
-        private static extern IntPtr WindowFromPoint(Point pt);
-        //get top level window from child window
-        [DllImport("user32.dll")]
-        private static extern IntPtr GetAncestor(IntPtr hwnd, uint gaFlags);
-        private const uint GA_ROOT = 2;
-        //parent window
-        [DllImport("user32.dll")]
-        private static extern IntPtr GetParent(IntPtr hWnd);
-
-        //get bounding rectangle
-        [DllImport("user32.dll")]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
-
-        //get window long
-        [DllImport("user32.dll", SetLastError = true)]
-        private static extern IntPtr GetWindowLong(IntPtr hWnd, int nIndex);
-
-        //is top level
-        private const int GWL_STYLE = -16;
-        private const int WS_CHILD = 0x40000000;
-        
-        private static bool IsTopLevelWindow(IntPtr hWnd)
-        {
-            IntPtr style = GetWindowLong(hWnd, GWL_STYLE);
-            return (style.ToInt64() & WS_CHILD) == 0;
-        }
-
         private DispatcherTimer _timer;
         private List<HighlightWindow> _highlightWindows = new List<HighlightWindow>();
         private IntPtr _currentHoveredWindow = IntPtr.Zero;
-        private TaskCompletionSource<IntPtr> _selectionTcs;
+        private TaskCompletionSource<SelectionResult> _selectionTcs;
         private IKeyboardMouseEvents _globalHook;
 
         public WindowSelector()
         {
         }
 
-        public Task<IntPtr> SelectWindowAsync()
+        public Task<SelectionResult> SelectWindowAsync()
         {
             _globalHook = Hook.GlobalEvents();
             _globalHook.MouseDown += (s, e) =>
@@ -95,7 +32,7 @@ namespace Recorder.Services
                     OnWindowClosed(this, EventArgs.Empty);
                 }
             };
-            _selectionTcs = new TaskCompletionSource<IntPtr>();
+            _selectionTcs = new TaskCompletionSource<SelectionResult>();
             foreach (var screen in ScreenHelper.GetAllScreens())
             {
                 var highlightWindow = new HighlightWindow(screen);
@@ -114,13 +51,29 @@ namespace Recorder.Services
 
         private void OnWindowSelected()
         {
-            _selectionTcs?.TrySetResult(_currentHoveredWindow);
+            if (_currentHoveredWindow != IntPtr.Zero)
+            {
+                Win32Utils.GetWindowRect(_currentHoveredWindow, out var rect);
+                var area = new Rectangle(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top);
+                var result = new SelectionResult
+                {
+                    SelectedWindowHandle = _currentHoveredWindow,
+                    WindowTitle = Win32Utils.GetWindowText(_currentHoveredWindow),
+                    SelectedArea = area,
+                    SelectedMonitor = Screen.AllScreens.ToList().IndexOf(Screen.FromHandle(_currentHoveredWindow))
+                };
+                _selectionTcs?.TrySetResult(result);
+            }
+            else
+            {
+                _selectionTcs?.TrySetResult(new SelectionResult()); // Indicate cancellation or failure
+            }
             Cleanup();
         }
 
         private void OnWindowClosed(object sender, EventArgs e)
         {
-            _selectionTcs?.TrySetResult(IntPtr.Zero);
+            _selectionTcs?.TrySetResult(new SelectionResult());
             Cleanup();
         }
 
@@ -174,23 +127,17 @@ namespace Recorder.Services
             }
         }
 
-        private RECT GetTopLevelWindow()
+        private Win32Utils.Rect GetTopLevelWindow()
         {
-            var pos = GetCursorPosition();
-            var handle = WindowFromPoint(pos);
-            while (handle != IntPtr.Zero && !IsTopLevelWindow(handle))
+            Win32Utils.GetCursorPos(out var pos);
+            var handle = Win32Utils.WindowFromPoint(pos);
+            while (handle != IntPtr.Zero && !Win32Utils.IsTopLevelWindow(handle))
             {
-                handle = GetParent(handle);
+                handle = Win32Utils.GetParent(handle);
             }
             _currentHoveredWindow = handle;
-            GetWindowRect(handle, out var rect);
+            Win32Utils.GetWindowRect(handle, out var rect);
             return rect;
-        }
-
-        private static Point GetCursorPosition()
-        {
-            GetCursorPos(out var lpPoint);
-            return lpPoint;
         }
 
         
