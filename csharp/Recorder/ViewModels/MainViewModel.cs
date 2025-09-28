@@ -99,11 +99,11 @@ namespace Recorder.ViewModels
                 case "Select Window":
                     var windowSelector = (WindowSelector)_serviceProvider.GetService(typeof(WindowSelector));
                     var selectedWindow = await windowSelector.SelectWindowAsync();
-                    if (selectedWindow != null)
+                    if (selectedWindow != IntPtr.Zero)
                     {
-                        var processId = selectedWindow.Properties.ProcessId.ValueOrDefault;
-                        var processName = Process.GetProcessById(processId).ProcessName;
-                        CaptureAreaInfo = $"Window: '{selectedWindow.Name}' ({processName}, {selectedWindow.BoundingRectangle.Width}x{selectedWindow.BoundingRectangle.Height})";
+                        //var processId = selectedWindow.Properties.ProcessId.ValueOrDefault;
+                        //var processName = Process.GetProcessById(processId).ProcessName;
+                        CaptureAreaInfo = $"Window: {selectedWindow})";
                         success = true;
                     }
                     break;

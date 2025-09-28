@@ -3,11 +3,11 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         WindowStyle="None"
         AllowsTransparency="True"
-        Background="#01000000"
+        Background="#00000000"
         ShowInTaskbar="False"
         Topmost="True"
-        MouseDown="OnMouseDown"
-        KeyDown="OnKeyDown">
+        MouseDown="Window_MouseDown"
+        KeyDown="Window_KeyDown">
     <Grid>
         <Border x:Name="border"
                 BorderBrush="Red"

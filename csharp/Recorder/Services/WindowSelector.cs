@@ -1,5 +1,6 @@
 using FlaUI.Core.AutomationElements;
 using FlaUI.UIA3;
+using Gma.System.MouseKeyHook;
 using Recorder.Utils;
 using System;
 using System.Collections.Generic;
@@ -15,21 +16,86 @@ namespace Recorder.Services
 {
     public class WindowSelector : IDisposable
     {
-        private readonly UIA3Automation _automation;
+        
+        [DllImport("user32.dll")]
+        private static extern bool GetCursorPos(out POINT lpPoint);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct POINT
+        {
+            public int X;
+            public int Y;
+
+            public static implicit operator Point(POINT point)
+            {
+                return new Point(point.X, point.Y);
+            }
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct RECT
+        {
+            public int Left;
+            public int Top;
+            public int Right;
+            public int Bottom;
+        }
+
+        //window from point
+        [DllImport("user32.dll")]
+        private static extern IntPtr WindowFromPoint(Point pt);
+        //get top level window from child window
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetAncestor(IntPtr hwnd, uint gaFlags);
+        private const uint GA_ROOT = 2;
+        //parent window
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetParent(IntPtr hWnd);
+
+        //get bounding rectangle
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+
+        //get window long
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern IntPtr GetWindowLong(IntPtr hWnd, int nIndex);
+
+        //is top level
+        private const int GWL_STYLE = -16;
+        private const int WS_CHILD = 0x40000000;
+        
+        private static bool IsTopLevelWindow(IntPtr hWnd)
+        {
+            IntPtr style = GetWindowLong(hWnd, GWL_STYLE);
+            return (style.ToInt64() & WS_CHILD) == 0;
+        }
+
         private DispatcherTimer _timer;
-        private AutomationElement _currentHoveredWindow;
         private List<HighlightWindow> _highlightWindows = new List<HighlightWindow>();
-        private TaskCompletionSource<AutomationElement> _selectionTcs;
+        private IntPtr _currentHoveredWindow = IntPtr.Zero;
+        private TaskCompletionSource<IntPtr> _selectionTcs;
+        private IKeyboardMouseEvents _globalHook;
 
         public WindowSelector()
         {
-            _automation = new UIA3Automation();
         }
 
-        public Task<AutomationElement> SelectWindowAsync()
+        public Task<IntPtr> SelectWindowAsync()
         {
-            _selectionTcs = new TaskCompletionSource<AutomationElement>();
-
+            _globalHook = Hook.GlobalEvents();
+            _globalHook.MouseDown += (s, e) =>
+            {
+                if (e.Button == MouseButtons.Left)
+                {
+                    OnWindowSelected();
+                }
+                else if (e.Button == MouseButtons.Right)
+                {
+                    OnWindowClosed(this, EventArgs.Empty);
+                }
+            };
+            _selectionTcs = new TaskCompletionSource<IntPtr>();
             foreach (var screen in ScreenHelper.GetAllScreens())
             {
                 var highlightWindow = new HighlightWindow(screen);
@@ -54,7 +120,7 @@ namespace Recorder.Services
 
         private void OnWindowClosed(object sender, EventArgs e)
         {
-            _selectionTcs?.TrySetResult(null);
+            _selectionTcs?.TrySetResult(IntPtr.Zero);
             Cleanup();
         }
 
@@ -65,6 +131,11 @@ namespace Recorder.Services
                 _timer.Stop();
                 _timer.Tick -= UpdateHoveredWindow;
                 _timer = null;
+            }
+            if (_globalHook != null)
+            {
+                _globalHook.Dispose();
+                _globalHook = null;
             }
 
             foreach (var hw in _highlightWindows)
@@ -81,55 +152,39 @@ namespace Recorder.Services
 
         private void UpdateHoveredWindow(object sender, EventArgs e)
         {
-            var cursorPosition = GetCursorPosition();
-            var element = _automation.FromPoint(cursorPosition);
+            
+            var windowRect = GetTopLevelWindow();
+            var rect = new Rectangle(windowRect.Left, windowRect.Top, windowRect.Right - windowRect.Left, windowRect.Bottom - windowRect.Top);
 
-            if (element == null)
+            var screen = Screen.FromRectangle(rect);
+            var highlightWindow = _highlightWindows.FirstOrDefault(w => w.Screen.DeviceName == screen.DeviceName);
+
+            if (highlightWindow != null)
             {
-                _highlightWindows.ForEach(w => w.Hide());
-                return;
-            }
-
-            var window = GetTopLevelWindow(element);
-
-            if (window != null && window.Properties.BoundingRectangle.IsSupported)
-            {
-                var windowProcId = window.Properties.ProcessId.ValueOrDefault;
-                if (window.Name.StartsWith("HighlightWindow") || windowProcId == Process.GetCurrentProcess().Id)
+                highlightWindow.Highlight(rect);
+                foreach (var otherHw in _highlightWindows.Where(w => w != highlightWindow))
                 {
-                    _highlightWindows.ForEach(w => w.Hide());
-                    return;
-                }
-
-                _currentHoveredWindow = window;
-                var rect = window.Properties.BoundingRectangle.Value;
-
-                var screen = Screen.FromRectangle(rect);
-                var highlightWindow = _highlightWindows.FirstOrDefault(w => w.Screen.DeviceName == screen.DeviceName);
-
-                if (highlightWindow != null)
-                {
-                    highlightWindow.Highlight(rect);
-                    foreach (var otherHw in _highlightWindows.Where(w => w != highlightWindow))
-                    {
-                        otherHw.Hide();
-                    }
+                    otherHw.HideBorder();
                 }
             }
+            
             else
             {
-                _highlightWindows.ForEach(w => w.Hide());
+                _highlightWindows.ForEach(w => w.HideBorder());
             }
         }
 
-        private AutomationElement GetTopLevelWindow(AutomationElement element)
+        private RECT GetTopLevelWindow()
         {
-            AutomationElement parent = element;
-            while (parent.Parent != null && parent.Parent.GetType() != typeof(FlaUI.UIA3.UIA3AutomationElement))
+            var pos = GetCursorPosition();
+            var handle = WindowFromPoint(pos);
+            while (handle != IntPtr.Zero && !IsTopLevelWindow(handle))
             {
-                parent = parent.Parent;
+                handle = GetParent(handle);
             }
-            return parent.AsWindow();
+            _currentHoveredWindow = handle;
+            GetWindowRect(handle, out var rect);
+            return rect;
         }
 
         private static Point GetCursorPosition()
@@ -138,20 +193,7 @@ namespace Recorder.Services
             return lpPoint;
         }
 
-        [DllImport("user32.dll")]
-        private static extern bool GetCursorPos(out POINT lpPoint);
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct POINT
-        {
-            public int X;
-            public int Y;
-
-            public static implicit operator Point(POINT point)
-            {
-                return new Point(point.X, point.Y);
-            }
-        }
+        
 
         public void Dispose()
         {

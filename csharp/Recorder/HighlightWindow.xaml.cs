@@ -48,7 +48,7 @@ namespace Recorder
             border.Visibility = Visibility.Visible;
         }
 
-        public void Hide()
+        public void HideBorder()
         {
             if (border.Visibility == Visibility.Visible)
             {
@@ -56,9 +56,8 @@ namespace Recorder
             }
         }
 
-        protected override void OnMouseDown(MouseButtonEventArgs e)
+        private void Window_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            base.OnMouseDown(e);
             if (e.LeftButton == MouseButtonState.Pressed)
             {
                 OnSelected?.Invoke();
@@ -66,9 +65,8 @@ namespace Recorder
             }
         }
 
-        protected override void OnKeyDown(KeyEventArgs e)
+        private void Window_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         {
-            base.OnKeyDown(e);
             if (e.Key == Key.Escape)
             {
                 DialogResult = false;
