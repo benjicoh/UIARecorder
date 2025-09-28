@@ -4,7 +4,6 @@
         WindowStyle="None"
         AllowsTransparency="True"
         Background="Transparent"
-        WindowState="Maximized"
         Cursor="Cross">
     <Grid Name="LayoutRoot" Background="#22FFFFFF">
         <Canvas Name="SelectionCanvas">
