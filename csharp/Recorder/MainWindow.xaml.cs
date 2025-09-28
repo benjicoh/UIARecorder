@@ -31,6 +31,7 @@ namespace Recorder
             InitializeComponent();
             _viewModel = (App.Current as App).ServiceProvider.GetService(typeof(MainViewModel)) as MainViewModel;
             DataContext = _viewModel;
+            TaskbarIcon.DataContext = _viewModel;
         }
 
         protected override void OnSourceInitialized(EventArgs e)

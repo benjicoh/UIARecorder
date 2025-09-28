@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Recorder.Services;
 using System;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Threading.Tasks;
@@ -16,7 +17,11 @@ namespace Recorder.ViewModels
     public partial class MainViewModel : ObservableObject
     {
         [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(TrayToolTipText))]
+        [NotifyPropertyChangedFor(nameof(IsNotRecording))]
         private bool isRecording;
+
+        public bool IsNotRecording => !IsRecording;
 
         [ObservableProperty]
         private string outputPath;
@@ -27,6 +32,9 @@ namespace Recorder.ViewModels
         [ObservableProperty]
         private string selectedCaptureMode;
 
+        [ObservableProperty]
+        private string captureAreaInfo;
+
         public ObservableCollection<string> CaptureModes { get; }
 
         private readonly RecordingService _recordingService;
@@ -34,67 +42,95 @@ namespace Recorder.ViewModels
         private readonly AnnotationService _annotationService;
         private readonly ThreadManager _threadManager;
         private readonly ILogger<MainViewModel> _logger;
+        private readonly IServiceProvider _serviceProvider;
 
         public ObservableCollection<string> LogMessages { get; } = new ObservableCollection<string>();
         private Rectangle _captureArea;
         private string _annotationsFilePath;
+
+        public string TrayToolTipText => IsRecording
+            ? "Recording is in progress. Press Alt+Shift+R to stop."
+            : "Recorder is idle. Press Alt+Shift+R to start.";
 
         public MainViewModel(
             RecordingService recordingService,
             InputUiaService inputUiaService,
             AnnotationService annotationService,
             ThreadManager threadManager,
-            ILogger<MainViewModel> logger)
+            ILogger<MainViewModel> logger,
+            IServiceProvider serviceProvider)
         {
             _recordingService = recordingService;
             _inputUiaService = inputUiaService;
             _annotationService = annotationService;
             _threadManager = threadManager;
             _logger = logger;
+            _serviceProvider = serviceProvider;
 
             CaptureModes = new ObservableCollection<string>
             {
-                "Fullscreen",
+                "Select Monitor",
                 "Select Window",
                 "Select Region"
             };
             SelectedCaptureMode = CaptureModes[0];
         }
 
-        private bool SetCaptureArea()
+        [RelayCommand]
+        private async Task SelectCaptureArea()
         {
-            Application.Current.MainWindow.WindowState = WindowState.Minimized;
+            Application.Current.MainWindow.Hide();
             try
             {
+                bool success = false;
                 switch (SelectedCaptureMode)
                 {
-                    case "Fullscreen":
-                        _captureArea = SystemInformation.VirtualScreen;
-                        return true;
-                    case "Select Window":
-                        var windowSelection = new SelectionWindow(SelectionWindow.SelectionMode.Window);
-                        if (windowSelection.ShowDialog() == true)
+                    case "Select Monitor":
+                        var monitorSelection = new MonitorSelectionWindow();
+                        if (monitorSelection.ShowDialog() == true)
                         {
-                            _captureArea = windowSelection.SelectedArea;
-                            return !_captureArea.IsEmpty;
+                            _captureArea = monitorSelection.SelectedMonitor;
+                            if (!_captureArea.IsEmpty)
+                            {
+                                var screen = Screen.AllScreens.First(s => s.Bounds == _captureArea);
+                                CaptureAreaInfo = $"Monitor: {screen.DeviceName} ({_captureArea.Width}x{_captureArea.Height})";
+                                success = true;
+                            }
                         }
-                        return false;
+                        break;
+                    case "Select Window":
+                        var windowSelector = (WindowSelector)_serviceProvider.GetService(typeof(WindowSelector));
+                        var selectedWindow = await windowSelector.SelectWindowAsync();
+                        if (selectedWindow != null)
+                        {
+                            _captureArea = selectedWindow.BoundingRectangle;
+                            var processId = selectedWindow.Properties.ProcessId.ValueOrDefault;
+                            var processName = Process.GetProcessById(processId).ProcessName;
+                            CaptureAreaInfo = $"Window: '{selectedWindow.Name}' ({processName}, {_captureArea.Width}x{_captureArea.Height})";
+                            success = true;
+                        }
+                        break;
                     case "Select Region":
-                        var regionSelection = new SelectionWindow(SelectionWindow.SelectionMode.Region);
+                        var selectionViewModel = new SelectionViewModel();
+                        var regionSelection = new SelectionWindow(selectionViewModel);
                         if (regionSelection.ShowDialog() == true)
                         {
                             _captureArea = regionSelection.SelectedArea;
-                            return !_captureArea.IsEmpty;
+                            if (!_captureArea.IsEmpty)
+                            {
+                                CaptureAreaInfo = $"Region ({_captureArea.Width}x{_captureArea.Height} at {_captureArea.Location})";
+                                success = true;
+                            }
                         }
-                        return false;
-                    default:
-                        return false;
+                        break;
+                }
+                if (!success)
+                {
+                    _captureArea = Rectangle.Empty;
+                    CaptureAreaInfo = "Selection cancelled.";
                 }
             }
-            finally
-            {
-                //Application.Current.MainWindow.WindowState = WindowState.Normal;
-            }
+            
         }
 
         [RelayCommand]
@@ -105,11 +141,14 @@ namespace Recorder.ViewModels
             {
                 if (IsRecording) // We arrive here after clicking to start recording
                 {
-                    if (!SetCaptureArea())
+                    if (_captureArea.IsEmpty)
                     {
-                        IsRecording = false; // Revert state if capture is cancelled
+                        _logger.LogWarning("Capture area not selected.");
+                        MessageBox.Show("Please select a capture area before recording.", "Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
                         return;
                     }
+                    IsRecording = true;
+                    Application.Current.MainWindow.WindowState = WindowState.Minimized;
 
                     string finalOutputPath;
                     if (!string.IsNullOrEmpty(OutputPath))
@@ -130,7 +169,7 @@ namespace Recorder.ViewModels
 
                     _threadManager.StartAll();
                     _annotationService.Start();
-                    _inputUiaService.Start();
+                    _inputUiaService.Start(_captureArea);
                     _recordingService.StartRecording(videoFilePath, _captureArea);
                 }
                 else // STOP
@@ -145,12 +184,39 @@ namespace Recorder.ViewModels
                     });
 
                     _logger.LogInformation("Recording stopped.");
+                    Application.Current.MainWindow.WindowState = WindowState.Normal;
+                    Application.Current.MainWindow.Activate();
                 }
             }
             finally
             {
                 IsBusy = false;
             }
+        }
+
+        [RelayCommand]
+        private void ShowWindow()
+        {
+            var window = Application.Current.MainWindow;
+            if (window.IsVisible)
+            {
+                window.Hide();
+            }
+            else
+            {
+                window.Show();
+                if (window.WindowState == WindowState.Minimized)
+                {
+                    window.WindowState = WindowState.Normal;
+                }
+                window.Activate();
+            }
+        }
+
+        [RelayCommand]
+        private void ExitApplication()
+        {
+            Application.Current.Shutdown();
         }
     }
 }
