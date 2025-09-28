@@ -8,6 +8,10 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Windows.Threading;
 
+namespace Recorder.Services
+{
+    public class WindowSelector : IDisposable
+    {
         private DispatcherTimer _timer;
         private List<HighlightWindow> _highlightWindows = new List<HighlightWindow>();
         private IntPtr _currentHoveredWindow = IntPtr.Zero;
