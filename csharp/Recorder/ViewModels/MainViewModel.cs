@@ -80,57 +80,56 @@ namespace Recorder.ViewModels
         private async Task SelectCaptureArea()
         {
             Application.Current.MainWindow.Hide();
-            try
+
+            bool success = false;
+            switch (SelectedCaptureMode)
             {
-                bool success = false;
-                switch (SelectedCaptureMode)
-                {
-                    case "Select Monitor":
-                        var monitorSelection = new MonitorSelectionWindow();
-                        if (monitorSelection.ShowDialog() == true)
+                case "Select Monitor":
+                    var monitorSelection = new MonitorSelectionWindow();
+                    if (monitorSelection.ShowDialog() == true)
+                    {
+                        _captureArea = monitorSelection.SelectedMonitor;
+                        if (!_captureArea.IsEmpty)
                         {
-                            _captureArea = monitorSelection.SelectedMonitor;
-                            if (!_captureArea.IsEmpty)
-                            {
-                                var screen = Screen.AllScreens.First(s => s.Bounds == _captureArea);
-                                CaptureAreaInfo = $"Monitor: {screen.DeviceName} ({_captureArea.Width}x{_captureArea.Height})";
-                                success = true;
-                            }
-                        }
-                        break;
-                    case "Select Window":
-                        var windowSelector = (WindowSelector)_serviceProvider.GetService(typeof(WindowSelector));
-                        var selectedWindow = await windowSelector.SelectWindowAsync();
-                        if (selectedWindow != null)
-                        {
-                            _captureArea = selectedWindow.BoundingRectangle;
-                            var processId = selectedWindow.Properties.ProcessId.ValueOrDefault;
-                            var processName = Process.GetProcessById(processId).ProcessName;
-                            CaptureAreaInfo = $"Window: '{selectedWindow.Name}' ({processName}, {_captureArea.Width}x{_captureArea.Height})";
+                            var screen = Screen.AllScreens.First(s => s.Bounds == _captureArea);
+                            CaptureAreaInfo = $"Monitor: {screen.DeviceName} ({_captureArea.Width}x{_captureArea.Height})";
                             success = true;
                         }
-                        break;
-                    case "Select Region":
-                        var selectionViewModel = new SelectionViewModel();
-                        var regionSelection = new SelectionWindow(selectionViewModel);
-                        if (regionSelection.ShowDialog() == true)
+                    }
+                    break;
+                case "Select Window":
+                    var windowSelector = (WindowSelector)_serviceProvider.GetService(typeof(WindowSelector));
+                    var selectedWindow = await windowSelector.SelectWindowAsync();
+                    if (selectedWindow != null)
+                    {
+                        _captureArea = selectedWindow.BoundingRectangle;
+                        var processId = selectedWindow.Properties.ProcessId.ValueOrDefault;
+                        var processName = Process.GetProcessById(processId).ProcessName;
+                        CaptureAreaInfo = $"Window: '{selectedWindow.Name}' ({processName}, {_captureArea.Width}x{_captureArea.Height})";
+                        success = true;
+                    }
+                    break;
+                case "Select Region":
+                    var selectionViewModel = new SelectionViewModel();
+                    var regionSelection = new SelectionWindow(selectionViewModel);
+                    if (regionSelection.ShowDialog() == true)
+                    {
+                        _captureArea = regionSelection.SelectedArea;
+                        if (!_captureArea.IsEmpty)
                         {
-                            _captureArea = regionSelection.SelectedArea;
-                            if (!_captureArea.IsEmpty)
-                            {
-                                CaptureAreaInfo = $"Region ({_captureArea.Width}x{_captureArea.Height} at {_captureArea.Location})";
-                                success = true;
-                            }
+                            CaptureAreaInfo = $"Region ({_captureArea.Width}x{_captureArea.Height} at {_captureArea.Location})";
+                            success = true;
                         }
-                        break;
-                }
-                if (!success)
-                {
-                    _captureArea = Rectangle.Empty;
-                    CaptureAreaInfo = "Selection cancelled.";
-                }
+                    }
+                    break;
             }
-            
+            if (!success)
+            {
+                _captureArea = Rectangle.Empty;
+                CaptureAreaInfo = "Selection cancelled.";
+            }
+
+
         }
 
         [RelayCommand]
@@ -144,10 +143,10 @@ namespace Recorder.ViewModels
                     if (_captureArea.IsEmpty)
                     {
                         _logger.LogWarning("Capture area not selected.");
-                        MessageBox.Show("Please select a capture area before recording.", "Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        System.Windows.MessageBox.Show("Please select a capture area before recording.", "Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        IsRecording = false;
                         return;
                     }
-                    IsRecording = true;
                     Application.Current.MainWindow.WindowState = WindowState.Minimized;
 
                     string finalOutputPath;

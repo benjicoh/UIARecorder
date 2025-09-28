@@ -41,7 +41,7 @@ namespace Recorder
 
                 var border = new Border
                 {
-                    BorderBrush = Brushes.Transparent,
+                    BorderBrush = System.Windows.Media.Brushes.Transparent,
                     BorderThickness = new Thickness(2),
                     Width = screenBounds.Width,
                     Height = screenBounds.Height
@@ -54,14 +54,14 @@ namespace Recorder
 
             _highlightRectangle = new Border
             {
-                BorderBrush = Brushes.Red,
+                BorderBrush = System.Windows.Media.Brushes.Red,
                 BorderThickness = new Thickness(3),
                 Visibility = Visibility.Collapsed
             };
             MonitorCanvas.Children.Add(_highlightRectangle);
         }
 
-        protected override void OnMouseMove(MouseEventArgs e)
+        protected override void OnMouseMove(System.Windows.Input.MouseEventArgs e)
         {
             base.OnMouseMove(e);
             var mousePosition = PointToScreen(e.GetPosition(this));
