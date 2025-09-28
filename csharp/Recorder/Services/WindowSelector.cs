@@ -1,8 +1,11 @@
 using FlaUI.Core.AutomationElements;
 using FlaUI.UIA3;
+using Recorder.Utils;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -15,7 +18,7 @@ namespace Recorder.Services
         private readonly UIA3Automation _automation;
         private DispatcherTimer _timer;
         private AutomationElement _currentHoveredWindow;
-        private HighlightWindow _highlightWindow; 
+        private List<HighlightWindow> _highlightWindows = new List<HighlightWindow>();
         private TaskCompletionSource<AutomationElement> _selectionTcs;
 
         public WindowSelector()
@@ -27,30 +30,30 @@ namespace Recorder.Services
         {
             _selectionTcs = new TaskCompletionSource<AutomationElement>();
 
-            
-            _highlightWindow = new HighlightWindow();
-            _highlightWindow.OnSelected += OnWindowSelected;
-            _highlightWindow.Closed += OnWindowClosed;
-            
+            foreach (var screen in ScreenHelper.GetAllScreens())
+            {
+                var highlightWindow = new HighlightWindow(screen);
+                highlightWindow.OnSelected += OnWindowSelected;
+                highlightWindow.Closed += OnWindowClosed;
+                _highlightWindows.Add(highlightWindow);
+                highlightWindow.Show();
+            }
 
             _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
             _timer.Tick += UpdateHoveredWindow;
             _timer.Start();
 
-            //_highlightWindow.Show();
-            //_highlightWindow.Activate();
             return _selectionTcs.Task;
         }
 
         private void OnWindowSelected()
         {
             _selectionTcs?.TrySetResult(_currentHoveredWindow);
-            // Cleanup is called because the HighlightWindow closes itself, which triggers OnWindowClosed.
+            Cleanup();
         }
 
         private void OnWindowClosed(object sender, EventArgs e)
         {
-            // If the task is already completed by a selection, this will be a no-op.
             _selectionTcs?.TrySetResult(null);
             Cleanup();
         }
@@ -63,16 +66,17 @@ namespace Recorder.Services
                 _timer.Tick -= UpdateHoveredWindow;
                 _timer = null;
             }
-            if (_highlightWindow != null)
+
+            foreach (var hw in _highlightWindows)
             {
-                _highlightWindow.OnSelected -= OnWindowSelected;
-                _highlightWindow.Closed -= OnWindowClosed;
-                if (_highlightWindow.IsVisible)
+                hw.OnSelected -= OnWindowSelected;
+                hw.Closed -= OnWindowClosed;
+                if (hw.IsVisible)
                 {
-                    _highlightWindow.Close();
+                    hw.Close();
                 }
-                _highlightWindow = null;
             }
+            _highlightWindows.Clear();
         }
 
         private void UpdateHoveredWindow(object sender, EventArgs e)
@@ -80,20 +84,52 @@ namespace Recorder.Services
             var cursorPosition = GetCursorPosition();
             var element = _automation.FromPoint(cursorPosition);
 
-            var window = element?.AsWindow();
+            if (element == null)
+            {
+                _highlightWindows.ForEach(w => w.Hide());
+                return;
+            }
+
+            var window = GetTopLevelWindow(element);
+
             if (window != null && window.Properties.BoundingRectangle.IsSupported)
             {
-                // Ignore highlighting the highlight window itself or the main recorder window
                 var windowProcId = window.Properties.ProcessId.ValueOrDefault;
-                if (window.Name == "HighlightWindow" || windowProcId == Process.GetCurrentProcess().Id)
+                if (window.Name.StartsWith("HighlightWindow") || windowProcId == Process.GetCurrentProcess().Id)
                 {
+                    _highlightWindows.ForEach(w => w.Hide());
                     return;
                 }
 
                 _currentHoveredWindow = window;
                 var rect = window.Properties.BoundingRectangle.Value;
-                _highlightWindow?.Highlight(rect);
+
+                var screen = Screen.FromRectangle(rect);
+                var highlightWindow = _highlightWindows.FirstOrDefault(w => w.Screen.DeviceName == screen.DeviceName);
+
+                if (highlightWindow != null)
+                {
+                    highlightWindow.Highlight(rect);
+                    foreach (var otherHw in _highlightWindows.Where(w => w != highlightWindow))
+                    {
+                        otherHw.Hide();
+                    }
+                }
             }
+            else
+            {
+                _highlightWindows.ForEach(w => w.Hide());
+            }
+        }
+
+        private AutomationElement GetTopLevelWindow(AutomationElement element)
+        {
+            AutomationElement parent = element;
+            while (parent.Parent != null && parent.Parent.GetType() != typeof(FlaUI.UIA3.UIA3AutomationElement))
+            {
+                parent = parent.Parent;
+            }
+            return parent.AsWindow();
         }
 
         private static Point GetCursorPosition()
