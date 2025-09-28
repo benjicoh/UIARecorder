@@ -56,6 +56,7 @@ namespace Recorder
             const int WM_HOTKEY = 0x0312;
             if (msg == WM_HOTKEY && wParam.ToInt32() == HOTKEY_ID)
             {
+                _viewModel.IsRecording = !_viewModel.IsRecording;
                 _viewModel.ToggleRecordingCommand.Execute(null);
                 handled = true;
             }

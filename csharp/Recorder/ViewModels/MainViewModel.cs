@@ -130,10 +130,7 @@ namespace Recorder.ViewModels
                     CaptureAreaInfo = "Selection cancelled.";
                 }
             }
-            finally
-            {
-                Application.Current.MainWindow.Show();
-            }
+            
         }
 
         [RelayCommand]
@@ -142,7 +139,7 @@ namespace Recorder.ViewModels
             IsBusy = true;
             try
             {
-                if (!IsRecording) // START
+                if (IsRecording) // We arrive here after clicking to start recording
                 {
                     if (_captureArea.IsEmpty)
                     {
@@ -177,7 +174,6 @@ namespace Recorder.ViewModels
                 }
                 else // STOP
                 {
-                    IsRecording = false;
                     _logger.LogInformation("Stopping recording...");
 
                     await Task.Run(async () =>
