@@ -2,23 +2,23 @@ using System.Windows;
 using System.Windows.Input;
 using System.Drawing;
 using Point = System.Windows.Point;
-using Recorder.ViewModels;
+using Screen = System.Windows.Forms.Screen;
 
 namespace Recorder
 {
     public partial class SelectionWindow : Window
     {
         private Point _startPoint;
-        private readonly SelectionViewModel _viewModel;
+        public Rectangle SelectedArea { get; private set; }
 
-        public SelectionWindow(SelectionViewModel viewModel)
+        public SelectionWindow(Screen screen)
         {
             InitializeComponent();
-            _viewModel = viewModel;
-            DataContext = _viewModel;
+            Left = screen.Bounds.Left;
+            Top = screen.Bounds.Top;
+            Width = screen.Bounds.Width;
+            Height = screen.Bounds.Height;
         }
-
-        public Rectangle SelectedArea => _viewModel.SelectedArea;
 
         protected override void OnMouseDown(MouseButtonEventArgs e)
         {
@@ -53,10 +53,14 @@ namespace Recorder
             {
                 Point endPoint = e.GetPosition(this);
                 var rect = new Rect(_startPoint, endPoint);
+
                 var dpiScale = PresentationSource.FromVisual(this).CompositionTarget.TransformToDevice;
-                _viewModel.SelectedArea = new Rectangle(
-                    (int)(rect.X * dpiScale.M11),
-                    (int)(rect.Y * dpiScale.M22),
+                var screenLeft = (int)(Left * dpiScale.M11);
+                var screenTop = (int)(Top * dpiScale.M22);
+
+                SelectedArea = new Rectangle(
+                    screenLeft + (int)(rect.X * dpiScale.M11),
+                    screenTop + (int)(rect.Y * dpiScale.M22),
                     (int)(rect.Width * dpiScale.M11),
                     (int)(rect.Height * dpiScale.M22)
                 );

@@ -2,6 +2,7 @@ using System;
 using System.Windows;
 using System.Drawing;
 using System.Windows.Input;
+using System.Windows.Media;
 
 namespace Recorder
 {
@@ -16,10 +17,12 @@ namespace Recorder
 
         public void Highlight(Rectangle rect)
         {
-            Left = rect.Left;
-            Top = rect.Top;
-            Width = rect.Width;
-            Height = rect.Height;
+            var dpi = VisualTreeHelper.GetDpi(this);
+
+            Left = rect.Left / dpi.DpiScaleX;
+            Top = rect.Top / dpi.DpiScaleY;
+            Width = rect.Width / dpi.DpiScaleX;
+            Height = rect.Height / dpi.DpiScaleY;
             Visibility = Visibility.Visible;
         }
 

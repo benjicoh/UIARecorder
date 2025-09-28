@@ -4,8 +4,8 @@
         WindowStyle="None"
         AllowsTransparency="True"
         Background="#22FFFFFF"
-        Cursor="Hand">
-    <Grid Name="LayoutRoot">
-        <Canvas Name="MonitorCanvas"/>
-    </Grid>
+        Cursor="Hand"
+        MouseEnter="OnMouseEnter"
+        MouseLeave="OnMouseLeave">
+    <Border BorderBrush="Red" BorderThickness="3" Name="HighlightBorder" Visibility="Collapsed"/>
 </Window>

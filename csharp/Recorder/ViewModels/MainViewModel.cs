@@ -2,11 +2,14 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using Recorder.Services;
+using Recorder.Utils;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Forms;
@@ -80,21 +83,18 @@ namespace Recorder.ViewModels
         private async Task SelectCaptureArea()
         {
             Application.Current.MainWindow.Hide();
+            await Task.Delay(200); // Allow window to hide
 
             bool success = false;
             switch (SelectedCaptureMode)
             {
                 case "Select Monitor":
-                    var monitorSelection = new MonitorSelectionWindow();
-                    if (monitorSelection.ShowDialog() == true)
+                    var selectedMonitor = ShowMonitorSelection();
+                    if (selectedMonitor != null)
                     {
-                        _captureArea = monitorSelection.SelectedMonitor;
-                        if (!_captureArea.IsEmpty)
-                        {
-                            var screen = Screen.AllScreens.First(s => s.Bounds == _captureArea);
-                            CaptureAreaInfo = $"Monitor: {screen.DeviceName} ({_captureArea.Width}x{_captureArea.Height})";
-                            success = true;
-                        }
+                        _captureArea = selectedMonitor.Bounds;
+                        CaptureAreaInfo = $"Monitor: {selectedMonitor.DeviceName} ({_captureArea.Width}x{_captureArea.Height})";
+                        success = true;
                     }
                     break;
                 case "Select Window":
@@ -110,16 +110,12 @@ namespace Recorder.ViewModels
                     }
                     break;
                 case "Select Region":
-                    var selectionViewModel = new SelectionViewModel();
-                    var regionSelection = new SelectionWindow(selectionViewModel);
-                    if (regionSelection.ShowDialog() == true)
+                    var selectedRegion = ShowRegionSelection();
+                    if (!selectedRegion.IsEmpty)
                     {
-                        _captureArea = regionSelection.SelectedArea;
-                        if (!_captureArea.IsEmpty)
-                        {
-                            CaptureAreaInfo = $"Region ({_captureArea.Width}x{_captureArea.Height} at {_captureArea.Location})";
-                            success = true;
-                        }
+                        _captureArea = selectedRegion;
+                        CaptureAreaInfo = $"Region ({_captureArea.Width}x{_captureArea.Height} at {_captureArea.Location})";
+                        success = true;
                     }
                     break;
             }
@@ -129,8 +125,65 @@ namespace Recorder.ViewModels
                 CaptureAreaInfo = "Selection cancelled.";
             }
 
-
+            Application.Current.MainWindow.Show();
         }
+
+        private Screen ShowMonitorSelection()
+        {
+            var selectionWindows = new List<MonitorSelectionWindow>();
+            Screen selectedScreen = null;
+
+            foreach (var screen in ScreenHelper.GetAllScreens())
+            {
+                var selectionWindow = new MonitorSelectionWindow(screen);
+                selectionWindows.Add(selectionWindow);
+                selectionWindow.Show();
+            }
+
+            foreach (var window in selectionWindows)
+            {
+                if (window.ShowDialog() == true)
+                {
+                    selectedScreen = window.SelectedMonitor;
+                }
+            }
+
+            foreach (var window in selectionWindows)
+            {
+                window.Close();
+            }
+
+            return selectedScreen;
+        }
+
+        private Rectangle ShowRegionSelection()
+        {
+            var selectionWindows = new List<SelectionWindow>();
+            Rectangle selectedRegion = Rectangle.Empty;
+
+            foreach (var screen in ScreenHelper.GetAllScreens())
+            {
+                var selectionWindow = new SelectionWindow(screen);
+                selectionWindows.Add(selectionWindow);
+                selectionWindow.Show();
+            }
+
+            foreach (var window in selectionWindows)
+            {
+                if (window.ShowDialog() == true)
+                {
+                    selectedRegion = window.SelectedArea;
+                }
+            }
+
+            foreach (var window in selectionWindows)
+            {
+                window.Close();
+            }
+
+            return selectedRegion;
+        }
+
 
         [RelayCommand]
         private async Task ToggleRecording()
