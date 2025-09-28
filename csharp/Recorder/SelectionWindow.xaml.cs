@@ -3,6 +3,7 @@ using System.Windows.Input;
 using System.Drawing;
 using Point = System.Windows.Point;
 using Recorder.ViewModels;
+using System.Windows.Forms;
 
 namespace Recorder
 {
@@ -16,6 +17,21 @@ namespace Recorder
             InitializeComponent();
             _viewModel = viewModel;
             DataContext = _viewModel;
+            this.Loaded += OnLoaded;
+        }
+
+        private void OnLoaded(object sender, RoutedEventArgs e)
+        {
+            var virtualScreen = SystemInformation.VirtualScreen;
+            var source = PresentationSource.FromVisual(this);
+            if (source?.CompositionTarget == null) return;
+            var dpiX = source.CompositionTarget.TransformToDevice.M11;
+            var dpiY = source.CompositionTarget.TransformToDevice.M22;
+
+            this.Left = virtualScreen.Left / dpiX;
+            this.Top = virtualScreen.Top / dpiY;
+            this.Width = virtualScreen.Width / dpiX;
+            this.Height = virtualScreen.Height / dpiY;
         }
 
         public Rectangle SelectedArea => _viewModel.SelectedArea;
@@ -29,6 +45,8 @@ namespace Recorder
                 SelectionRectangle.Visibility = Visibility.Visible;
                 System.Windows.Controls.Canvas.SetLeft(SelectionRectangle, _startPoint.X);
                 System.Windows.Controls.Canvas.SetTop(SelectionRectangle, _startPoint.Y);
+                SelectionRectangle.Width = 0;
+                SelectionRectangle.Height = 0;
             }
         }
 
@@ -53,13 +71,30 @@ namespace Recorder
             {
                 Point endPoint = e.GetPosition(this);
                 var rect = new Rect(_startPoint, endPoint);
-                var dpiScale = PresentationSource.FromVisual(this).CompositionTarget.TransformToDevice;
+
+                var source = PresentationSource.FromVisual(this);
+                if (source?.CompositionTarget == null)
+                {
+                    DialogResult = false;
+                    Close();
+                    return;
+                }
+
+                var topLeftOnScreen = PointToScreen(rect.TopLeft);
+                var dpiScale = source.CompositionTarget.TransformToDevice;
+
+                var pixelX = topLeftOnScreen.X * dpiScale.M11;
+                var pixelY = topLeftOnScreen.Y * dpiScale.M22;
+                var pixelWidth = rect.Width * dpiScale.M11;
+                var pixelHeight = rect.Height * dpiScale.M22;
+
                 _viewModel.SelectedArea = new Rectangle(
-                    (int)(rect.X * dpiScale.M11),
-                    (int)(rect.Y * dpiScale.M22),
-                    (int)(rect.Width * dpiScale.M11),
-                    (int)(rect.Height * dpiScale.M22)
+                    (int)pixelX,
+                    (int)pixelY,
+                    (int)pixelWidth,
+                    (int)pixelHeight
                 );
+
                 DialogResult = true;
                 Close();
             }

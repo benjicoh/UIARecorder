@@ -5,8 +5,6 @@ using Recorder.Services;
 using Recorder.ViewModels;
 using System;
 using System.Windows;
-using System.Threading.Tasks;
-using System.Threading;
 
 namespace Recorder
 {
@@ -26,25 +24,25 @@ namespace Recorder
                 provider.GetRequiredService<InputUiaService>(),
                 provider.GetRequiredService<AnnotationService>(),
                 provider.GetRequiredService<ThreadManager>(),
-                provider.GetRequiredService<ILogger<MainViewModel>>(),
-                provider
+                provider.GetRequiredService<ILogger<MainViewModel>>()
             ));
             services.AddTransient<RecordingService>();
             services.AddSingleton<ThreadManager>();
             services.AddSingleton<InputUiaService>();
             services.AddSingleton<OverlayService>();
             services.AddSingleton<AnnotationService>();
-            services.AddTransient<WindowSelector>();
 
             services.AddLogging(builder =>
             {
                 builder.AddProvider(new ObservableLoggerProvider(message =>
                 {
-                    var mainViewModel = ServiceProvider.GetService<MainViewModel>();
-                    App.Current.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, new Action(() =>
+                    if (ServiceProvider?.GetService<MainViewModel>() is MainViewModel mainViewModel)
                     {
-                        mainViewModel?.LogMessages.Add(message);
-                    }));
+                        Current.Dispatcher.BeginInvoke(() =>
+                        {
+                            mainViewModel.LogMessages.Add(message);
+                        });
+                    }
                 }));
             });
             

@@ -5,6 +5,12 @@
         AllowsTransparency="True"
         Background="Transparent"
         ShowInTaskbar="False"
-        Topmost="True">
-    <Border BorderBrush="Red" BorderThickness="3"/>
+        Topmost="True"
+        WindowState="Maximized">
+    <Canvas>
+        <Border x:Name="HighlightBorder"
+                BorderBrush="Red"
+                BorderThickness="3"
+                Visibility="Collapsed"/>
+    </Canvas>
 </Window>
