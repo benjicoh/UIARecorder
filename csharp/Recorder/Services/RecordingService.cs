@@ -57,6 +57,7 @@ namespace Recorder.Services
         {
             _cancellationTokenSource?.Cancel();
             _threadManager.StopAll(); // Ensure all threads are stopped
+            _logger.LogInformation("Post processing video...");
             _tempVideoPath = _overlayService.AddOverlayToVideo(_tempVideoPath, _startCaptureTime);
             MergeVideoAndAudio();
         }
@@ -110,6 +111,7 @@ namespace Recorder.Services
 
                 waveIn.RecordingStopped += (s, e) =>
                 {
+                    _logger.LogInformation("Audio recording stopped.");
                     try
                     {
                         writer.Flush();
@@ -122,6 +124,7 @@ namespace Recorder.Services
 
                 using (token.Register(() => waveIn.StopRecording()))
                 {
+                    _logger.LogInformation("Starting audio recording.");
                     waveIn.StartRecording();
                     while (!token.IsCancellationRequested)
                     {
@@ -139,7 +142,7 @@ namespace Recorder.Services
         {
             bool videoExists = File.Exists(_tempVideoPath);
             bool audioExists = File.Exists(_tempAudioPath) && new FileInfo(_tempAudioPath).Length > 0;
-
+            _logger.LogInformation($"Merging video and audio. Video exists: {videoExists}, Audio exists: {audioExists}");
             if (videoExists && audioExists)
             {
                 FFMpegArguments
@@ -154,6 +157,7 @@ namespace Recorder.Services
 
                 File.Delete(_tempVideoPath);
                 File.Delete(_tempAudioPath);
+                _logger.LogInformation($"Merged video and audio saved to {_outputPath}");
             }
             else if (videoExists)
             {

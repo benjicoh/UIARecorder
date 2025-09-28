@@ -93,7 +93,7 @@ namespace Recorder.ViewModels
             }
             finally
             {
-                Application.Current.MainWindow.WindowState = WindowState.Normal;
+                //Application.Current.MainWindow.WindowState = WindowState.Normal;
             }
         }
 
@@ -103,9 +103,8 @@ namespace Recorder.ViewModels
             IsBusy = true;
             try
             {
-                if (!IsRecording) // START
+                if (IsRecording) // We arrive here after clicking to start recording
                 {
-                    IsRecording = true;
                     if (!SetCaptureArea())
                     {
                         IsRecording = false; // Revert state if capture is cancelled
@@ -136,7 +135,6 @@ namespace Recorder.ViewModels
                 }
                 else // STOP
                 {
-                    IsRecording = false;
                     _logger.LogInformation("Stopping recording...");
 
                     await Task.Run(async () =>
