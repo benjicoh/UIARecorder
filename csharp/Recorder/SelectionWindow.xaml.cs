@@ -1,108 +1,60 @@
-using System;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Media;
-using FlaUI.Core.AutomationElements;
-using FlaUI.UIA3;
 using System.Drawing;
-using Window = System.Windows.Window;
 using Point = System.Windows.Point;
+using Recorder.ViewModels;
 
 namespace Recorder
 {
     public partial class SelectionWindow : Window
     {
-        public enum SelectionMode
-        {
-            Region,
-            Window
-        }
-
-        public System.Drawing.Rectangle SelectedArea { get; private set; }
         private Point _startPoint;
-        private readonly SelectionMode _mode;
-        private readonly UIA3Automation _automation;
-        private AutomationElement _hoveredWindow;
+        private readonly SelectionViewModel _viewModel;
 
-        public SelectionWindow(SelectionMode mode)
+        public SelectionWindow(SelectionViewModel viewModel)
         {
             InitializeComponent();
-            _mode = mode;
-            if (_mode == SelectionMode.Window)
-            {
-                _automation = new UIA3Automation();
-            }
+            _viewModel = viewModel;
+            DataContext = _viewModel;
         }
+
+        public Rectangle SelectedArea => _viewModel.SelectedArea;
 
         protected override void OnMouseDown(MouseButtonEventArgs e)
         {
             base.OnMouseDown(e);
             if (e.LeftButton == MouseButtonState.Pressed)
             {
-                if (_mode == SelectionMode.Region)
-                {
-                    _startPoint = e.GetPosition(this);
-                    SelectionRectangle.Visibility = Visibility.Visible;
-                    Canvas.SetLeft(SelectionRectangle, _startPoint.X);
-                    Canvas.SetTop(SelectionRectangle, _startPoint.Y);
-                }
-                else // Window mode
-                {
-                    if (_hoveredWindow != null)
-                    {
-                        SelectedArea = _hoveredWindow.Properties.BoundingRectangle.Value;
-                        DialogResult = true;
-                        Close();
-                    }
-                }
+                _startPoint = e.GetPosition(this);
+                SelectionRectangle.Visibility = Visibility.Visible;
+                System.Windows.Controls.Canvas.SetLeft(SelectionRectangle, _startPoint.X);
+                System.Windows.Controls.Canvas.SetTop(SelectionRectangle, _startPoint.Y);
             }
         }
 
         protected override void OnMouseMove(MouseEventArgs e)
         {
             base.OnMouseMove(e);
-            if (_mode == SelectionMode.Region)
-            {
-                if (e.LeftButton == MouseButtonState.Pressed)
-                {
-                    Point currentPoint = e.GetPosition(this);
-                    var rect = new Rect(_startPoint, currentPoint);
-                    SelectionRectangle.Width = rect.Width;
-                    SelectionRectangle.Height = rect.Height;
-                    Canvas.SetLeft(SelectionRectangle, rect.Left);
-                    Canvas.SetTop(SelectionRectangle, rect.Top);
-                }
-            }
-            else // Window mode
+            if (e.LeftButton == MouseButtonState.Pressed)
             {
                 Point currentPoint = e.GetPosition(this);
-                _hoveredWindow = _automation.FromPoint(new System.Drawing.Point((int)currentPoint.X, (int)currentPoint.Y))?.AsWindow();
-                if (_hoveredWindow != null)
-                {
-                    var rect = _hoveredWindow.Properties.BoundingRectangle.Value;
-                    SelectionRectangle.Width = rect.Width;
-                    SelectionRectangle.Height = rect.Height;
-                    Canvas.SetLeft(SelectionRectangle, rect.Left);
-                    Canvas.SetTop(SelectionRectangle, rect.Top);
-                    SelectionRectangle.Visibility = Visibility.Visible;
-                }
-                else
-                {
-                    SelectionRectangle.Visibility = Visibility.Collapsed;
-                }
+                var rect = new Rect(_startPoint, currentPoint);
+                SelectionRectangle.Width = rect.Width;
+                SelectionRectangle.Height = rect.Height;
+                System.Windows.Controls.Canvas.SetLeft(SelectionRectangle, rect.Left);
+                System.Windows.Controls.Canvas.SetTop(SelectionRectangle, rect.Top);
             }
         }
 
         protected override void OnMouseUp(MouseButtonEventArgs e)
         {
             base.OnMouseUp(e);
-            if (e.LeftButton == MouseButtonState.Released && _mode == SelectionMode.Region)
+            if (e.LeftButton == MouseButtonState.Released)
             {
                 Point endPoint = e.GetPosition(this);
                 var rect = new Rect(_startPoint, endPoint);
                 var dpiScale = PresentationSource.FromVisual(this).CompositionTarget.TransformToDevice;
-                SelectedArea = new System.Drawing.Rectangle(
+                _viewModel.SelectedArea = new Rectangle(
                     (int)(rect.X * dpiScale.M11),
                     (int)(rect.Y * dpiScale.M22),
                     (int)(rect.Width * dpiScale.M11),

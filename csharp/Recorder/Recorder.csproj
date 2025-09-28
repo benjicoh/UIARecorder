@@ -21,5 +21,10 @@
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
 		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
 		<PackageReference Include="MouseKeyHook" Version="5.7.1" />
+		<PackageReference Include="Hardcodet.NotifyIcon.Wpf" Version="1.1.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Resource Include="Resources\recorder.ico" />
 	</ItemGroup>
 </Project>

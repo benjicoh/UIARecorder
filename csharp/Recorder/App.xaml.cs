@@ -21,12 +21,20 @@ namespace Recorder
 
         private void ConfigureServices(IServiceCollection services)
         {
-            services.AddSingleton<MainViewModel>();
+            services.AddSingleton(provider => new MainViewModel(
+                provider.GetRequiredService<RecordingService>(),
+                provider.GetRequiredService<InputUiaService>(),
+                provider.GetRequiredService<AnnotationService>(),
+                provider.GetRequiredService<ThreadManager>(),
+                provider.GetRequiredService<ILogger<MainViewModel>>(),
+                provider
+            ));
             services.AddTransient<RecordingService>();
             services.AddSingleton<ThreadManager>();
             services.AddSingleton<InputUiaService>();
             services.AddSingleton<OverlayService>();
             services.AddSingleton<AnnotationService>();
+            services.AddTransient<WindowSelector>();
 
             services.AddLogging(builder =>
             {

@@ -6,7 +6,6 @@ using Recorder.Models;
 using Recorder.Utils;
 using System;
 using System.Drawing;
-using System.Linq.Expressions;
 using System.Windows.Forms;
 
 namespace Recorder.Services
@@ -19,6 +18,7 @@ namespace Recorder.Services
         private readonly OverlayService _overlayService;
         private IKeyboardMouseEvents _globalHook;
         private UIA3Automation _automation;
+        private Rectangle _captureArea;
 
         public InputUiaService(ILogger<InputUiaService> logger, ThreadManager threadManager, AnnotationService annotationService, OverlayService overlayService)
         {
@@ -28,8 +28,9 @@ namespace Recorder.Services
             _overlayService = overlayService;
         }
 
-        public void Start()
+        public void Start(Rectangle captureArea)
         {
+            _captureArea = captureArea;
             _threadManager.InputUiaThread.EnqueueAction(() =>
             {
                 _logger.LogInformation("Initializing Input/UIA service on dedicated thread.");
@@ -69,23 +70,35 @@ namespace Recorder.Services
             OnMouseChange(e.X, e.Y, e.Button.ToString(), "Up");
         }
 
-        private void OnMouseChange(int x, int y,string button, string updown)
+        private void OnMouseChange(int x, int y, string button, string updown)
         {
+            var screenPoint = new Point(x, y);
+            if (!_captureArea.Contains(screenPoint))
+            {
+                return; // Ignore clicks outside the capture area
+            }
+
             var ts = DateTime.UtcNow;
             _threadManager.InputUiaThread.EnqueueAction(() =>
             {
                 try
                 {
-                    var element = _automation.FromPoint(new System.Drawing.Point(x, y));
+                    var element = _automation.FromPoint(screenPoint);
                     if (element != null && element.GetSafeBoundingRectangle() != Rectangle.Empty)
                     {
+                        var relativePoint = CoordinateUtils.TransformFromScreen(screenPoint, _captureArea);
                         var EventType = $"{button} {updown}";
-                        var Coord = $"{x}, {y}";
-                        _overlayService.AddClickOverlay(new OpenCvSharp.Point(x, y), EventType, ts);
-                        _overlayService.AddOverlay(element.BoundingRectangle, element.GetIdentifier(), Color.Green, ts);
+                        var Coord = $"{relativePoint.X}, {relativePoint.Y}";
 
-                        var elementInfo = GetElementHierarchy(element);
+                        _overlayService.AddClickOverlay(new OpenCvSharp.Point(relativePoint.X, relativePoint.Y), EventType, ts);
                         
+                        var elementInfo = GetElementHierarchy(element);
+                        if (elementInfo == null)
+                        {
+                            _logger.LogWarning("Could not retrieve element hierarchy for click at {X}, {Y}", x, y);
+                            return;
+                        }
+                        _overlayService.AddOverlay(elementInfo.BoundingRectangle, element.GetIdentifier(), Color.Green, ts);
                         _annotationService.AddEvent(elementInfo, "MouseClick", new { EventType, Coord }, ts);
                     }
                 }
@@ -106,9 +119,13 @@ namespace Recorder.Services
                     var element = _automation.FocusedElement();
                     if (element != null && element.GetSafeBoundingRectangle() != Rectangle.Empty)
                     {
-                        _overlayService.AddOverlay(element.BoundingRectangle, element.GetIdentifier(), Color.Green, ts);
-
                         var elementInfo = GetElementHierarchy(element);
+                        if (elementInfo == null)
+                        {
+                            _logger.LogWarning("Could not retrieve element hierarchy for key up event.");
+                            return;
+                        }
+                        _overlayService.AddOverlay(elementInfo.BoundingRectangle, element.GetIdentifier(), Color.Green, ts);
                         _annotationService.AddEvent(elementInfo, "KeyUp", new { e.KeyCode }, ts);
                     }
                 }
@@ -121,7 +138,6 @@ namespace Recorder.Services
 
         private ElementInfo GetElementHierarchy(AutomationElement element)
         {
-            // This logic is extracted from the old UiaService
             if (element == null) return null;
 
             var hierarchy = new System.Collections.Generic.List<AutomationElement>();
@@ -137,12 +153,27 @@ namespace Recorder.Services
 
             foreach (var el in hierarchy)
             {
+                var screenRect = el.GetSafeBoundingRectangle();
+                var intersection = Rectangle.Intersect(screenRect, _captureArea);
+
+                if (rootInfo == null && intersection.IsEmpty)
+                {
+                    return null; // The main element is outside the capture area, ignore the hierarchy.
+                }
+
+                var relativeRect = new Rectangle(
+                    screenRect.X - _captureArea.X,
+                    screenRect.Y - _captureArea.Y,
+                    screenRect.Width,
+                    screenRect.Height
+                );
+
                 var newInfo = new ElementInfo
                 {
                     AutomationID = el.GetSafeAutomationID(),
                     Name = el.GetSafeName(),
                     ControlType = el.GetSafeControlType(),
-                    BoundingRectangle = el.GetSafeBoundingRectangle(),
+                    BoundingRectangle = relativeRect,
                     Patterns = el.GetPatternsInfo()
                 };
 
