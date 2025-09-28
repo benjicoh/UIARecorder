@@ -12,7 +12,7 @@
         mc:Ignorable="d"
         Title="Recorder"
         SizeToContent="Height"
-        Width="800">
+        Width="900">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />

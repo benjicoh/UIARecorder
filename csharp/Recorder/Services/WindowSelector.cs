@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 using System.Windows.Threading;
 
 namespace Recorder.Services
@@ -14,7 +15,7 @@ namespace Recorder.Services
         private readonly UIA3Automation _automation;
         private DispatcherTimer _timer;
         private AutomationElement _currentHoveredWindow;
-        private HighlightWindow _highlightWindow;
+        private List<HighlightWindow> _highlightWindows; //per screen
         private TaskCompletionSource<AutomationElement> _selectionTcs;
 
         public WindowSelector()
@@ -26,9 +27,13 @@ namespace Recorder.Services
         {
             _selectionTcs = new TaskCompletionSource<AutomationElement>();
 
-            _highlightWindow = new HighlightWindow();
-            _highlightWindow.OnSelected += OnWindowSelected;
-            _highlightWindow.Closed += OnWindowClosed;
+            foreach (var screen in Screen.AllScreens)
+            {
+                var highlightWindow = new HighlightWindow(screen);
+                highlightWindow.OnSelected += OnWindowSelected;
+                highlightWindow.Closed += OnWindowClosed;
+                _highlightWindows.Add(highlightWindow);
+            }
 
             _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
             _timer.Tick += UpdateHoveredWindow;

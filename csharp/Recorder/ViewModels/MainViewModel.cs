@@ -91,8 +91,8 @@ namespace Recorder.ViewModels
                         _captureArea = monitorSelection.SelectedMonitor;
                         if (!_captureArea.IsEmpty)
                         {
-                            var screen = Screen.AllScreens.First(s => s.Bounds == _captureArea);
-                            CaptureAreaInfo = $"Monitor: {screen.DeviceName} ({_captureArea.Width}x{_captureArea.Height})";
+                            //var screen = Screen.AllScreens.First(s => s.Bounds == _captureArea);
+                            //CaptureAreaInfo = $"Monitor: {screen.DeviceName} ({_captureArea.Width}x{_captureArea.Height})";
                             success = true;
                         }
                     }
@@ -128,6 +128,7 @@ namespace Recorder.ViewModels
                 _captureArea = Rectangle.Empty;
                 CaptureAreaInfo = "Selection cancelled.";
             }
+            Application.Current.MainWindow.Show();
 
 
         }

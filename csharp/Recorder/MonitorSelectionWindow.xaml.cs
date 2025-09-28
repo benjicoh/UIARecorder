@@ -1,56 +1,42 @@
 using System;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Forms;
 using System.Drawing;
 using System.Linq;
+using System.Runtime.InteropServices;
+using System.Threading;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Forms;
+using System.Windows.Input;
+using System.Windows.Media;
 using Point = System.Windows.Point;
 
 namespace Recorder
 {
     public partial class MonitorSelectionWindow : Window
     {
+        
         public Rectangle SelectedMonitor { get; private set; }
         private Border _highlightRectangle;
+        private Screen _screen;
 
-        public MonitorSelectionWindow()
+        public MonitorSelectionWindow(int monitorIndex)
         {
+            _screen = Screen.AllScreens.ElementAtOrDefault(monitorIndex) ?? Screen.PrimaryScreen;
             InitializeComponent();
             Loaded += OnLoaded;
         }
 
+
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
-            var virtualScreen = SystemInformation.VirtualScreen;
-            this.Left = virtualScreen.Left;
-            this.Top = virtualScreen.Top;
-            this.Width = virtualScreen.Width;
-            this.Height = virtualScreen.Height;
-
-            var allScreens = Screen.AllScreens;
+            this.Top = _screen.Bounds.Top;
+            this.Left = _screen.Bounds.Left;
+            this.Width = _screen.Bounds.Width;
+            this.Height = _screen.Bounds.Height;
 
             // Create a canvas that spans the entire virtual screen
-            MonitorCanvas.Width = virtualScreen.Width;
-            MonitorCanvas.Height = virtualScreen.Height;
-
-            foreach (var screen in allScreens)
-            {
-                var screenBounds = screen.Bounds;
-
-                var border = new Border
-                {
-                    BorderBrush = System.Windows.Media.Brushes.Transparent,
-                    BorderThickness = new Thickness(2),
-                    Width = screenBounds.Width,
-                    Height = screenBounds.Height
-                };
-
-                Canvas.SetLeft(border, screenBounds.Left - virtualScreen.Left);
-                Canvas.SetTop(border, screenBounds.Top - virtualScreen.Top);
-                MonitorCanvas.Children.Add(border);
-            }
+            MonitorCanvas.Width = _screen.Bounds.Width;
+            MonitorCanvas.Height = _screen.Bounds.Height;
 
             _highlightRectangle = new Border
             {
@@ -61,49 +47,29 @@ namespace Recorder
             MonitorCanvas.Children.Add(_highlightRectangle);
         }
 
-        protected override void OnMouseMove(System.Windows.Input.MouseEventArgs e)
+        // Use MonitorFromPoint and GetMonitorInfo to get monitor under mouse
+
+        protected override void OnMouseEnter(System.Windows.Input.MouseEventArgs e)
         {
-            base.OnMouseMove(e);
-            var mousePosition = PointToScreen(e.GetPosition(this));
-            var activeScreen = Screen.AllScreens.FirstOrDefault(s => s.Bounds.Contains(PointToDrawingPoint(mousePosition)));
-
-            if (activeScreen != null)
-            {
-                var screenBounds = activeScreen.Bounds;
-                var virtualScreen = SystemInformation.VirtualScreen;
-
-                _highlightRectangle.Width = screenBounds.Width;
-                _highlightRectangle.Height = screenBounds.Height;
-                Canvas.SetLeft(_highlightRectangle, screenBounds.Left - virtualScreen.Left);
-                Canvas.SetTop(_highlightRectangle, screenBounds.Top - virtualScreen.Top);
-                _highlightRectangle.Visibility = Visibility.Visible;
-            }
-            else
-            {
-                _highlightRectangle.Visibility = Visibility.Collapsed;
-            }
+            base.OnMouseEnter(e);
+            _highlightRectangle.Visibility = Visibility.Visible;
         }
 
-        protected override void OnMouseDown(MouseButtonEventArgs e)
+        protected override void OnMouseLeave(System.Windows.Input.MouseEventArgs e)
+        {
+            base.OnMouseLeave(e);
+            _highlightRectangle.Visibility = Visibility.Collapsed;
+        }
+
+        protected override void OnMouseDown(System.Windows.Input.MouseButtonEventArgs e)
         {
             base.OnMouseDown(e);
             if (e.LeftButton == MouseButtonState.Pressed)
             {
-                var mousePosition = PointToScreen(e.GetPosition(this));
-                var selectedScreen = Screen.AllScreens.FirstOrDefault(s => s.Bounds.Contains(PointToDrawingPoint(mousePosition)));
-
-                if (selectedScreen != null)
-                {
-                    SelectedMonitor = selectedScreen.Bounds;
-                    DialogResult = true;
-                    Close();
-                }
+                SelectedMonitor = _screen.Bounds;
+                DialogResult = true;
+                Close();
             }
-        }
-
-        private System.Drawing.Point PointToDrawingPoint(Point point)
-        {
-            return new System.Drawing.Point((int)point.X, (int)point.Y);
         }
     }
 }
