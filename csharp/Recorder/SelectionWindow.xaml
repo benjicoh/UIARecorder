@@ -3,15 +3,15 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         WindowStyle="None"
         AllowsTransparency="True"
-        Background="Transparent"
-        WindowState="Maximized"
+        Background="#33FFFFFF"
+        ShowInTaskbar="False"
+        Topmost="True"
         Cursor="Cross">
-    <Grid Name="LayoutRoot" Background="#22FFFFFF">
-        <Canvas Name="SelectionCanvas">
-            <Border x:Name="SelectionRectangle"
-                    BorderBrush="Red"
-                    BorderThickness="2"
-                    Visibility="Collapsed"/>
-        </Canvas>
-    </Grid>
+    <Canvas Name="SelectionCanvas">
+        <Border x:Name="SelectionRectangle"
+                BorderBrush="Red"
+                BorderThickness="2"
+                Background="#44FF0000"
+                Visibility="Collapsed"/>
+    </Canvas>
 </Window>

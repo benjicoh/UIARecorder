@@ -2,6 +2,8 @@ using System;
 using System.Windows;
 using System.Drawing;
 using System.Windows.Input;
+using System.Windows.Forms;
+using System.Windows.Controls;
 
 namespace Recorder
 {
@@ -12,15 +14,32 @@ namespace Recorder
         public HighlightWindow()
         {
             InitializeComponent();
+            this.Loaded += OnLoaded;
+        }
+
+        private void OnLoaded(object sender, RoutedEventArgs e)
+        {
+            var virtualScreen = SystemInformation.VirtualScreen;
+            this.Left = virtualScreen.Left;
+            this.Top = virtualScreen.Top;
+            this.Width = virtualScreen.Width;
+            this.Height = virtualScreen.Height;
         }
 
         public void Highlight(Rectangle rect)
         {
-            Left = rect.Left;
-            Top = rect.Top;
-            Width = rect.Width;
-            Height = rect.Height;
-            Visibility = Visibility.Visible;
+            if (rect.IsEmpty)
+            {
+                HighlightBorder.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            var virtualScreen = SystemInformation.VirtualScreen;
+            Canvas.SetLeft(HighlightBorder, rect.Left - virtualScreen.Left);
+            Canvas.SetTop(HighlightBorder, rect.Top - virtualScreen.Top);
+            HighlightBorder.Width = rect.Width;
+            HighlightBorder.Height = rect.Height;
+            HighlightBorder.Visibility = Visibility.Visible;
         }
 
         protected override void OnMouseDown(MouseButtonEventArgs e)
