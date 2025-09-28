@@ -48,7 +48,7 @@ namespace Recorder.ViewModels
         private readonly IServiceProvider _serviceProvider;
 
         public ObservableCollection<string> LogMessages { get; } = new ObservableCollection<string>();
-        private Rectangle _captureArea;
+        private SelectionResult _selectionRes = new SelectionResult();
         private string _annotationsFilePath;
 
         public string TrayToolTipText => IsRecording
@@ -89,11 +89,10 @@ namespace Recorder.ViewModels
             switch (SelectedCaptureMode)
             {
                 case "Select Monitor":
-                    var selectedMonitor = ShowMonitorSelection();
-                    if (selectedMonitor != null)
+                    _selectionRes = await ShowMonitorSelection();
+                    if (_selectionRes.SelectedMonitor != -1)
                     {
-                        _captureArea = selectedMonitor.Bounds;
-                        CaptureAreaInfo = $"Monitor: {selectedMonitor.DeviceName} ({_captureArea.Width}x{_captureArea.Height})";
+                        CaptureAreaInfo = $"Monitor: {Screen.AllScreens[_selectionRes.SelectedMonitor].DeviceName} ({_selectionRes.SelectedArea.Width}x{_selectionRes.SelectedArea.Height})";
                         success = true;
                     }
                     break;
@@ -102,10 +101,9 @@ namespace Recorder.ViewModels
                     var selectedWindow = await windowSelector.SelectWindowAsync();
                     if (selectedWindow != null)
                     {
-                        _captureArea = selectedWindow.BoundingRectangle;
                         var processId = selectedWindow.Properties.ProcessId.ValueOrDefault;
                         var processName = Process.GetProcessById(processId).ProcessName;
-                        CaptureAreaInfo = $"Window: '{selectedWindow.Name}' ({processName}, {_captureArea.Width}x{_captureArea.Height})";
+                        CaptureAreaInfo = $"Window: '{selectedWindow.Name}' ({processName}, {selectedWindow.BoundingRectangle.Width}x{selectedWindow.BoundingRectangle.Height})";
                         success = true;
                     }
                     break;
@@ -113,47 +111,53 @@ namespace Recorder.ViewModels
                     var selectedRegion = ShowRegionSelection();
                     if (!selectedRegion.IsEmpty)
                     {
-                        _captureArea = selectedRegion;
-                        CaptureAreaInfo = $"Region ({_captureArea.Width}x{_captureArea.Height} at {_captureArea.Location})";
+                        _selectionRes.SelectedArea = selectedRegion;
+                        CaptureAreaInfo = $"Region ({_selectionRes.SelectedArea.Width}x{_selectionRes.SelectedArea.Height} at {_selectionRes.SelectedArea.Location})";
                         success = true;
                     }
                     break;
             }
             if (!success)
             {
-                _captureArea = Rectangle.Empty;
+                _selectionRes = new SelectionResult()   ;
                 CaptureAreaInfo = "Selection cancelled.";
             }
 
             Application.Current.MainWindow.Show();
         }
 
-        private Screen ShowMonitorSelection()
+        private async Task<SelectionResult> ShowMonitorSelection()
         {
             var selectionWindows = new List<MonitorSelectionWindow>();
-            Screen selectedScreen = null;
-
+            SelectionResult result = new SelectionResult();
+            var manualResetEvent = new System.Threading.ManualResetEvent(false);
+            int i = 0;
             foreach (var screen in ScreenHelper.GetAllScreens())
             {
-                var selectionWindow = new MonitorSelectionWindow(screen);
+                var selectionWindow = new MonitorSelectionWindow(screen, i );
                 selectionWindows.Add(selectionWindow);
-                selectionWindow.Show();
-            }
-
-            foreach (var window in selectionWindows)
-            {
-                if (window.ShowDialog() == true)
+                selectionWindow.MouseDown += (s, e) =>
                 {
-                    selectedScreen = window.SelectedMonitor;
-                }
-            }
+                    var clickedWin = s as MonitorSelectionWindow;
+                    if (clickedWin != null)
+                    {
+                        result.SelectedArea = clickedWin.SelectedArea;
+                        result.SelectedMonitor = clickedWin.MonitorID;
+                        foreach (var win in selectionWindows)
+                        {
+                            win.Close();
+                        }
 
-            foreach (var window in selectionWindows)
-            {
-                window.Close();
-            }
+                    }
 
-            return selectedScreen;
+                    manualResetEvent.Set();
+                };
+                selectionWindow.Show();
+                i++;
+
+            }
+            await Task.Run(() => manualResetEvent.WaitOne());
+            return result;
         }
 
         private Rectangle ShowRegionSelection()
@@ -193,13 +197,13 @@ namespace Recorder.ViewModels
             {
                 if (IsRecording) // We arrive here after clicking to start recording
                 {
-                    if (_captureArea.IsEmpty)
-                    {
-                        _logger.LogWarning("Capture area not selected.");
-                        System.Windows.MessageBox.Show("Please select a capture area before recording.", "Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
-                        IsRecording = false;
-                        return;
-                    }
+                    //if (_selectionRes.IsEmpty)
+                    //{
+                    //    _logger.LogWarning("Capture area not selected.");
+                    //    System.Windows.MessageBox.Show("Please select a capture area before recording.", "Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    //    IsRecording = false;
+                    //    return;
+                    //}
                     Application.Current.MainWindow.WindowState = WindowState.Minimized;
 
                     string finalOutputPath;
@@ -221,8 +225,8 @@ namespace Recorder.ViewModels
 
                     _threadManager.StartAll();
                     _annotationService.Start();
-                    _inputUiaService.Start(_captureArea);
-                    _recordingService.StartRecording(videoFilePath, _captureArea);
+                    _inputUiaService.Start(_selectionRes);
+                    _recordingService.StartRecording(videoFilePath, _selectionRes);
                 }
                 else // STOP
                 {

@@ -7,37 +7,33 @@ namespace Recorder
 {
     public partial class MonitorSelectionWindow : Window
     {
-        public Screen SelectedMonitor { get; private set; }
+        public Rectangle SelectedArea { get; private set; }
 
-        public MonitorSelectionWindow(Screen screen)
+        public int MonitorID
         {
-            _screen = Screen.AllScreens.ElementAtOrDefault(monitorIndex) ?? Screen.PrimaryScreen;
+            get; set;
+        }
+
+        public MonitorSelectionWindow(Screen screen, int monitorID)
+        {
             InitializeComponent();
-            SelectedMonitor = screen;
+            SelectedArea = screen.Bounds;
             Left = screen.Bounds.Left;
             Top = screen.Bounds.Top;
             Width = screen.Bounds.Width;
             Height = screen.Bounds.Height;
+            MonitorID = monitorID;
         }
 
-        private void OnMouseEnter(object sender, MouseEventArgs e)
+        private void OnMouseEnter(object sender, System.Windows.Input.MouseEventArgs e)
         {
             HighlightBorder.Visibility = Visibility.Visible;
         }
 
-        private void OnMouseLeave(object sender, MouseEventArgs e)
+        private void OnMouseLeave(object sender, System.Windows.Input.MouseEventArgs e)
         {
             HighlightBorder.Visibility = Visibility.Collapsed;
         }
 
-        protected override void OnMouseDown(System.Windows.Input.MouseButtonEventArgs e)
-        {
-            base.OnMouseDown(e);
-            if (e.LeftButton == MouseButtonState.Pressed)
-            {
-                DialogResult = true;
-                Close();
-            }
-        }
     }
 }

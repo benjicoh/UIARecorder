@@ -15,7 +15,7 @@ namespace Recorder.Services
         private readonly UIA3Automation _automation;
         private DispatcherTimer _timer;
         private AutomationElement _currentHoveredWindow;
-        private List<HighlightWindow> _highlightWindows; //per screen
+        private HighlightWindow _highlightWindow; 
         private TaskCompletionSource<AutomationElement> _selectionTcs;
 
         public WindowSelector()
@@ -27,20 +27,18 @@ namespace Recorder.Services
         {
             _selectionTcs = new TaskCompletionSource<AutomationElement>();
 
-            foreach (var screen in Screen.AllScreens)
-            {
-                var highlightWindow = new HighlightWindow(screen);
-                highlightWindow.OnSelected += OnWindowSelected;
-                highlightWindow.Closed += OnWindowClosed;
-                _highlightWindows.Add(highlightWindow);
-            }
+            
+            _highlightWindow = new HighlightWindow();
+            _highlightWindow.OnSelected += OnWindowSelected;
+            _highlightWindow.Closed += OnWindowClosed;
+            
 
             _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
             _timer.Tick += UpdateHoveredWindow;
             _timer.Start();
 
-            _highlightWindow.Show();
-            _highlightWindow.Activate();
+            //_highlightWindow.Show();
+            //_highlightWindow.Activate();
             return _selectionTcs.Task;
         }
 

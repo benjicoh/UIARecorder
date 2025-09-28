@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using NAudio.Wave;
 using OpenCvSharp;
 using Recorder.Models;
+using Recorder.Utils;
 using Sdcb;
 using System;
 using System.Collections.Concurrent;
@@ -34,7 +35,7 @@ namespace Recorder.Services
             _threadManager = threadManager;
         }
 
-        public void StartRecording(string outputPath, Rectangle captureArea)
+        public void StartRecording(string outputPath, SelectionResult selection)
         {
             _cancellationTokenSource = new CancellationTokenSource();
             var token = _cancellationTokenSource.Token;
@@ -49,7 +50,7 @@ namespace Recorder.Services
             _tempVideoPath = Path.Combine(outputDir, Guid.NewGuid() + ".mp4");
             _tempAudioPath = Path.Combine(outputDir, Guid.NewGuid() + ".wav");
 
-            _threadManager.VideoCaptureThread.EnqueueAction(() => RecordVideo(token, captureArea));
+            _threadManager.VideoCaptureThread.EnqueueAction(() => RecordVideo(token, selection));
             _threadManager.AudioCaptureThread.EnqueueAction(() => RecordAudio(token));
         }
 
@@ -62,22 +63,24 @@ namespace Recorder.Services
             MergeVideoAndAudio();
         }
 
-        private void RecordVideo(CancellationToken token, Rectangle captureArea)
+        private void RecordVideo(CancellationToken token, SelectionResult selection)
         {
             // This method is executed on the VideoCaptureThread.
             // We kick off processing on its own thread and start capturing frames directly.
             //_threadManager.VideoProcessingThread.EnqueueAction(() => ProcessFrames(token, 20));
-            CaptureFrames(token);
+            CaptureFrames(token, selection);
         }
 
-        private void CaptureFrames(CancellationToken token)
+        private void CaptureFrames(CancellationToken token, SelectionResult selection)
         {
             try
             {
-                var rect = ScreenCapture.GetScreenSize(0);
+                //var rect = selection.SelectedArea;
+                //if (rect == Rectangle.Empty)
+                var rect = new Rectangle(0, 0, ScreenCapture.GetScreenSize(selection.SelectedMonitor).Width, ScreenCapture.GetScreenSize(selection.SelectedMonitor).Height);
                 using var writer = new VideoWriter(_tempVideoPath, FourCC.FromString("X264"), 20.0, new OpenCvSharp.Size(rect.Width, rect.Height));
                 _startCaptureTime = DateTime.UtcNow;
-                foreach (var frame in ScreenCapture.CaptureScreenFrames(0, 20.0, 0, token))
+                foreach (var frame in ScreenCapture.CaptureScreenFrames(selection.SelectedMonitor, 20.0, 0, token))
                 {
                     if (token.IsCancellationRequested) break;
                     var mat = Mat.FromPixelData(frame.Height, frame.Width, MatType.CV_8UC4, frame.DataPointer);

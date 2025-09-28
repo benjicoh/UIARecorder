@@ -28,9 +28,9 @@ namespace Recorder.Services
             _overlayService = overlayService;
         }
 
-        public void Start(Rectangle captureArea)
+        public void Start(SelectionResult selection)
         {
-            _captureArea = captureArea;
+            _captureArea = selection.SelectedArea;
             _threadManager.InputUiaThread.EnqueueAction(() =>
             {
                 _logger.LogInformation("Initializing Input/UIA service on dedicated thread.");

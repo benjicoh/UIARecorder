@@ -17,4 +17,10 @@ namespace Recorder.Utils
             return SystemInformation.VirtualScreen;
         }
     }
+
+    public class SelectionResult
+    {
+        public int SelectedMonitor { get; set; } = 0;
+        public Rectangle SelectedArea { get; set; } = Rectangle.Empty;
+    }
 }
