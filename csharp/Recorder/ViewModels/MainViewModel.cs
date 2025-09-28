@@ -98,17 +98,15 @@ namespace Recorder.ViewModels
                     break;
                 case "Select Window":
                     var windowSelector = (WindowSelector)_serviceProvider.GetService(typeof(WindowSelector));
-                    var selectedWindow = await windowSelector.SelectWindowAsync();
-                    if (selectedWindow != IntPtr.Zero)
+                    _selectionRes = await windowSelector.SelectWindowAsync();
+                    if (_selectionRes.SelectedWindowHandle != IntPtr.Zero)
                     {
-                        //var processId = selectedWindow.Properties.ProcessId.ValueOrDefault;
-                        //var processName = Process.GetProcessById(processId).ProcessName;
-                        CaptureAreaInfo = $"Window: {selectedWindow})";
+                        CaptureAreaInfo = $"Window: '{_selectionRes.WindowTitle}' ({_selectionRes.SelectedArea.Width}x{_selectionRes.SelectedArea.Height})";
                         success = true;
                     }
                     break;
                 case "Select Region":
-                    var selectedRegion = ShowRegionSelection();
+                    var selectedRegion = await ShowRegionSelectionAsync();
                     if (!selectedRegion.IsEmpty)
                     {
                         _selectionRes.SelectedArea = selectedRegion;
@@ -160,32 +158,29 @@ namespace Recorder.ViewModels
             return result;
         }
 
-        private Rectangle ShowRegionSelection()
+        private Task<Rectangle> ShowRegionSelectionAsync()
         {
+            var tcs = new TaskCompletionSource<Rectangle>();
             var selectionWindows = new List<SelectionWindow>();
-            Rectangle selectedRegion = Rectangle.Empty;
 
             foreach (var screen in ScreenHelper.GetAllScreens())
             {
                 var selectionWindow = new SelectionWindow(screen);
                 selectionWindows.Add(selectionWindow);
+
+                selectionWindow.RegionSelected += (s, rect) =>
+                {
+                    tcs.TrySetResult(rect);
+                    foreach (var win in selectionWindows)
+                    {
+                        win.Close();
+                    }
+                };
+
                 selectionWindow.Show();
             }
 
-            foreach (var window in selectionWindows)
-            {
-                if (window.ShowDialog() == true)
-                {
-                    selectedRegion = window.SelectedArea;
-                }
-            }
-
-            foreach (var window in selectionWindows)
-            {
-                window.Close();
-            }
-
-            return selectedRegion;
+            return tcs.Task;
         }
 
 

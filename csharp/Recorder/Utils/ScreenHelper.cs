@@ -22,5 +22,7 @@ namespace Recorder.Utils
     {
         public int SelectedMonitor { get; set; } = 0;
         public Rectangle SelectedArea { get; set; } = Rectangle.Empty;
+        public IntPtr SelectedWindowHandle { get; set; } = IntPtr.Zero;
+        public string WindowTitle { get; set; }
     }
 }
