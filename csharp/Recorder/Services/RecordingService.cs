@@ -59,7 +59,7 @@ namespace Recorder.Services
             _cancellationTokenSource?.Cancel();
             _threadManager.StopAll(); // Ensure all threads are stopped
             _logger.LogInformation("Post processing video...");
-            //_tempVideoPath = _overlayService.AddOverlayToVideo(_tempVideoPath, _startCaptureTime);
+            _tempVideoPath = _overlayService.AddOverlayToVideo(_tempVideoPath, _startCaptureTime);
             MergeVideoAndAudio();
         }
 

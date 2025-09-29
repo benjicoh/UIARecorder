@@ -5,9 +5,9 @@ namespace Recorder.Models
 {
     public class LogEntry
     {
-        public DateTime Timestamp { get; }
-        public LogLevel Level { get; }
-        public string Message { get; }
+        public DateTime Timestamp { get; set; }
+        public LogLevel Level { get; set; }
+        public string Message { get; set; }
 
         public LogEntry(LogLevel level, string message)
         {
