@@ -8,12 +8,25 @@ namespace Recorder.Models
         public DateTime Timestamp { get; set; }
         public LogLevel Level { get; set; }
         public string Message { get; set; }
+        public string CallerFilePath { get; set; }
+        public int CallerLineNumber { get; set; }
+        public string CallerMemberName { get; set; }
 
-        public LogEntry(LogLevel level, string message)
+
+        public LogEntry(LogLevel level, string message, string callerFilePath, int callerLineNumber, string callerMemberName)
         {
             Timestamp = DateTime.Now;
             Level = level;
             Message = message;
+            CallerFilePath = callerFilePath;
+            CallerLineNumber = callerLineNumber;
+            CallerMemberName = callerMemberName;
+        }
+
+        public override string ToString()
+        {
+            var file = System.IO.Path.GetFileName(CallerFilePath);
+            return $"{Timestamp:yyyy-MM-dd HH:mm:ss} - {Level} [{file}:{CallerLineNumber}] - {Message}";
         }
     }
 }

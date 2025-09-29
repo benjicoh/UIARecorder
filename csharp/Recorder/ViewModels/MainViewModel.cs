@@ -42,6 +42,9 @@ namespace Recorder.ViewModels
 
         [ObservableProperty]
         private string recordingDirectoryPath;
+        
+        [ObservableProperty]
+        private string logText;
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(IsNotGenerating))]
@@ -83,6 +86,7 @@ namespace Recorder.ViewModels
         #endregion
 
         #region Fields
+
         private SelectionResult _selectionRes = new SelectionResult();
         private string _annotationsFilePath;
         #endregion
@@ -137,6 +141,16 @@ namespace Recorder.ViewModels
             }
             _configurationService.Config.WhitelistedProcesses.ForEach(p => WhitelistedProcesses.Add(p));
             SetDefaultCaptureArea();
+
+            LogMessages.CollectionChanged += (sender, args) =>
+            {
+                var sb = new System.Text.StringBuilder();
+                foreach (var log in LogMessages)
+                {
+                    sb.AppendLine(log.ToString());
+                }
+                LogText = sb.ToString();
+            };
         }
         #endregion
 

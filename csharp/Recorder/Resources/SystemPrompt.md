@@ -61,7 +61,7 @@ Your goal is to create a passing test. Follow this iterative process:
 7.  **Debug Test**: If the test fails, analyze the output from `RunTest`.
     - If it's an element-not-found error, you may need to use `DumpUi` to inspect the current state of the application and correct your element selectors.
     - Go back to step 2 to refine your code.
-8.  **Succeed**: If the test passes, your job is done. Respond with a final success message.
+8.  **Succeed**: If the test passes, your job is done. To signal completion, respond with the exact string `TEST_GENERATION_COMPLETE` and nothing else.
 
 ## Project Structure and Helper Functions
 
