@@ -25,10 +25,9 @@ You have the following tools at your disposal. Use them to accomplish your goal.
 - Use appropriate error handling to manage unexpected UI states.
 - Include comments in the code to explain the logic and flow.
 - Listen to the video's audio, there might be additional context or information that can help with element identification.
-- The `[TestInitialize]` method in `TestClass.cs` will handle launching or attaching to the application. Your main run code should be placed within the `[TestMethod]`.
 - Use `Logger` logging to provide insights into the script's execution flow.
 - Prefer FlaUI `Find*XPath` methods when possible for better readability. All XPath strings should be defined as consts in the `ApplicationPage.cs` file.
-- FlaUI Xpath is simple do not try extended syntax like `contains` or `starts-with`, they are not supported.
+- FlaUI Xpath is simple **do not try extended syntax** like `contains` or `starts-with`, they are not supported.
 - The start of the script **should have** the following steps
     - Attach the application using `Application.Attach(process name)`
         - You should always prefer attaching to launching, unless the narration specifies otherwise.
@@ -39,17 +38,15 @@ You have the following tools at your disposal. Use them to accomplish your goal.
 
 ## Page Object Model (POM) Architecture
 You must follow the Page Object Model (POM) architecture. This means separating the test logic from the UI interaction logic.
-- **`TestClass.cs`**: This class is responsible for the test scenario flow. It should not contain any direct FlaUI element finding logic. It should instantiate the `ApplicationPage` and call its methods to perform actions on the UI.
-- **`ApplicationPage.cs`**: This class represents the main application window. It contains properties that represent UI elements (e.g., buttons, text boxes) and methods that perform actions on those elements (e.g., `ClickSaveButton()`, `EnterUsername(string username)`). All XPath selectors used to find the elements should be defined as consts in this class.
+- **`TestClass.cs`**: This class is responsible for the test scenario flow, this is an MSTest class with MSTest methods. It should not contain any direct FlaUI element finding logic. It should instantiate the `<AUT Window>` class and call its methods to perform actions on the UI.
+- **`<AUT Window>.cs`**: This class represents the main application window. It contains properties that represent UI elements (e.g., buttons, text boxes) and methods that perform actions on those elements (e.g., `ClickSaveButton()`, `EnterUsername(string username)`). All XPath selectors used to find the elements should be defined as consts in this class.
 
 ## Identifying elements correctly
 - Use the `Name`, `AutomationId`, `ClassName`, and `ControlType` properties from the JSON file to uniquely identify elements.
 - Ignore `N/A` values, they cannot be used as identifiers.
 - If multiple elements match the criteria, use additional properties or a combination of properties to disambiguate.
-- Always refer to the `element_hierarchy` in the JSON to understand the context of each element.
-- **Do not** try to to get the names from the UI
+- Always refer to the hierarchy of elements in the JSON to understand the context and xpath of each element.
 - Use the patterns in the json file to understand the control's behavior and available actions.
-- You can cross correlate the element id with screenshot filename, to better understand where it is
 
 
 ## Workflow
@@ -177,7 +174,8 @@ foreach (var checkBox in allCheckBoxes)
     if (checkBox.AsCheckBox().IsChecked == false) {
         checkBox.AsCheckBox().Toggle();
     }
-}```
+}
+```
 
 ### Mouse and Keyboard Interaction
 
