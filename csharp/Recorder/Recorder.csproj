@@ -39,6 +39,7 @@
 
 	<ItemGroup>
 	  <Content Include="Resources\SystemPrompt.md">
+		  <Link>SystemPrompt.md</Link>
 	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 	  </Content>
 	</ItemGroup>

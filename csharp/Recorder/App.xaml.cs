@@ -27,18 +27,21 @@ namespace Recorder
                 provider.GetRequiredService<AnnotationService>(),
                 provider.GetRequiredService<ThreadManager>(),
                 provider.GetRequiredService<ILogger<MainViewModel>>(),
-                provider,
                 provider.GetRequiredService<GeminiTestGenerator>(),
-                provider.GetRequiredService<ConfigurationService>()
+                provider.GetRequiredService<ConfigurationService>(),
+                provider.GetRequiredService<WindowSelector>(),
+                provider.GetRequiredService<ConsoleWindow>()
             ));
             services.AddSingleton<ConfigurationService>();
-            services.AddTransient<RecordingService>();
+            services.AddSingleton<RecordingService>();
             services.AddSingleton<ThreadManager>();
             services.AddSingleton<InputUiaService>();
             services.AddSingleton<OverlayService>();
             services.AddSingleton<AnnotationService>();
-            services.AddTransient<WindowSelector>();
-            services.AddTransient<GeminiTestGenerator>();
+            services.AddSingleton<WindowSelector>();
+            services.AddSingleton<GeminiTestGenerator>();
+            services.AddSingleton<MainWindow>();
+            services.AddSingleton<ConsoleWindow>();
 
             services.AddLogging(builder =>
             {
@@ -54,9 +57,6 @@ namespace Recorder
                     }
                 }));
             });
-            
-            services.AddSingleton<MainWindow>();
-            services.AddSingleton<ConsoleWindow>();
         }
 
         public IServiceProvider ServiceProvider { get; }
@@ -66,11 +66,6 @@ namespace Recorder
             base.OnStartup(e);
 
             var mainViewModel = ServiceProvider.GetService<MainViewModel>();
-
-            if (e.Args.Length > 0)
-            {
-                mainViewModel.OutputPath = e.Args[0];
-            }
 
             var mainWindow = ServiceProvider.GetService<MainWindow>();
             var consoleWindow = ServiceProvider.GetService<ConsoleWindow>();
