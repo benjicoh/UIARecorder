@@ -6,17 +6,19 @@ using System.Threading.Tasks;
 using GenerativeAI.Types;
 using GenerativeAI.Tools;
 using GenerativeAI;
+using GenerativeAI.Clients;
 
 namespace Recorder.Services
 {
     public class GeminiTestGenerator
     {
         private const string RunOutputDirectory = "generated_scripts/{timestamp}";
-        private const string Model = "gemini-1.5-flash-latest";
+        private const string Model = "gemini-flash-latest";
 
         private readonly ILogger<GeminiTestGenerator> _logger;
         private readonly InputUiaService _inputUiaService;
         private GenerativeModel _generativeModel;
+        private FileClient _fileClient;
         private string _systemPrompt;
 
         public GeminiTestGenerator(ILogger<GeminiTestGenerator> logger, InputUiaService inputUiaService)
@@ -38,7 +40,11 @@ namespace Recorder.Services
             }
             var googleAI = new GoogleAi(apiKey);
             _generativeModel = googleAI.CreateGenerativeModel(Model);
+            _fileClient = googleAI.CreateGeminiModel(Model).Files;
             _logger.LogInformation("Gemini client initialized successfully.");
+
+            
+
         }
 
         private void LoadSystemPrompt()
@@ -83,11 +89,10 @@ namespace Recorder.Services
             );
 
             var request = new GenerateContentRequest();
-            AddDirectoryFiles(recordingDir, request);
-            var userPrompt = "Generate a C# UI test script using FlaUI and MSTest based on the recording. Follow the instructions in the system prompt to use the available tools.";
-            request.AddText(userPrompt);
-            _logger.LogInformation("Initial prompt: {userPrompt}", userPrompt);
 
+            await AddDirectoryFiles(recordingDir, request);
+            request.AddText("Generate a C# UI test script using FlaUI and MSTest based on the recording. Follow the instructions in the system prompt to use the available tools.");
+           _logger.LogInformation("Initial prompt: {userPrompt}", userPrompt);
 
             for (int i = 0; i < 10; i++)
             {
@@ -113,12 +118,20 @@ namespace Recorder.Services
             }
         }
 
-        private void AddDirectoryFiles(string directory, GenerateContentRequest req)
+        private async Task AddDirectoryFiles(string directory, GenerateContentRequest req)
         {
             foreach (var filePath in Directory.EnumerateFiles(directory))
             {
                 _logger.LogInformation("Adding file: {filePath}", filePath);
-                req.AddInlineFile(filePath);
+                var finalName = filePath;
+                //rename json to json.txt to avoid upload issues
+                if (finalName.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+                {
+                    finalName = finalName + ".txt";
+                    File.Move(filePath, finalName);
+                }
+                var file = await _fileClient.UploadFileAsync(finalName);
+                req.AddRemoteFile(file);
             }
         }
 

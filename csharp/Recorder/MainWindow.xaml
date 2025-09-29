@@ -13,7 +13,7 @@
         mc:Ignorable="d"
         Title="Recorder"
         SizeToContent="Height"
-        Width="900">
+        Width="1200">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
         <utils:LogLevelToBrushConverter x:Key="LogLevelToBrushConverter" />
@@ -119,7 +119,7 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock Text="{Binding OutputPath, FallbackValue='Default recordings folder'}"
+                        <TextBlock Text="{Binding RecordingDirectoryPath, FallbackValue='Default recordings folder'}"
                                    VerticalAlignment="Center" Margin="5" TextTrimming="CharacterEllipsis" Grid.Column="0" />
                         <Button Content="Browse" Command="{Binding BrowseRecordingsDirectoryCommand}"
                                 Grid.Column="1" Margin="5" IsEnabled="{Binding IsNotRecording}" />

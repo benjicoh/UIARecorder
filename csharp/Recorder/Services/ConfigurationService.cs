@@ -15,11 +15,12 @@ namespace Recorder.Services
         public ConfigurationService(ILogger<ConfigurationService> logger)
         {
             _logger = logger;
+            
             _configFilePath = Path.Combine(AppContext.BaseDirectory, "config.json");
-            LoadConfig();
+            LoadConfig(true);
         }
 
-        private void LoadConfig()
+        private void LoadConfig( bool muteLogging = false)
         {
             try
             {
@@ -27,34 +28,49 @@ namespace Recorder.Services
                 {
                     var json = File.ReadAllText(_configFilePath);
                     Config = JsonSerializer.Deserialize<Configuration>(json);
-                    _logger.LogInformation("Configuration loaded from {path}", _configFilePath);
+                    if (!muteLogging)
+                    {
+                        _logger.LogInformation("Configuration loaded from {path}", _configFilePath);
+                    }
                 }
                 else
                 {
-                    _logger.LogInformation("Configuration file not found. Creating a new one with default settings.");
+                    if (!muteLogging)
+                    {
+                        _logger.LogInformation("Configuration file not found. Creating a new one with default settings.");
+                    }
                     Config = new Configuration();
-                    SaveConfig();
+                    SaveConfig(muteLogging);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error loading configuration. Using default settings.");
+                if (!muteLogging)
+                {
+                    _logger.LogError(ex, "Error loading configuration. Using default settings.");
+                }
                 Config = new Configuration();
             }
         }
 
-        public void SaveConfig()
+        public void SaveConfig(bool muteLogging = false)
         {
             try
             {
                 var options = new JsonSerializerOptions { WriteIndented = true };
                 var json = JsonSerializer.Serialize(Config, options);
                 File.WriteAllText(_configFilePath, json);
-                _logger.LogInformation("Configuration saved to {path}", _configFilePath);
+                if (!muteLogging)
+                {
+                    _logger.LogInformation("Configuration saved to {path}", _configFilePath);
+                }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error saving configuration.");
+                if (!muteLogging)
+                {
+                    _logger.LogError(ex, "Error saving configuration.");
+                }
             }
         }
     }
