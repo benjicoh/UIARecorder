@@ -62,6 +62,9 @@ namespace Recorder.Utils
         {
             return (GetWindowLong(hWnd, -16).ToInt64() & 0x40000000) == 0;
         }
+        [DllImport("kernel32.dll", SetLastError = true)]
+        public static extern bool AllocConsole();
+
 
         public enum DPI_AWARENESS_CONTEXT
         {
