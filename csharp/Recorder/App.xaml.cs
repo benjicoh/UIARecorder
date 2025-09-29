@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Recorder.Logging;
 using Recorder.Services;
+using Recorder.Utils;
 using Recorder.ViewModels;
 using System;
 using System.Windows;
@@ -64,6 +65,8 @@ namespace Recorder
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
+
+            Win32Utils.SetProcessDpiAwarenessContext(Win32Utils.DPI_AWARENESS_CONTEXT.DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 
             var mainViewModel = ServiceProvider.GetService<MainViewModel>();
 

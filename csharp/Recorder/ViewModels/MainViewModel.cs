@@ -42,9 +42,6 @@ namespace Recorder.ViewModels
 
         [ObservableProperty]
         private string recordingDirectoryPath;
-        
-        [ObservableProperty]
-        private string logText;
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(IsNotGenerating))]
@@ -56,6 +53,9 @@ namespace Recorder.ViewModels
 
         [ObservableProperty]
         private string selectedProcess;
+
+        [ObservableProperty]
+        private bool isVerboseLoggingEnabled;
         #endregion
 
         #region Computed Properties
@@ -141,16 +141,6 @@ namespace Recorder.ViewModels
             }
             _configurationService.Config.WhitelistedProcesses.ForEach(p => WhitelistedProcesses.Add(p));
             SetDefaultCaptureArea();
-
-            LogMessages.CollectionChanged += (sender, args) =>
-            {
-                var sb = new System.Text.StringBuilder();
-                foreach (var log in LogMessages)
-                {
-                    sb.AppendLine(log.ToString());
-                }
-                LogText = sb.ToString();
-            };
         }
         #endregion
 
@@ -379,7 +369,7 @@ namespace Recorder.ViewModels
             try
             {
                 _logger.LogInformation("Starting Gemini test generation...");
-                await _geminiTestGenerator.GenerateAndRunTestAsync(ProjectDirectoryPath, RecordingDirectoryPath, _selectionRes.ProcessName);
+                await _geminiTestGenerator.GenerateAndRunTestAsync(ProjectDirectoryPath, RecordingDirectoryPath, _selectionRes.ProcessName, IsVerboseLoggingEnabled);
                 _logger.LogInformation("Gemini test generation process completed.");
             }
             catch (Exception ex)

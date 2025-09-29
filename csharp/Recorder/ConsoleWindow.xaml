@@ -13,14 +13,19 @@
         <utils:LogLevelToBrushConverter x:Key="LogLevelToBrushConverter" />
     </Window.Resources>
     <Grid>
-        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
-            <TextBox Text="{Binding LogText}"
+        <RichTextBox x:Name="LogRichTextBox"
                      IsReadOnly="True"
-                     TextWrapping="NoWrap"
                      FontFamily="Consolas"
                      Background="#2b2b2b"
                      Foreground="White"
-                     BorderThickness="0"/>
-        </ScrollViewer>
+                     BorderThickness="0"
+                     VerticalScrollBarVisibility="Auto"
+                     HorizontalScrollBarVisibility="Auto">
+            <RichTextBox.Resources>
+                <Style TargetType="{x:Type Paragraph}">
+                    <Setter Property="Margin" Value="0" />
+                </Style>
+            </RichTextBox.Resources>
+        </RichTextBox>
     </Grid>
 </Window>
