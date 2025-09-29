@@ -35,8 +35,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <Content Include="..\..\python\agent\flaui_prompt.md">
-	    <Link>flaui_prompt.md</Link>
+	  <Content Include="flaui_prompt.md">
 	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 	  </Content>
 	</ItemGroup>
