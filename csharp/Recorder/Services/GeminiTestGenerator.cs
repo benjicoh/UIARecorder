@@ -7,6 +7,7 @@ using GenerativeAI.Types;
 using GenerativeAI.Tools;
 using GenerativeAI;
 using GenerativeAI.Clients;
+using Newtonsoft.Json;
 
 namespace Recorder.Services
 {
@@ -39,7 +40,7 @@ namespace Recorder.Services
                 _logger.LogError(message);
                 throw new InvalidOperationException(message);
             }
-            var googleAI = new GoogleAi(apiKey);
+            var googleAI = new GoogleAi(apiKey, logger: _logger);
             _generativeModel = googleAI.CreateGenerativeModel(Model);
             _fileClient = googleAI.CreateGeminiModel(Model).Files;
             _logger.LogInformation("Gemini client initialized successfully.");
@@ -102,31 +103,22 @@ namespace Recorder.Services
                 _logger.LogInformation("Iteration {i}", i + 1);
                 var response = await chat.GenerateContentAsync(request);
 
-                if (response.GetFunctions()!= null && response.GetFunctions().Any())
-                {
-                    var functionCalls = response.GetFunctions();
-                    _logger.LogInformation("LLM->Tool: {functionCalls}", string.Join("\n", functionCalls.Select(fc => $"{fc.Name}({fc.Args.ToJsonString()})")));
-                } 
-                else
-                {
-                    var responseText = response.Text;
-                    _logger.LogInformation("LLM->User: {text}", responseText);
-                    if (responseText.Contains("TEST_GENERATION_COMPLETE"))
-                    {
-                        _logger.LogInformation("Test generation complete signal received.");
-                        break;
-                    }
-                }
-
                 if (_isVerboseLoggingEnabled)
                 {
                     _logger.LogInformation("--- Begin Chat History (Iteration {i}) ---", i + 1);
-                    foreach (var content in chat.History)
-                    {
-                        _logger.LogInformation("[{Role}] {Text}", content.Role, content.GetModelText());
-                    }
+                    //save serialized chat history to file 
+                    var history = JsonConvert.SerializeObject(chat.History);
+                    await File.WriteAllTextAsync(Path.Combine(runOutputRoot, $"chat_history_{i + 1}.json"), history);
                     _logger.LogInformation("--- End Chat History (Iteration {i}) ---", i + 1);
                 }
+                var responseText = response.Text;
+                _logger.LogInformation("LLM->User: {text}", responseText);
+                if (responseText.Contains("TEST_GENERATION_COMPLETE"))
+                {
+                    _logger.LogInformation("Test generation complete signal received.");
+                    break;
+                }
+
 
                 request = null;
             }
