@@ -55,6 +55,42 @@ namespace Recorder.Utils
             }
         }
 
+        public static string GetSafeClassName(this AutomationElement element)
+        {
+            try
+            {
+                return element.Properties.ClassName.Value;
+            }
+            catch
+            {
+                return string.Empty;
+            }
+        }
+
+        public static bool GetSafeIsEnabled(this AutomationElement element)
+        {
+            try
+            {
+                return element.Properties.IsEnabled.Value;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public static bool GetSafeIsOffscreen(this AutomationElement element)
+        {
+            try
+            {
+                return element.Properties.IsOffscreen.Value;
+            }
+            catch
+            {
+                return true; // Assume it's offscreen if property is not available
+            }
+        }
+
         public static List<PatternInfo> GetPatternsInfo(this AutomationElement element)
         {
             var patterns = new List<PatternInfo>();

@@ -13,8 +13,12 @@
         Title="Recorder"
         SizeToContent="Height"
         Width="900">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+    </Window.Resources>
     <Grid>
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
@@ -71,6 +75,37 @@
             <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="300">
                 <ItemsControl ItemsSource="{Binding LogMessages}" />
             </ScrollViewer>
+        </Expander>
+
+        <Expander Grid.Row="2" Header="FlaUI Gemini Flow" IsExpanded="True" Margin="10">
+            <StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="{Binding ProjectDirectoryPath, FallbackValue='No project selected'}"
+                               VerticalAlignment="Center"
+                               Margin="5"
+                               TextTrimming="CharacterEllipsis"
+                               Grid.Column="0"/>
+                    <Button Content="Browse"
+                            Command="{Binding BrowseProjectDirectoryCommand}"
+                            Grid.Column="1"
+                            Margin="5"
+                            IsEnabled="{Binding IsNotGenerating}"/>
+                </Grid>
+
+                <Button Content="Generate Test"
+                        Command="{Binding GenerateTestCommand}"
+                        Margin="5"
+                        IsEnabled="{Binding IsNotRecording}"/>
+
+                <ProgressBar IsIndeterminate="{Binding IsGenerating}"
+                             Margin="5"
+                             Height="10"
+                             Visibility="{Binding IsGenerating, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+            </StackPanel>
         </Expander>
     </Grid>
 </Window>

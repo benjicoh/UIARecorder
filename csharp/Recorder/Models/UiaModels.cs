@@ -15,6 +15,9 @@ namespace Recorder.Models
         public string AutomationID { get; set; }
         public string Name { get; set; }
         public string ControlType { get; set; }
+        public string ClassName { get; set; }
+        public bool IsEnabled { get; set; }
+        public bool IsOffscreen { get; set; }
         public Rectangle BoundingRectangle { get; set; }
         public List<PatternInfo> Patterns { get; set; } = new List<PatternInfo>();
         public List<ElementInfo> Children { get; set; } = new List<ElementInfo>();
