@@ -28,6 +28,7 @@ namespace Recorder.Services
 
         private void InitializeClient()
         {
+            _logger.LogInformation("Initializing Gemini client...");
             var apiKey = Environment.GetEnvironmentVariable("GEMINI_API_KEY");
             if (string.IsNullOrEmpty(apiKey))
             {
@@ -37,10 +38,12 @@ namespace Recorder.Services
             }
             var googleAI = new GoogleAi(apiKey);
             _generativeModel = googleAI.CreateGenerativeModel(Model);
+            _logger.LogInformation("Gemini client initialized successfully.");
         }
 
         private void LoadSystemPrompt()
         {
+            _logger.LogInformation("Loading system prompt...");
             string promptPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SystemPrompt.md");
             if (!File.Exists(promptPath))
             {
@@ -49,10 +52,12 @@ namespace Recorder.Services
                 throw new FileNotFoundException(message);
             }
             _systemPrompt = File.ReadAllText(promptPath);
+            _logger.LogInformation("System prompt loaded successfully.");
         }
 
         public async Task GenerateAndRunTestAsync(string projectDir, string recordingDir, string processName)
         {
+            _logger.LogInformation("Starting test generation process...");
             InitializeClient();
             LoadSystemPrompt();
 
@@ -60,6 +65,7 @@ namespace Recorder.Services
             Directory.CreateDirectory(runOutputRoot);
             _logger.LogInformation("Run output directory: {runOutputRoot}", runOutputRoot);
 
+            _logger.LogInformation("Initializing Gemini tools...");
             var tools = new GeminiTools(projectDir, processName, _inputUiaService);
             var functionTool = tools.AsGoogleFunctionTool();
             _generativeModel.AddFunctionTool(functionTool);
@@ -69,19 +75,41 @@ namespace Recorder.Services
                 AutoReplyFunction = true,
                 AutoHandleBadFunctionCalls = true
             };
+            _logger.LogInformation("Gemini tools initialized.");
 
+            _logger.LogInformation("Starting chat session...");
             var chat = _generativeModel.StartChat(
                 systemInstruction: _systemPrompt
             );
 
             var request = new GenerateContentRequest();
             AddDirectoryFiles(recordingDir, request);
-            request.AddText("Generate a C# UI test script using FlaUI and MSTest based on the recording. Follow the instructions in the system prompt to use the available tools.");
+            var userPrompt = "Generate a C# UI test script using FlaUI and MSTest based on the recording. Follow the instructions in the system prompt to use the available tools.";
+            request.AddText(userPrompt);
+            _logger.LogInformation("Initial prompt: {userPrompt}", userPrompt);
 
-            for (int i = 0; i < 20; i++)
+
+            for (int i = 0; i < 10; i++)
             {
+                _logger.LogInformation("Iteration {i}", i + 1);
                 var response = await chat.GenerateContentAsync(request);
-                //log response.Text and any function calls
+
+                if (response.GetFunctionCalls().Any())
+                {
+                    var functionCalls = response.GetFunctionCalls();
+                    _logger.LogInformation("LLM->Tool: {functionCalls}", string.Join("\n", functionCalls.Select(fc => $"{fc.Name}({string.Join(", ", fc.Args.Select(kv => $"{kv.Key}: {kv.Value}"))})")));
+                } else
+                {
+                    var responseText = response.Text;
+                    _logger.LogInformation("LLM->User: {text}", responseText);
+                    if (responseText.Contains("TEST_GENERATION_COMPLETE"))
+                    {
+                        _logger.LogInformation("Test generation complete signal received.");
+                        break;
+                    }
+                }
+
+                request = null;
             }
         }
 

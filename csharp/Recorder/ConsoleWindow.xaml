@@ -13,20 +13,14 @@
         <utils:LogLevelToBrushConverter x:Key="LogLevelToBrushConverter" />
     </Window.Resources>
     <Grid>
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
-            <ItemsControl ItemsSource="{Binding LogMessages}">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <TextBlock Foreground="{Binding Level, Converter={StaticResource LogLevelToBrushConverter}}" Margin="5">
-                            <Run Text="{Binding Timestamp, StringFormat='yyyy-MM-dd HH:mm:ss'}" />
-                            <Run Text=" - " />
-                            <Run Text="{Binding Level}" />
-                            <Run Text=" - " />
-                            <Run Text="{Binding Message}" />
-                        </TextBlock>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+            <TextBox Text="{Binding LogText}"
+                     IsReadOnly="True"
+                     TextWrapping="NoWrap"
+                     FontFamily="Consolas"
+                     Background="#2b2b2b"
+                     Foreground="White"
+                     BorderThickness="0"/>
         </ScrollViewer>
     </Grid>
 </Window>

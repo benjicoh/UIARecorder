@@ -28,7 +28,15 @@ namespace Recorder.Logging
             }
 
             var message = formatter(state, exception);
-            var logEntry = new LogEntry(logLevel, message);
+            // This is a hack to get the caller info. It's not ideal, but it works without changing all call sites.
+            var stackTrace = new System.Diagnostics.StackTrace(true);
+            var frame = stackTrace.GetFrame(4); // Adjust the frame number as needed
+            var filePath = frame?.GetFileName() ?? "unknown";
+            var lineNumber = frame?.GetFileLineNumber() ?? 0;
+            var memberName = frame?.GetMethod()?.Name ?? "unknown";
+
+
+            var logEntry = new LogEntry(logLevel, message, filePath, lineNumber, memberName);
 
             _logAction?.Invoke(logEntry);
         }

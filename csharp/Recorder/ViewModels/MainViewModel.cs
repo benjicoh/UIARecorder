@@ -71,6 +71,9 @@ namespace Recorder.ViewModels
         private readonly ConfigurationService _configurationService;
 
         public ObservableCollection<LogEntry> LogMessages { get; } = new ObservableCollection<LogEntry>();
+
+        [ObservableProperty]
+        private string logText;
         private SelectionResult _selectionRes = new SelectionResult();
         private string _annotationsFilePath;
 
@@ -125,6 +128,16 @@ namespace Recorder.ViewModels
             }
             _configurationService.Config.WhitelistedProcesses.ForEach(p => WhitelistedProcesses.Add(p));
             SetDefaultCaptureArea();
+
+            LogMessages.CollectionChanged += (sender, args) =>
+            {
+                var sb = new System.Text.StringBuilder();
+                foreach (var log in LogMessages)
+                {
+                    sb.AppendLine(log.ToString());
+                }
+                LogText = sb.ToString();
+            };
         }
 
         private void SetDefaultCaptureArea()
