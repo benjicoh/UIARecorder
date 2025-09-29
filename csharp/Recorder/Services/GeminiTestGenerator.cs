@@ -20,6 +20,7 @@ namespace Recorder.Services
         private GenerativeModel _generativeModel;
         private FileClient _fileClient;
         private string _systemPrompt;
+        private bool _isVerboseLoggingEnabled;
 
         public GeminiTestGenerator(ILogger<GeminiTestGenerator> logger, InputUiaService inputUiaService)
         {
@@ -61,8 +62,9 @@ namespace Recorder.Services
             _logger.LogInformation("System prompt loaded successfully.");
         }
 
-        public async Task GenerateAndRunTestAsync(string projectDir, string recordingDir, string processName)
+        public async Task GenerateAndRunTestAsync(string projectDir, string recordingDir, string processName, bool isVerboseLoggingEnabled)
         {
+            _isVerboseLoggingEnabled = isVerboseLoggingEnabled;
             _logger.LogInformation("Starting test generation process...");
             InitializeClient();
             LoadSystemPrompt();
@@ -114,6 +116,16 @@ namespace Recorder.Services
                         _logger.LogInformation("Test generation complete signal received.");
                         break;
                     }
+                }
+
+                if (_isVerboseLoggingEnabled)
+                {
+                    _logger.LogInformation("--- Begin Chat History (Iteration {i}) ---", i + 1);
+                    foreach (var content in chat.History)
+                    {
+                        _logger.LogInformation("[{Role}] {Text}", content.Role, content.GetModelText());
+                    }
+                    _logger.LogInformation("--- End Chat History (Iteration {i}) ---", i + 1);
                 }
 
                 request = null;

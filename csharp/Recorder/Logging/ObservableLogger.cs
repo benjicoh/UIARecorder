@@ -27,14 +27,38 @@ namespace Recorder.Logging
                 return;
             }
 
-            var message = formatter(state, exception);
-            // This is a hack to get the caller info. It's not ideal, but it works without changing all call sites.
-            var stackTrace = new System.Diagnostics.StackTrace(true);
-            var frame = stackTrace.GetFrame(4); // Adjust the frame number as needed
-            var filePath = frame?.GetFileName() ?? "unknown";
-            var lineNumber = frame?.GetFileLineNumber() ?? 0;
-            var memberName = frame?.GetMethod()?.Name ?? "unknown";
+            if (!IsEnabled(logLevel))
+            {
+                return;
+            }
 
+            var message = formatter(state, exception);
+            string filePath = "unknown";
+            int lineNumber = 0;
+            string memberName = "unknown";
+
+            var stackTrace = new System.Diagnostics.StackTrace(true);
+            foreach (var frame in stackTrace.GetFrames())
+            {
+                var method = frame.GetMethod();
+                var declaringType = method?.DeclaringType;
+                if (declaringType == null)
+                {
+                    continue;
+                }
+
+                var ns = declaringType.Namespace;
+                if (ns != null && (ns.StartsWith("Microsoft.Extensions.Logging") || ns == "Recorder.Logging"))
+                {
+                    continue;
+                }
+
+                // This should be the calling frame
+                filePath = frame.GetFileName() ?? "unknown";
+                lineNumber = frame.GetFileLineNumber();
+                memberName = frame.GetMethod()?.Name ?? "unknown";
+                break;
+            }
 
             var logEntry = new LogEntry(logLevel, message, filePath, lineNumber, memberName);
 
