@@ -71,13 +71,10 @@
                        Margin="10"/>
         </StackPanel>
 
-        <Expander Grid.Row="1" Header="Logs" IsExpanded="False" Margin="10">
-            <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="300">
-                <ItemsControl ItemsSource="{Binding LogMessages}" />
-            </ScrollViewer>
-        </Expander>
-
-        <Expander Grid.Row="2" Header="FlaUI Gemini Flow" IsExpanded="True" Margin="10">
+        <Expander Grid.Row="1"
+                  Header="Test Creation Flow"
+                  IsExpanded="True"
+                  Margin="10">
             <StackPanel>
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -88,24 +85,32 @@
                                VerticalAlignment="Center"
                                Margin="5"
                                TextTrimming="CharacterEllipsis"
-                               Grid.Column="0"/>
+                               Grid.Column="0" />
                     <Button Content="Browse"
                             Command="{Binding BrowseProjectDirectoryCommand}"
                             Grid.Column="1"
                             Margin="5"
-                            IsEnabled="{Binding IsNotGenerating}"/>
+                            IsEnabled="{Binding IsNotGenerating}" />
                 </Grid>
 
                 <Button Content="Generate Test"
                         Command="{Binding GenerateTestCommand}"
                         Margin="5"
-                        IsEnabled="{Binding IsNotRecording}"/>
+                        IsEnabled="{Binding IsNotRecording}" />
 
                 <ProgressBar IsIndeterminate="{Binding IsGenerating}"
                              Margin="5"
                              Height="10"
-                             Visibility="{Binding IsGenerating, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                             Visibility="{Binding IsGenerating, Converter={StaticResource BooleanToVisibilityConverter}}" />
             </StackPanel>
         </Expander>
+        
+        <Expander Grid.Row="2" Header="Logs" IsExpanded="False" Margin="10">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="300">
+                <ItemsControl ItemsSource="{Binding LogMessages}" />
+            </ScrollViewer>
+        </Expander>
+
+       
     </Grid>
 </Window>

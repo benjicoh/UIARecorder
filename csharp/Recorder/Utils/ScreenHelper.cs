@@ -24,5 +24,7 @@ namespace Recorder.Utils
         public Rectangle SelectedArea { get; set; } = Rectangle.Empty;
         public IntPtr SelectedWindowHandle { get; set; } = IntPtr.Zero;
         public string WindowTitle { get; set; }
+
+        public string ProcessName { get; set; } = string.Empty;
     }
 }

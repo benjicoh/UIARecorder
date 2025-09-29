@@ -317,7 +317,7 @@ namespace Recorder.ViewModels
             {
                 _logger.LogInformation("Starting Gemini test generation...");
                 string recordingDir = Path.GetDirectoryName(_annotationsFilePath);
-                await _geminiTestGenerator.GenerateAndRunTestAsync(ProjectDirectoryPath, recordingDir, _selectionRes.ProcessName, _selectionRes.WindowTitle);
+                await _geminiTestGenerator.GenerateAndRunTestAsync(ProjectDirectoryPath, recordingDir, _selectionRes.ProcessName);
                 _logger.LogInformation("Gemini test generation process completed.");
             }
             catch (Exception ex)

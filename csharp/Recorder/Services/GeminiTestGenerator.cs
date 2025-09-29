@@ -1,5 +1,3 @@
-using Google.GenerativeAI.GenerativeAI;
-using Google.GenerativeAI.Chat;
 using Microsoft.Extensions.Logging;
 using System;
 using System.IO;
@@ -7,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using GenerativeAI.Types;
 using GenerativeAI.Tools;
+using GenerativeAI;
 
 namespace Recorder.Services
 {
@@ -24,6 +23,7 @@ namespace Recorder.Services
         {
             _logger = logger;
             _inputUiaService = inputUiaService;
+            
         }
 
         private void InitializeClient()
@@ -36,22 +36,22 @@ namespace Recorder.Services
                 throw new InvalidOperationException(message);
             }
             var googleAI = new GoogleAi(apiKey);
-            _generativeModel = googleAI.CreateGenerativeModel(model: Model);
+            _generativeModel = googleAI.CreateGenerativeModel(Model);
         }
 
         private void LoadSystemPrompt()
         {
-            string promptPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "flaui_prompt.md");
+            string promptPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SystemPrompt.md");
             if (!File.Exists(promptPath))
             {
-                var message = $"`flaui_prompt.md` not found at {promptPath}";
+                var message = $"`SystemPrompt.md` not found at {promptPath}";
                 _logger.LogError(message);
                 throw new FileNotFoundException(message);
             }
             _systemPrompt = File.ReadAllText(promptPath);
         }
 
-        public async Task GenerateAndRunTestAsync(string templateProjectDir, string recordingDir, string processName, string windowTitle)
+        public async Task GenerateAndRunTestAsync(string projectDir, string recordingDir, string processName)
         {
             InitializeClient();
             LoadSystemPrompt();
@@ -60,13 +60,15 @@ namespace Recorder.Services
             Directory.CreateDirectory(runOutputRoot);
             _logger.LogInformation("Run output directory: {runOutputRoot}", runOutputRoot);
 
-            var projectDir = Path.Combine(runOutputRoot, Path.GetFileName(templateProjectDir));
-            CopyDirectory(templateProjectDir, projectDir);
-            _logger.LogInformation("Copied template project to {projectDir}", projectDir);
-
-            var tools = new GeminiTools(projectDir, processName, windowTitle, _inputUiaService);
+            var tools = new GeminiTools(projectDir, processName, _inputUiaService);
             var functionTool = tools.AsGoogleFunctionTool();
             _generativeModel.AddFunctionTool(functionTool);
+            _generativeModel.FunctionCallingBehaviour = new GenerativeAI.Core.FunctionCallingBehaviour
+            {
+                AutoCallFunction = true,
+                AutoReplyFunction = true,
+                AutoHandleBadFunctionCalls = true
+            };
 
             var chat = _generativeModel.StartChat(
                 systemInstruction: _systemPrompt
@@ -78,20 +80,8 @@ namespace Recorder.Services
 
             for (int i = 0; i < 20; i++)
             {
-                var response = await chat.SendMessageAsync(request);
-                var functionCalls = response.GetFunctionCalls().ToList();
-
-                if (functionCalls.Any())
-                {
-                    _logger.LogInformation("LLM requested a tool call: {functionCall}", functionCalls.First().Name);
-                    var toolResponse = await functionTool.ExecuteAsync(functionCalls.First());
-                    request = new GenerateContentRequest { Contents = { toolResponse.ToContent() } };
-                }
-                else
-                {
-                    _logger.LogInformation("LLM finished with response: {text}", response.Text);
-                    break;
-                }
+                var response = await chat.GenerateContentAsync(request);
+                //log response.Text and any function calls
             }
         }
 
@@ -104,15 +94,5 @@ namespace Recorder.Services
             }
         }
 
-        private static void CopyDirectory(string sourceDir, string destinationDir)
-        {
-            Directory.CreateDirectory(destinationDir);
-            foreach (var file in Directory.GetFiles(sourceDir, "*", SearchOption.AllDirectories))
-            {
-                string destFile = Path.Combine(destinationDir, Path.GetRelativePath(sourceDir, file));
-                Directory.CreateDirectory(Path.GetDirectoryName(destFile));
-                File.Copy(file, destFile, true);
-            }
-        }
     }
 }

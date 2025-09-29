@@ -1,3 +1,4 @@
+using CSharpToJsonSchema;
 using GenerativeAI.Tools;
 using System.ComponentModel;
 using System.Threading.Tasks;
@@ -7,36 +8,40 @@ namespace Recorder.Services;
 [GenerateJsonSchema(GoogleFunctionTool = true)]
 public interface IGeminiTools
 {
-    [Description("read project - returns a markdown of all cs, csproj files under the project directory")]
-    Task<string> ReadProject();
+    [Description("Reads entire project - returns a markdown of all cs, csproj files under the project directory")]
+    Task<string> ReadProject(CancellationToken cancellationToken = default);
 
-    [Description("replace file (path, new content)")]
+    [Description("Replaces a file in the project")]
     Task<string> ReplaceFile(
-        [Description("path of the file to be replaced")]
+        [Description("Path of the file to be replaced - relative to the project root")]
         string path,
-        [Description("new content of the file")]
-        string newContent);
+        [Description("New content of the file")]
+        string newContent,
+        CancellationToken cancellationToken = default);
 
-    [Description("add file (path, new content)")]
+    [Description("Adds a file to the project")]
     Task<string> AddFile(
-        [Description("path of the file to be added")]
+        [Description("Path of the file to be added - relative to the project root")]
         string path,
-        [Description("content of the file to be added")]
-        string newContent);
+        [Description("Content of the file to be added")]
+        string newContent,
+        CancellationToken cancellationToken = default);
 
-    [Description("delete file (path)")]
+    [Description("Deletes a file from the project")]
     Task<string> DeleteFile(
-        [Description("path of the file to be deleted")]
-        string path);
+        [Description("Path of the file to be deleted - relative to the project root")]
+        string path,
+        CancellationToken cancellationToken = default);
 
-    [Description("compile (returns compilation result)")]
-    Task<string> Compile();
+    [Description("Compiles the project, returns the compilation result")]
+    Task<string> Compile(CancellationToken cancellationToken = default);
 
-    [Description("run test(bool record) (returns test result, if record true - captures and returns videos)")]
+    [Description("Runs a test, returns the test output")]
     Task<string> RunTest(
         [Description("if true, captures and returns videos")]
-        bool record);
+        bool record,
+        CancellationToken cancellationToken = default);
 
-    [Description("dump ui (returns json dump)")]
-    Task<string> DumpUi();
+    [Description("Dumps the UI, returns JSON dump")]
+    Task<string> DumpUi(CancellationToken cancellationToken = default);
 }

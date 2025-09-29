@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <None Remove="Resources\recorder.ico" />
+    <None Remove="Resources\SystemPrompt.md" />
   </ItemGroup>
 
 	<ItemGroup>
@@ -28,6 +29,7 @@
 		<PackageReference Include="MouseKeyHook" Version="5.7.1" />
 		<PackageReference Include="Hardcodet.NotifyIcon.Wpf" Version="2.0.1" />
 		<PackageReference Include="Google_GenerativeAI" Version="3.2.0" />
+		<PackageReference Include="Google_GenerativeAI.Tools" Version="3.2.0" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -35,7 +37,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <Content Include="flaui_prompt.md">
+	  <Content Include="Resources\SystemPrompt.md">
 	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 	  </Content>
 	</ItemGroup>

@@ -52,15 +52,16 @@ You must follow the Page Object Model (POM) architecture. This means separating 
 ## Workflow
 Your goal is to create a passing test. Follow this iterative process:
 
-1.  **Analyze**: Use `ReadProject` to see the initial code. Analyze the provided recording (video and JSON) to understand the user's actions.
-2.  **Modify**: Use `ReplaceFile` to update `TestClass.cs` and `ApplicationPage.cs` with your test logic and page objects.
-3.  **Compile**: Use the `Compile` tool.
-4.  **Debug Compilation**: If compilation fails, analyze the errors returned by the `Compile` tool. Go back to step 2 to fix the code.
-5.  **Run Test**: Once compilation succeeds, use `RunTest` to execute the test.
-6.  **Debug Test**: If the test fails, analyze the output from `RunTest`.
+1.  **Analyze** Look at the input video, the annotation files and the narration to understand the user's actions and intent.
+2.  **Read**: Use `ReadProject` to see the initial code.
+3.  **Modify**: Use `ReplaceFile` to update `TestClass.cs`, `ApplicationPage.cs`  and other files with your test logic and page objects.
+4.  **Compile**: Use the `Compile` tool.
+5.  **Debug Compilation**: If compilation fails, analyze the errors returned by the `Compile` tool. Go back to step 2 to fix the code.
+6.  **Run Test**: Once compilation succeeds, use `RunTest` to execute the test.
+7.  **Debug Test**: If the test fails, analyze the output from `RunTest`.
     - If it's an element-not-found error, you may need to use `DumpUi` to inspect the current state of the application and correct your element selectors.
     - Go back to step 2 to refine your code.
-7.  **Succeed**: If the test passes, your job is done. Respond with a final success message.
+8.  **Succeed**: If the test passes, your job is done. Respond with a final success message.
 
 ## Project Structure and Helper Functions
 
