@@ -91,19 +91,21 @@ namespace Recorder.Services
             var request = new GenerateContentRequest();
 
             await AddDirectoryFiles(recordingDir, request);
-            request.AddText("Generate a C# UI test script using FlaUI and MSTest based on the recording. Follow the instructions in the system prompt to use the available tools.");
-           _logger.LogInformation("Initial prompt: {userPrompt}", userPrompt);
+            var userPrompt = "Generate a C# UI test script using FlaUI and MSTest based on the recording. Follow the instructions in the system prompt to use the available tools.";
+            request.AddText(userPrompt);
+            _logger.LogInformation("Initial prompt: {userPrompt}", userPrompt);
 
             for (int i = 0; i < 10; i++)
             {
                 _logger.LogInformation("Iteration {i}", i + 1);
                 var response = await chat.GenerateContentAsync(request);
 
-                if (response.GetFunctionCalls().Any())
+                if (response.GetFunctions()!= null && response.GetFunctions().Any())
                 {
-                    var functionCalls = response.GetFunctionCalls();
-                    _logger.LogInformation("LLM->Tool: {functionCalls}", string.Join("\n", functionCalls.Select(fc => $"{fc.Name}({string.Join(", ", fc.Args.Select(kv => $"{kv.Key}: {kv.Value}"))})")));
-                } else
+                    var functionCalls = response.GetFunctions();
+                    _logger.LogInformation("LLM->Tool: {functionCalls}", string.Join("\n", functionCalls.Select(fc => $"{fc.Name}({fc.Args.ToJsonString()})")));
+                } 
+                else
                 {
                     var responseText = response.Text;
                     _logger.LogInformation("LLM->User: {text}", responseText);
@@ -131,6 +133,7 @@ namespace Recorder.Services
                     File.Move(filePath, finalName);
                 }
                 var file = await _fileClient.UploadFileAsync(finalName);
+                await _fileClient.AwaitForFileStateActiveAsync(file, 15, new CancellationToken());
                 req.AddRemoteFile(file);
             }
         }
