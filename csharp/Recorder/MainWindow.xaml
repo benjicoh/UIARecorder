@@ -5,6 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Recorder"
         xmlns:viewModels="clr-namespace:Recorder.ViewModels"
+        xmlns:utils="clr-namespace:Recorder.Utils"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         xmlns:tb="http://www.hardcodet.net/taskbar"
         Style="{DynamicResource MaterialDesignWindow}"
@@ -15,6 +16,7 @@
         Width="900">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        <utils:LogLevelToBrushConverter x:Key="LogLevelToBrushConverter" />
     </Window.Resources>
     <Grid>
         <Grid.RowDefinitions>
@@ -69,6 +71,10 @@
             <TextBlock Text="{Binding CaptureAreaInfo}"
                        VerticalAlignment="Center"
                        Margin="10"/>
+
+            <Button Content="Show Console"
+                    Command="{Binding ShowConsoleCommand}"
+                    Margin="10" />
         </StackPanel>
 
         <Expander Grid.Row="1"
@@ -107,7 +113,19 @@
         
         <Expander Grid.Row="2" Header="Logs" IsExpanded="False" Margin="10">
             <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="300">
-                <ItemsControl ItemsSource="{Binding LogMessages}" />
+                <ItemsControl ItemsSource="{Binding LogMessages}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Foreground="{Binding Level, Converter={StaticResource LogLevelToBrushConverter}}">
+                                <Run Text="{Binding Timestamp, StringFormat='yyyy-MM-dd HH:mm:ss'}" />
+                                <Run Text=" - " />
+                                <Run Text="{Binding Level}" />
+                                <Run Text=" - " />
+                                <Run Text="{Binding Message}" />
+                            </TextBlock>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
             </ScrollViewer>
         </Expander>
 
