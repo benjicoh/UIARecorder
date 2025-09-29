@@ -27,9 +27,18 @@
 		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
 		<PackageReference Include="MouseKeyHook" Version="5.7.1" />
 		<PackageReference Include="Hardcodet.NotifyIcon.Wpf" Version="2.0.1" />
+		<PackageReference Include="Google.GenerativeAI" Version="0.4.0" />
 	</ItemGroup>
 
 	<ItemGroup>
 	  <Resource Include="Resources\recorder.ico" />
 	</ItemGroup>
+
+	<ItemGroup>
+	  <Content Include="..\..\python\agent\flaui_prompt.md">
+	    <Link>flaui_prompt.md</Link>
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </Content>
+	</ItemGroup>
+
 </Project>

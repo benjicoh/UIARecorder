@@ -4,8 +4,15 @@ using Gma.System.MouseKeyHook;
 using Microsoft.Extensions.Logging;
 using Recorder.Models;
 using Recorder.Utils;
+using FlaUI.Core;
+using FlaUI.Core.Exceptions;
 using System;
+using System.Diagnostics;
 using System.Drawing;
+using System.IO;
+using System.Linq;
+using System.Text.Json;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace Recorder.Services
@@ -194,6 +201,111 @@ namespace Recorder.Services
         public void Dispose()
         {
             Stop();
+        }
+
+        public async Task<string> DumpUiTreeAsync(string processName, string windowTitle, string outputFilePath)
+        {
+            return await Task.Run(() =>
+            {
+                try
+                {
+                    using (var automation = new UIA3Automation())
+                    {
+                        var app = FindApplication(processName, windowTitle);
+                        if (app == null)
+                        {
+                            var message = "Application not found.";
+                            _logger.LogWarning(message);
+                            return message;
+                        }
+
+                        var window = app.GetMainWindow(automation);
+                        if (window == null)
+                        {
+                            var message = "Main window not found.";
+                            _logger.LogWarning(message);
+                            return message;
+                        }
+
+                        var rootElement = BuildElementTree(window);
+                        var options = new JsonSerializerOptions { WriteIndented = true };
+                        var json = JsonSerializer.Serialize(rootElement, options);
+
+                        File.WriteAllText(outputFilePath, json);
+
+                        var successMessage = $"UI tree dumped successfully to {outputFilePath}";
+                        _logger.LogInformation(successMessage);
+                        return successMessage;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    var errorMessage = $"Failed to dump UI tree: {ex.Message}";
+                    _logger.LogError(ex, "Failed to dump UI tree.");
+                    return errorMessage;
+                }
+            });
+        }
+
+        private Application FindApplication(string processName, string windowTitle)
+        {
+            if (!string.IsNullOrEmpty(processName))
+            {
+                var processes = Process.GetProcessesByName(processName);
+                if (processes.Any())
+                {
+                    _logger.LogInformation("Found application by process name: {processName}", processName);
+                    return Application.Attach(processes.First().Id);
+                }
+            }
+            if (!string.IsNullOrEmpty(windowTitle))
+            {
+                var processes = Process.GetProcesses();
+                foreach (var p in processes)
+                {
+                    if (p.MainWindowTitle.Contains(windowTitle, StringComparison.OrdinalIgnoreCase))
+                    {
+                        _logger.LogInformation("Found application by window title: {windowTitle}", windowTitle);
+                        return Application.Attach(p.Id);
+                    }
+                }
+            }
+            return null;
+        }
+
+        private ElementInfo BuildElementTree(AutomationElement element)
+        {
+            if (element == null) return null;
+
+            var elementInfo = new ElementInfo
+            {
+                AutomationID = element.GetSafeAutomationID(),
+                Name = element.GetSafeName(),
+                ControlType = element.GetSafeControlType(),
+                BoundingRectangle = element.GetSafeBoundingRectangle(),
+                ClassName = element.GetSafeClassName(),
+                IsEnabled = element.GetSafeIsEnabled(),
+                IsOffscreen = element.GetSafeIsOffscreen(),
+                Patterns = element.GetPatternsInfo()
+            };
+
+            try
+            {
+                foreach (var child in element.FindAllChildren())
+                {
+                    elementInfo.Children.Add(BuildElementTree(child));
+                }
+            }
+            catch (PropertyNotSupportedException)
+            {
+                // Some elements do not support children, just ignore.
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not get children for element {elementName}", element.GetSafeName());
+            }
+
+            return elementInfo;
         }
     }
 }

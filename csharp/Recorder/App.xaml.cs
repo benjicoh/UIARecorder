@@ -27,7 +27,8 @@ namespace Recorder
                 provider.GetRequiredService<AnnotationService>(),
                 provider.GetRequiredService<ThreadManager>(),
                 provider.GetRequiredService<ILogger<MainViewModel>>(),
-                provider
+                provider,
+                provider.GetRequiredService<GeminiTestGenerator>()
             ));
             services.AddTransient<RecordingService>();
             services.AddSingleton<ThreadManager>();
@@ -35,6 +36,7 @@ namespace Recorder
             services.AddSingleton<OverlayService>();
             services.AddSingleton<AnnotationService>();
             services.AddTransient<WindowSelector>();
+            services.AddTransient<GeminiTestGenerator>();
 
             services.AddLogging(builder =>
             {

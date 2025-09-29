@@ -38,6 +38,15 @@ namespace Recorder.ViewModels
         [ObservableProperty]
         private string captureAreaInfo;
 
+        [ObservableProperty]
+        private string projectDirectoryPath;
+
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(IsNotGenerating))]
+        private bool isGenerating;
+
+        public bool IsNotGenerating => !isGenerating;
+
         public ObservableCollection<string> CaptureModes { get; }
 
         private readonly RecordingService _recordingService;
@@ -46,6 +55,7 @@ namespace Recorder.ViewModels
         private readonly ThreadManager _threadManager;
         private readonly ILogger<MainViewModel> _logger;
         private readonly IServiceProvider _serviceProvider;
+        private readonly GeminiTestGenerator _geminiTestGenerator;
 
         public ObservableCollection<string> LogMessages { get; } = new ObservableCollection<string>();
         private SelectionResult _selectionRes = new SelectionResult();
@@ -61,7 +71,8 @@ namespace Recorder.ViewModels
             AnnotationService annotationService,
             ThreadManager threadManager,
             ILogger<MainViewModel> logger,
-            IServiceProvider serviceProvider)
+            IServiceProvider serviceProvider,
+            GeminiTestGenerator geminiTestGenerator)
         {
             _recordingService = recordingService;
             _inputUiaService = inputUiaService;
@@ -69,6 +80,7 @@ namespace Recorder.ViewModels
             _threadManager = threadManager;
             _logger = logger;
             _serviceProvider = serviceProvider;
+            _geminiTestGenerator = geminiTestGenerator;
 
             CaptureModes = new ObservableCollection<string>
             {
@@ -268,6 +280,55 @@ namespace Recorder.ViewModels
         private void ExitApplication()
         {
             Application.Current.Shutdown();
+        }
+
+        [RelayCommand]
+        private void BrowseProjectDirectory()
+        {
+            using (var dialog = new FolderBrowserDialog())
+            {
+                dialog.Description = "Select the project directory";
+                dialog.UseDescriptionForTitle = true;
+                DialogResult result = dialog.ShowDialog();
+                if (result == DialogResult.OK)
+                {
+                    ProjectDirectoryPath = dialog.SelectedPath;
+                    _logger.LogInformation("Project directory selected: {path}", ProjectDirectoryPath);
+                }
+            }
+        }
+
+        [RelayCommand]
+        private async Task GenerateTest()
+        {
+            if (string.IsNullOrEmpty(ProjectDirectoryPath))
+            {
+                System.Windows.MessageBox.Show("Please select a project directory first.", "Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            if (string.IsNullOrEmpty(_annotationsFilePath))
+            {
+                 System.Windows.MessageBox.Show("Please record a scenario first.", "Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            IsGenerating = true;
+            try
+            {
+                _logger.LogInformation("Starting Gemini test generation...");
+                string recordingDir = Path.GetDirectoryName(_annotationsFilePath);
+                await _geminiTestGenerator.GenerateAndRunTestAsync(ProjectDirectoryPath, recordingDir, _selectionRes.ProcessName, _selectionRes.WindowTitle);
+                _logger.LogInformation("Gemini test generation process completed.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred during test generation.");
+                System.Windows.MessageBox.Show($"An error occurred: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                IsGenerating = false;
+            }
         }
     }
 }
