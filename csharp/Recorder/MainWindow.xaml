@@ -77,56 +77,67 @@
                     Margin="10" />
         </StackPanel>
 
-        <Expander Grid.Row="1"
-                  Header="Test Creation Flow"
-                  IsExpanded="True"
-                  Margin="10">
-            <StackPanel>
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="{Binding ProjectDirectoryPath, FallbackValue='No project selected'}"
-                               VerticalAlignment="Center"
-                               Margin="5"
-                               TextTrimming="CharacterEllipsis"
-                               Grid.Column="0" />
-                    <Button Content="Browse"
-                            Command="{Binding BrowseProjectDirectoryCommand}"
-                            Grid.Column="1"
-                            Margin="5"
-                            IsEnabled="{Binding IsNotGenerating}" />
-                </Grid>
+        <Grid Grid.Row="1" Margin="10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
 
+            <GroupBox Header="Whitelisted Processes" Grid.Column="0" Margin="5">
+                <DockPanel>
+                    <Grid DockPanel.Dock="Bottom" Margin="5,0,5,5">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0" Text="{Binding NewProcessName, UpdateSourceTrigger=PropertyChanged}" materialDesign:HintAssist.Hint="New Process Name" Style="{StaticResource MaterialDesignFloatingHintTextBox}" VerticalAlignment="Center"/>
+                        <Button Grid.Column="1" Content="Add" Command="{Binding AddProcessToWhitelistCommand}" Margin="5,0,0,0"/>
+                        <Button Grid.Column="2" Content="Remove" Command="{Binding RemoveProcessFromWhitelistCommand}" Margin="5,0,0,0"/>
+                    </Grid>
+                    <ListView x:Name="WhitelistListView" ItemsSource="{Binding WhitelistedProcesses}" SelectedItem="{Binding SelectedProcess}" Margin="5" MinHeight="100" />
+                </DockPanel>
+            </GroupBox>
+
+            <StackPanel Grid.Column="1" Margin="5">
+                <GroupBox Header="Project Directory" Margin="0,0,0,5">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="{Binding ProjectDirectoryPath, FallbackValue='No project selected'}"
+                                   VerticalAlignment="Center" Margin="5" TextTrimming="CharacterEllipsis" Grid.Column="0" />
+                        <Button Content="Browse" Command="{Binding BrowseProjectDirectoryCommand}"
+                                Grid.Column="1" Margin="5" IsEnabled="{Binding IsNotGenerating}" />
+                    </Grid>
+                </GroupBox>
+
+                <GroupBox Header="Recording Directory" Margin="0,5,0,0">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="{Binding OutputPath, FallbackValue='Default recordings folder'}"
+                                   VerticalAlignment="Center" Margin="5" TextTrimming="CharacterEllipsis" Grid.Column="0" />
+                        <Button Content="Browse" Command="{Binding BrowseRecordingsDirectoryCommand}"
+                                Grid.Column="1" Margin="5" IsEnabled="{Binding IsNotRecording}" />
+                    </Grid>
+                </GroupBox>
+            </StackPanel>
+        </Grid>
+
+        <Expander Grid.Row="2" Header="Test Creation Flow" IsExpanded="True" Margin="10">
+            <StackPanel>
                 <Button Content="Generate Test"
                         Command="{Binding GenerateTestCommand}"
                         Margin="5"
-                        IsEnabled="{Binding IsNotRecording}" />
+                        IsEnabled="{Binding IsNotRecordingAndNotGenerating}" />
 
-                <ProgressBar IsIndeterminate="{Binding IsGenerating}"
-                             Margin="5"
-                             Height="10"
+                <ProgressBar IsIndeterminate="{Binding IsGenerating}" Margin="5" Height="10"
                              Visibility="{Binding IsGenerating, Converter={StaticResource BooleanToVisibilityConverter}}" />
             </StackPanel>
-        </Expander>
-        
-        <Expander Grid.Row="2" Header="Logs" IsExpanded="False" Margin="10">
-            <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="300">
-                <ItemsControl ItemsSource="{Binding LogMessages}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <TextBlock Foreground="{Binding Level, Converter={StaticResource LogLevelToBrushConverter}}">
-                                <Run Text="{Binding Timestamp, StringFormat='yyyy-MM-dd HH:mm:ss'}" />
-                                <Run Text=" - " />
-                                <Run Text="{Binding Level}" />
-                                <Run Text=" - " />
-                                <Run Text="{Binding Message}" />
-                            </TextBlock>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </ScrollViewer>
         </Expander>
 
        

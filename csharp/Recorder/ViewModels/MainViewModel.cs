@@ -23,6 +23,7 @@ namespace Recorder.ViewModels
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(TrayToolTipText))]
         [NotifyPropertyChangedFor(nameof(IsNotRecording))]
+        [NotifyPropertyChangedFor(nameof(IsNotRecordingAndNotGenerating))]
         private bool isRecording;
 
         public bool IsNotRecording => !IsRecording;
@@ -44,11 +45,21 @@ namespace Recorder.ViewModels
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(IsNotGenerating))]
+        [NotifyPropertyChangedFor(nameof(IsNotRecordingAndNotGenerating))]
         private bool isGenerating;
 
-        public bool IsNotGenerating => !isGenerating;
+        public bool IsNotGenerating => !IsGenerating;
+        public bool IsNotRecordingAndNotGenerating => !IsRecording && !IsGenerating;
+
+        [ObservableProperty]
+        private string newProcessName;
+
+        [ObservableProperty]
+        private string selectedProcess;
+
 
         public ObservableCollection<string> CaptureModes { get; }
+        public ObservableCollection<string> WhitelistedProcesses { get; } = new ObservableCollection<string>();
 
         private readonly RecordingService _recordingService;
         private readonly InputUiaService _inputUiaService;
@@ -57,6 +68,7 @@ namespace Recorder.ViewModels
         private readonly ILogger<MainViewModel> _logger;
         private readonly IServiceProvider _serviceProvider;
         private readonly GeminiTestGenerator _geminiTestGenerator;
+        private readonly ConfigurationService _configurationService;
 
         public ObservableCollection<LogEntry> LogMessages { get; } = new ObservableCollection<LogEntry>();
         private SelectionResult _selectionRes = new SelectionResult();
@@ -73,7 +85,8 @@ namespace Recorder.ViewModels
             ThreadManager threadManager,
             ILogger<MainViewModel> logger,
             IServiceProvider serviceProvider,
-            GeminiTestGenerator geminiTestGenerator)
+            GeminiTestGenerator geminiTestGenerator,
+            ConfigurationService configurationService)
         {
             _recordingService = recordingService;
             _inputUiaService = inputUiaService;
@@ -82,6 +95,7 @@ namespace Recorder.ViewModels
             _logger = logger;
             _serviceProvider = serviceProvider;
             _geminiTestGenerator = geminiTestGenerator;
+            _configurationService = configurationService;
 
             CaptureModes = new ObservableCollection<string>
             {
@@ -90,6 +104,38 @@ namespace Recorder.ViewModels
                 "Select Region"
             };
             SelectedCaptureMode = CaptureModes[0];
+
+            // Load configuration
+            ProjectDirectoryPath = _configurationService.Config.ProjectDirectory;
+            OutputPath = _configurationService.Config.RecordingsDirectory;
+            if (string.IsNullOrEmpty(OutputPath))
+            {
+                // Default to the last recording directory if available
+                var recordingsDir = new DirectoryInfo("recordings");
+                if (recordingsDir.Exists)
+                {
+                    var lastRecording = recordingsDir.GetDirectories()
+                        .OrderByDescending(d => d.CreationTime)
+                        .FirstOrDefault();
+                    if (lastRecording != null)
+                    {
+                        OutputPath = lastRecording.FullName;
+                    }
+                }
+            }
+            _configurationService.Config.WhitelistedProcesses.ForEach(p => WhitelistedProcesses.Add(p));
+            SetDefaultCaptureArea();
+        }
+
+        private void SetDefaultCaptureArea()
+        {
+            var primaryScreen = Screen.AllScreens[0];
+            _selectionRes = new SelectionResult
+            {
+                SelectedArea = primaryScreen.Bounds,
+                SelectedMonitor = 0
+            };
+            CaptureAreaInfo = $"Monitor: {primaryScreen.DeviceName} ({_selectionRes.SelectedArea.Width}x{_selectionRes.SelectedArea.Height})";
         }
 
         [RelayCommand]
@@ -116,6 +162,14 @@ namespace Recorder.ViewModels
                     {
                         CaptureAreaInfo = $"Window: '{_selectionRes.WindowTitle}' ({_selectionRes.SelectedArea.Width}x{_selectionRes.SelectedArea.Height})";
                         success = true;
+
+                        if (!string.IsNullOrEmpty(_selectionRes.ProcessName) && !WhitelistedProcesses.Contains(_selectionRes.ProcessName))
+                        {
+                            WhitelistedProcesses.Add(_selectionRes.ProcessName);
+                            _configurationService.Config.WhitelistedProcesses = WhitelistedProcesses.ToList();
+                            _configurationService.SaveConfig();
+                            _logger.LogInformation("Added {process} to whitelist.", _selectionRes.ProcessName);
+                        }
                     }
                     break;
                 case "Select Region":
@@ -130,7 +184,7 @@ namespace Recorder.ViewModels
             }
             if (!success)
             {
-                _selectionRes = new SelectionResult()   ;
+                _selectionRes = new SelectionResult();
                 CaptureAreaInfo = "Selection cancelled.";
             }
 
@@ -233,7 +287,7 @@ namespace Recorder.ViewModels
 
                     _threadManager.StartAll();
                     _annotationService.Start();
-                    _inputUiaService.Start(_selectionRes);
+                    _inputUiaService.Start(_selectionRes, WhitelistedProcesses.ToList());
                     _recordingService.StartRecording(videoFilePath, _selectionRes);
                 }
                 else // STOP
@@ -304,12 +358,65 @@ namespace Recorder.ViewModels
             {
                 dialog.Description = "Select the project directory";
                 dialog.UseDescriptionForTitle = true;
+                if (!string.IsNullOrEmpty(ProjectDirectoryPath))
+                {
+                    dialog.SelectedPath = ProjectDirectoryPath;
+                }
                 DialogResult result = dialog.ShowDialog();
                 if (result == DialogResult.OK)
                 {
                     ProjectDirectoryPath = dialog.SelectedPath;
-                    _logger.LogInformation("Project directory selected: {path}", ProjectDirectoryPath);
+                    _configurationService.Config.ProjectDirectory = ProjectDirectoryPath;
+                    _configurationService.SaveConfig();
+                    _logger.LogInformation("Project directory selected and saved: {path}", ProjectDirectoryPath);
                 }
+            }
+        }
+
+        [RelayCommand]
+        private void BrowseRecordingsDirectory()
+        {
+            using (var dialog = new FolderBrowserDialog())
+            {
+                dialog.Description = "Select the recording output directory";
+                dialog.UseDescriptionForTitle = true;
+                if (!string.IsNullOrEmpty(OutputPath))
+                {
+                    dialog.SelectedPath = OutputPath;
+                }
+                DialogResult result = dialog.ShowDialog();
+                if (result == DialogResult.OK)
+                {
+                    OutputPath = dialog.SelectedPath;
+                    _configurationService.Config.RecordingsDirectory = OutputPath;
+                    _configurationService.SaveConfig();
+                    _logger.LogInformation("Recording directory selected and saved: {path}", OutputPath);
+                }
+            }
+        }
+
+        [RelayCommand]
+        private void AddProcessToWhitelist()
+        {
+            if (!string.IsNullOrWhiteSpace(NewProcessName) && !WhitelistedProcesses.Contains(NewProcessName, StringComparer.OrdinalIgnoreCase))
+            {
+                WhitelistedProcesses.Add(NewProcessName);
+                _configurationService.Config.WhitelistedProcesses = WhitelistedProcesses.ToList();
+                _configurationService.SaveConfig();
+                _logger.LogInformation("Added '{process}' to whitelist.", NewProcessName);
+                NewProcessName = string.Empty;
+            }
+        }
+
+        [RelayCommand]
+        private void RemoveProcessFromWhitelist()
+        {
+            if (!string.IsNullOrEmpty(SelectedProcess))
+            {
+                WhitelistedProcesses.Remove(SelectedProcess);
+                _configurationService.Config.WhitelistedProcesses = WhitelistedProcesses.ToList();
+                _configurationService.SaveConfig();
+                _logger.LogInformation("Removed '{process}' from whitelist.", SelectedProcess);
             }
         }
 

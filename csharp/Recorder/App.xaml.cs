@@ -28,8 +28,10 @@ namespace Recorder
                 provider.GetRequiredService<ThreadManager>(),
                 provider.GetRequiredService<ILogger<MainViewModel>>(),
                 provider,
-                provider.GetRequiredService<GeminiTestGenerator>()
+                provider.GetRequiredService<GeminiTestGenerator>(),
+                provider.GetRequiredService<ConfigurationService>()
             ));
+            services.AddSingleton<ConfigurationService>();
             services.AddTransient<RecordingService>();
             services.AddSingleton<ThreadManager>();
             services.AddSingleton<InputUiaService>();
