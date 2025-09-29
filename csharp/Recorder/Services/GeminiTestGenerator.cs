@@ -10,6 +10,8 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using GenerativeAI;
+using GenerativeAI.Types;
 
 namespace Recorder.Services
 {
@@ -20,12 +22,13 @@ namespace Recorder.Services
         private const string RunOutputDirectory = "generated_scripts/{timestamp}";
         private const string CompilationIterationDir = "{run_output_dir}/compilation/iteration{i}";
         private const string ExecutionIterationDir = "{run_output_dir}/execution/iteration{i}";
-        private const string Model = "gemini-1.5-flash-latest";
+        private const string Model = "gemini-2.5-flash-latest";
 
         private readonly ILogger<GeminiTestGenerator> _logger;
         private readonly InputUiaService _inputUiaService;
         private GenerativeModel _generativeModel;
         private ChatSession _chat;
+        private GenerateContentRequest _request;
         private string _systemPrompt;
 
         public GeminiTestGenerator(ILogger<GeminiTestGenerator> logger, InputUiaService inputUiaService)
@@ -43,7 +46,9 @@ namespace Recorder.Services
                 _logger.LogError(message);
                 throw new InvalidOperationException(message);
             }
-            _generativeModel = new GenerativeModel(apiKey);
+            var googleAI = new GoogleAi(apiKey);
+            _generativeModel = googleAI.CreateGenerativeModel(Model);
+            _request = new GenerateContentRequest();
         }
 
         private void LoadSystemPrompt()
@@ -79,14 +84,9 @@ namespace Recorder.Services
             string flauiProjectPath = Path.Combine(projectDir, $"{Path.GetFileName(templateProjectDir)}.csproj");
 
             _logger.LogInformation("Analyzing data in: {recordingDir}", recordingDir);
-            var initialFiles = await PrepareFileParts(recordingDir);
-            var tmpDir = Path.Combine(runOutputRoot, "tmp");
-            var projectFiles = await PrepareProjectFileParts(templateProjectDir, tmpDir);
-
-            var promptParts = new List<IPart>();
-            promptParts.AddRange(initialFiles);
-            promptParts.AddRange(projectFiles);
-            promptParts.Add(new TextPart("Generate the initial C# script to perform the recorded scenario using FlaUI and MSTest."));
+            AddDirectoryFiles(recordingDir, _request);
+            AddProjectFiles(projectDir, _request);
+            _request.AddText("Generate the initial C# script to perform the recorded scenario using FlaUI and MSTest.");
 
             // --- Compilation Loop ---
             bool compilationSuccess = false;
@@ -99,15 +99,10 @@ namespace Recorder.Services
 
                 if (i > 0)
                 {
-                    var errorPromptParts = new List<IPart>
-                    {
-                        new TextPart("The previously generated script failed to compile.\nAttached are the compilation logs for analysis and script refinement.")
-                    };
-                    errorPromptParts.AddRange(await PrepareFileParts(iterationDir));
-                    promptParts = errorPromptParts;
+                    _request.AddText("The previously generated script failed to compile.\nAttached are the compilation logs for analysis and script refinement.")
                 }
 
-                codeResponse = await _chat.GenerateObjectAsync<CodeResponse>(promptParts);
+                codeResponse = await _chat.GenerateObjectAsync<CodeResponse>(_request);
 
                 if (!string.IsNullOrEmpty(codeResponse.FailureReason))
                     _logger.LogInformation("LLM failure reason: {failureReason}", codeResponse.FailureReason);
@@ -118,8 +113,6 @@ namespace Recorder.Services
                 Directory.CreateDirectory(iterationDir);
                 WriteResponseFiles(codeResponse, projectDir);
                 WriteResponseFiles(codeResponse, iterationDir, renameToTxt: true);
-
-                if (i == 0) Directory.Delete(tmpDir, true);
 
                 _logger.LogInformation("Compiling scripts: {flauiProjectPath}", flauiProjectPath);
                 var compilationResult = await RunCommandAsync("dotnet", "build", projectDir);
@@ -138,6 +131,9 @@ namespace Recorder.Services
                 }
 
                 _logger.LogWarning("--- Compilation Failed! ---");
+                _request = new GenerateContentRequest();
+                _request.AddText($"STDOUT : {compilationResult.stdout}");
+                _request.AddText($"STDERR : {compilationResult.stderr}");
                 if (i == MaxCompilationAttempts - 1) break;
             }
 
@@ -156,7 +152,7 @@ namespace Recorder.Services
                 Directory.CreateDirectory(iterationDir);
 
                 _logger.LogInformation("Running test: {flauiProjectPath}", flauiProjectPath);
-                var executionResult = await RunCommandAsync("dotnet", "test", "--logger \"console;verbosity=detailed\"", projectDir);
+                var executionResult = await RunCommandAsync("dotnet", "test --logger \"console;verbosity=detailed\"", projectDir);
                 _logger.LogInformation("--- Execution Output ---\n{stdout}\n{stderr}\n---", executionResult.stdout, executionResult.stderr);
 
                 string logPath = Path.Combine(iterationDir, "execution_log.txt");
@@ -178,10 +174,8 @@ namespace Recorder.Services
                 string uiDumpPath = Path.Combine(iterationDir, "ui_dump.json.txt");
                 var res = await _inputUiaService.DumpUiTreeAsync(processName, windowTitle, uiDumpPath);
                 _logger.LogInformation("UI tree dump result: {res}", res);
-
-                var errorPromptParts = new List<IPart>
-                {
-                    new TextPart("The previously generated script failed to execute correctly.\nAttached are the logs of the failed run for analysis, and script refinement.")
+                _request = new GenerateContentRequest();
+                _request.AddText"The previously generated script failed to execute correctly.\nAttached are the logs of the failed run for analysis, and script refinement.")
                 };
                 errorPromptParts.AddRange(await PrepareFileParts(iterationDir));
 
@@ -201,26 +195,20 @@ namespace Recorder.Services
             }
         }
 
-        private async Task<List<FilePart>> PrepareFileParts(string directory)
+        private void AddDirectoryFiles(string directory, GenerateContentRequest req)
         {
-            var fileParts = new List<FilePart>();
-            var filesClient = _generativeModel.GetFilesClient();
 
             foreach (var filePath in Directory.EnumerateFiles(directory))
             {
-                _logger.LogInformation("Uploading file: {filePath}", filePath);
-                var response = await filesClient.UploadFileAsync(filePath, null);
-                var filePart = new FilePart(response.File.Uri, response.File.MimeType);
-                fileParts.Add(filePart);
-                _logger.LogInformation("File uploaded successfully: {fileName}", response.File.Name);
+                _logger.LogInformation($"Adding file: {filePath}");
+                req.AddInlineFile(filePath);
+
             }
-            return fileParts;
         }
 
-        private async Task<List<FilePart>> PrepareProjectFileParts(string sourceDir, string tempDir)
+        private void AddProjectFiles(string sourceDir, GenerateContentRequest req)
         {
-            CopyDirectory(sourceDir, tempDir);
-            foreach (var file in Directory.GetFiles(tempDir, "*.*", SearchOption.AllDirectories))
+            foreach (var file in Directory.GetFiles(sourceDir, "*.*", SearchOption.AllDirectories))
             {
                 var dirPath = Path.GetDirectoryName(file);
                 if (dirPath.EndsWith("bin") || dirPath.EndsWith("obj"))
@@ -230,22 +218,9 @@ namespace Recorder.Services
 
                 if (file.EndsWith(".cs") || file.EndsWith(".csproj"))
                 {
-                    File.Move(file, file + ".txt");
-                }
-                else
-                {
-                    File.Delete(file);
+                    req.AddInlineFile(file);
                 }
             }
-            // Need to remove empty directories after deleting files
-            foreach (var dir in Directory.GetDirectories(tempDir))
-            {
-                if (!Directory.EnumerateFileSystemEntries(dir).Any())
-                {
-                    Directory.Delete(dir);
-                }
-            }
-            return await PrepareFileParts(tempDir);
         }
 
         private void WriteResponseFiles(CodeResponse response, string targetDir, bool renameToTxt = false)

@@ -14,6 +14,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Application = FlaUI.Core.Application;
 
 namespace Recorder.Services
 {
