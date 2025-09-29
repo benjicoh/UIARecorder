@@ -7,6 +7,7 @@ using Recorder.Utils;
 using FlaUI.Core;
 using FlaUI.Core.Exceptions;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
@@ -27,6 +28,7 @@ namespace Recorder.Services
         private IKeyboardMouseEvents _globalHook;
         private UIA3Automation _automation;
         private Rectangle _captureArea;
+        private List<string> _whitelistedProcesses;
 
         public InputUiaService(ILogger<InputUiaService> logger, ThreadManager threadManager, AnnotationService annotationService, OverlayService overlayService)
         {
@@ -36,9 +38,10 @@ namespace Recorder.Services
             _overlayService = overlayService;
         }
 
-        public void Start(SelectionResult selection)
+        public void Start(SelectionResult selection, List<string> whitelistedProcesses)
         {
             _captureArea = selection.SelectedArea;
+            _whitelistedProcesses = whitelistedProcesses;
             _threadManager.InputUiaThread.EnqueueAction(() =>
             {
                 _logger.LogInformation("Initializing Input/UIA service on dedicated thread.");
@@ -94,12 +97,19 @@ namespace Recorder.Services
                     var element = _automation.FromPoint(screenPoint);
                     if (element != null && element.GetSafeBoundingRectangle() != Rectangle.Empty)
                     {
+                        var processName = GetProcessName(element);
+                        if (!IsProcessWhitelisted(processName))
+                        {
+                            _logger.LogTrace("Ignoring mouse event from non-whitelisted process: {processName}", processName);
+                            return;
+                        }
+
                         var relativePoint = CoordinateUtils.TransformFromScreen(screenPoint, _captureArea);
                         var EventType = $"{button} {updown}";
                         var Coord = $"{relativePoint.X}, {relativePoint.Y}";
 
                         _overlayService.AddClickOverlay(new OpenCvSharp.Point(relativePoint.X, relativePoint.Y), EventType, ts);
-                        
+
                         var elementInfo = GetElementHierarchy(element);
                         if (elementInfo == null)
                         {
@@ -127,6 +137,13 @@ namespace Recorder.Services
                     var element = _automation.FocusedElement();
                     if (element != null && element.GetSafeBoundingRectangle() != Rectangle.Empty)
                     {
+                        var processName = GetProcessName(element);
+                        if (!IsProcessWhitelisted(processName))
+                        {
+                            _logger.LogTrace("Ignoring key event from non-whitelisted process: {processName}", processName);
+                            return;
+                        }
+
                         var elementInfo = GetElementHierarchy(element);
                         if (elementInfo == null)
                         {
@@ -142,6 +159,29 @@ namespace Recorder.Services
                     _logger.LogError(ex, "Error handling key up.");
                 }
             });
+        }
+
+        private string GetProcessName(AutomationElement element)
+        {
+            try
+            {
+                return Process.GetProcessById(element.Properties.ProcessId.Value).ProcessName;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not get process name for element.");
+                return string.Empty;
+            }
+        }
+
+        private bool IsProcessWhitelisted(string processName)
+        {
+            if (_whitelistedProcesses == null || !_whitelistedProcesses.Any())
+            {
+                return true; // If whitelist is empty, allow all
+            }
+            return !string.IsNullOrEmpty(processName) &&
+                   _whitelistedProcesses.Contains(processName, StringComparer.OrdinalIgnoreCase);
         }
 
         private ElementInfo GetElementHierarchy(AutomationElement element)
