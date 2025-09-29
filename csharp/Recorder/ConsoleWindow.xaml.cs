@@ -16,6 +16,11 @@ namespace Recorder
         {
             InitializeComponent();
             DataContextChanged += OnDataContextChanged;
+            this.Closing += (s, e) =>
+            {
+                this.Hide();
+                e.Cancel = true; // Cancel the close operation
+            };
         }
 
         private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)

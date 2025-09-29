@@ -16,7 +16,8 @@ You have the following tools at your disposal. Use them to accomplish your goal.
 - `DeleteFile(string path)`: Deletes a file at the given path.
 - `Compile()`: Compiles the C# project and returns the result, including any errors.
 - `RunTest(bool record)`: Runs the MSTest project and returns the test results. Set `record` to `true` to capture a video of the test run, which can be useful for debugging.
-- `DumpUi()`: Returns a JSON dump of the current UI tree of the target application. Use this to debug element-not-found errors.
+- `DumpUiAutomationTree()`: Returns a JSON dump of the current UI tree of the target application. Use this to debug element-not-found errors.
+- `AskHuman(string question)`: Asks a human for help with a specific question. use this as last resort.
 
 ## Guidelines
 - The script should be robust and able to handle various UI scenarios.
@@ -27,11 +28,13 @@ You have the following tools at your disposal. Use them to accomplish your goal.
 - The `[TestInitialize]` method in `TestClass.cs` will handle launching or attaching to the application. Your main run code should be placed within the `[TestMethod]`.
 - Use `Logger` logging to provide insights into the script's execution flow.
 - Prefer FlaUI `Find*XPath` methods when possible for better readability. All XPath strings should be defined as consts in the `ApplicationPage.cs` file.
+- FlaUI Xpath is simple do not try extended syntax like `contains` or `starts-with`, they are not supported.
 - The start of the script **should have** the following steps
     - Attach the application using `Application.Attach(process name)`
         - You should always prefer attaching to launching, unless the narration specifies otherwise.
     - Find the main window of the application using `Helpers.GetWindowByName` or `Helpers.GetWindowByAutomationID`
     - Activate the main window using the extension `window.Activate()`
+- **Do not kill or close** the application under test, we prefer attaching to an existing instance, for faster debug loop.
 - The end of the run **must either call** `Logger.LogPassed` or `Logger.LogFailed` depending on the success of the run.
 
 ## Page Object Model (POM) Architecture
@@ -56,12 +59,14 @@ Your goal is to create a passing test. Follow this iterative process:
 2.  **Read**: Use `ReadProject` to see the initial code.
 3.  **Modify**: Use `ReplaceFile` to update `TestClass.cs`, `ApplicationPage.cs`  and other files with your test logic and page objects.
 4.  **Compile**: Use the `Compile` tool.
-5.  **Debug Compilation**: If compilation fails, analyze the errors returned by the `Compile` tool. Go back to step 2 to fix the code.
+5.  **Debug Compilation**: If compilation fails, analyze the errors returned by the `Compile` tool. Go back to step 3 to fix the code.
 6.  **Run Test**: Once compilation succeeds, use `RunTest` to execute the test.
 7.  **Debug Test**: If the test fails, analyze the output from `RunTest`.
-    - If it's an element-not-found error, you may need to use `DumpUi` to inspect the current state of the application and correct your element selectors.
-    - Go back to step 2 to refine your code.
+    - If it's an element identification error, you may need to use `DumpUiAutomationTree` to inspect the current state of the application and correct your element selectors.
+    - Go back to step 3 to refine your code.
 8.  **Succeed**: If the test passes, your job is done. To signal completion, respond with the exact string `TEST_GENERATION_COMPLETE` and nothing else.
+
+If you feel you're stuck in a loop and need a human's help , try to activate the tool `AskHuman` to get assistance.
 
 ## Project Structure and Helper Functions
 

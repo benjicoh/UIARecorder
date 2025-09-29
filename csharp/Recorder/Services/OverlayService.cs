@@ -28,6 +28,20 @@ namespace Recorder.Services
 
     public class OverlayService
     {
+        private static List<Scalar> colors = new List<Scalar>
+        {
+            new Scalar(255, 0, 0), // Blue
+            new Scalar(0, 255, 0), // Green
+            new Scalar(0, 0, 255), // Red
+            new Scalar(255, 255, 0), // Cyan
+            new Scalar(255, 0, 255), // Magenta
+            new Scalar(0, 255, 255), // Yellow
+            new Scalar(255, 165, 0), // Orange
+            new Scalar(128, 0, 128), // Purple
+            new Scalar(0, 128, 128), // Teal
+            new Scalar(128, 128, 0)  // Olive
+        };
+
         private readonly List<Overlay> _overlays = new List<Overlay>();
         private readonly List<ClickOverlay> _clickOverlays = new List<ClickOverlay>();
         private readonly object _lock = new object();
@@ -50,18 +64,26 @@ namespace Recorder.Services
             }
         }
 
+        
         public void DrawOverlays(Mat image, DateTime frameTimestamp)
         {
             lock (_lock)
             {
                 //filter overlays from 250 ms before operation till 1.5 seconds after
                 var overlaysToDraw = _overlays.Where(o => (frameTimestamp - o.Timestamp).TotalSeconds > -0.25 && (frameTimestamp - o.Timestamp).TotalSeconds < 1.5).ToList();
+                int i = 0;
+                var black = new Scalar(0, 0, 0);
                 foreach (var overlay in overlaysToDraw)
                 {
                     var rect = new OpenCvSharp.Rect(overlay.BoundingBox.X, overlay.BoundingBox.Y, overlay.BoundingBox.Width, overlay.BoundingBox.Height);
-                    var color = new Scalar(overlay.Color.B, overlay.Color.G, overlay.Color.R, overlay.Color.A);
+                    var color = colors[i++ % colors.Count];
+                    //move 3,3 and draw black for better visibility
+                    var shiftRect = new OpenCvSharp.Rect(rect.X + 1, rect.Y + 1, rect.Width, rect.Height);
+                    Cv2.Rectangle(image, shiftRect, black, 2);
                     Cv2.Rectangle(image, rect, color, 2);
-                    Cv2.PutText(image, overlay.Text, new OpenCvSharp.Point(rect.X + 5, rect.Y + 25), HersheyFonts.HersheySimplex, 0.5, color, 2);
+                    
+                    Cv2.PutText(image, overlay.Text, new OpenCvSharp.Point(rect.X + 6, rect.Y + 26), HersheyFonts.HersheySimplex, 0.5, black, 2, LineTypes.AntiAlias);
+                    Cv2.PutText(image, overlay.Text, new OpenCvSharp.Point(rect.X + 5, rect.Y + 25), HersheyFonts.HersheySimplex, 0.5, color, 2, LineTypes.AntiAlias);
                 }
 
                 var clicksToDraw = _clickOverlays.Where(o => (frameTimestamp - o.Timestamp).TotalSeconds > -0.25 && (frameTimestamp - o.Timestamp).TotalSeconds < 0.75).ToList();

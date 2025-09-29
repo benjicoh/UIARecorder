@@ -13,6 +13,8 @@
         mc:Ignorable="d"
         Title="Recorder"
         SizeToContent="Height"
+        MinWidth="1000"
+        MinHeight="500"
         Width="1200">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
@@ -128,22 +130,18 @@
             </StackPanel>
         </Grid>
 
-        <Expander Grid.Row="2" Header="Test Creation Flow" IsExpanded="True" Margin="10">
-            <StackPanel>
-                <CheckBox Content="Verbose Logging"
-                          IsChecked="{Binding IsVerboseLoggingEnabled}"
-                          Margin="5"
-                          IsEnabled="{Binding IsNotRecordingAndNotGenerating}"/>
-                <Button Content="Generate Test"
-                        Command="{Binding GenerateTestCommand}"
-                        Margin="5"
-                        IsEnabled="{Binding IsNotRecordingAndNotGenerating}" />
+        <StackPanel Grid.Row="2">
+            <Button Content="Generate Test"
+                    Command="{Binding GenerateTestCommand}"
+                    Margin="5"
+                    IsEnabled="{Binding IsNotRecordingAndNotGenerating}" />
 
-                <ProgressBar IsIndeterminate="{Binding IsGenerating}" Margin="5" Height="10"
-                             Visibility="{Binding IsGenerating, Converter={StaticResource BooleanToVisibilityConverter}}" />
-            </StackPanel>
-        </Expander>
+            <ProgressBar IsIndeterminate="{Binding IsGenerating}"
+                         Margin="5"
+                         Height="5"
+                         Visibility="{Binding IsGenerating, Converter={StaticResource BooleanToVisibilityConverter}}" />
+        </StackPanel>
 
-       
+
     </Grid>
 </Window>

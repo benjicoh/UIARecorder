@@ -1,4 +1,5 @@
 using FlaUI.Core.Tools;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -12,16 +13,19 @@ namespace Recorder.Services
         private readonly string _projectDir;
         private readonly string _processName;
         private readonly InputUiaService _inputUiaService;
+        private readonly ILogger<GeminiTestGenerator> _logger;
 
-        public GeminiTools(string projectDir, string processName,InputUiaService inputUiaService)
+        public GeminiTools(string projectDir, string processName,InputUiaService inputUiaService, ILogger<GeminiTestGenerator> logger)
         {
             _projectDir = projectDir;
             _processName = processName;
             _inputUiaService = inputUiaService;
+            _logger = logger;
         }
 
         public Task<string> AddFile(string path, string newContent, System.Threading.CancellationToken cancellationToken = default)
         {
+            _logger.LogInformation($"Adding file {path}...");
             var fullPath = Path.Combine(_projectDir, path);
             Directory.CreateDirectory(Path.GetDirectoryName(fullPath));
             File.WriteAllText(fullPath, newContent);
@@ -30,12 +34,15 @@ namespace Recorder.Services
 
         public async Task<string> Compile(CancellationToken cancellationToken = default)
         {
+            _logger.LogInformation("Compiling project...");
             var result = await RunCommandAsync("dotnet", "build", _projectDir);
+            _logger.LogInformation($"Compilation finished\n{result.stdout}");
             return $"Exit Code: {result.returnCode}\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}";
         }
 
         public Task<string> DeleteFile(string path, System.Threading.CancellationToken cancellationToken = default)
         {
+            _logger.LogInformation($"Deleting file {path}...");
             var fullPath = Path.Combine(_projectDir, path);
             if (File.Exists(fullPath))
             {
@@ -45,14 +52,16 @@ namespace Recorder.Services
             return Task.FromResult($"File {path} not found.");
         }
 
-        public async Task<string> DumpUi(CancellationToken cancellationToken = default)
+        public async Task<string> DumpUiAutomationTree(CancellationToken cancellationToken = default)
         {
+            _logger.LogInformation($"Dumping UI for process {_processName}...");
             var result = await _inputUiaService.DumpUiTreeAsync(_processName);
             return result;
         }
 
         public Task<string> ReadProject(CancellationToken cancellationToken = default)
         {
+            _logger.LogInformation($"Reading project from {_projectDir}...");
             var sb = new StringBuilder();
             var files = Directory.GetFiles(_projectDir, "*.*", SearchOption.AllDirectories);
 
@@ -75,6 +84,7 @@ namespace Recorder.Services
 
         public Task<string> ReplaceFile(string path, string newContent, System.Threading.CancellationToken cancellationToken = default)
         {
+            _logger.LogInformation($"Replacing file {path}...");
             var fullPath = Path.Combine(_projectDir, path);
             if (File.Exists(fullPath))
             {
@@ -86,9 +96,24 @@ namespace Recorder.Services
 
         public async Task<string> RunTest(bool record, CancellationToken cancellationToken = default)
         {
+            _logger.LogInformation("Running tests...");
             // Recording functionality not implemented yet.
             var result = await RunCommandAsync("dotnet", "test --logger \"console;verbosity=detailed\"", _projectDir);
+            _logger.LogInformation($"Test run finished\n{result.stdout}");
             return $"Exit Code: {result.returnCode}\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}";
+        }
+
+        public async Task<string> LogThought(string thought, CancellationToken cancellationToken = default)
+        {
+            _logger.LogInformation($"Thought: {thought}");
+            await Task.CompletedTask;
+            return "Thought logged.";
+        }
+        public Task<string> AskHuman(string question, System.Threading.CancellationToken cancellationToken = default)
+        {
+            _logger.LogInformation($"Asking human: {question}");
+            //todo : popup window to ask human
+            return Task.FromResult("No answer provided.");
         }
 
         private async Task<(int returnCode, string stdout, string stderr)> RunCommandAsync(string command, string args, string workingDirectory)

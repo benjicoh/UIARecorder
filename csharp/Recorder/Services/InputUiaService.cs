@@ -100,7 +100,7 @@ namespace Recorder.Services
                         var processName = GetProcessName(element);
                         if (!IsProcessWhitelisted(processName))
                         {
-                            _logger.LogTrace("Ignoring mouse event from non-whitelisted process: {processName}", processName);
+                            _logger.LogInformation("Ignoring mouse event from non-whitelisted process: {processName}", processName);
                             return;
                         }
 
@@ -116,7 +116,7 @@ namespace Recorder.Services
                             _logger.LogWarning("Could not retrieve element hierarchy for click at {X}, {Y}", x, y);
                             return;
                         }
-                        _overlayService.AddOverlay(elementInfo.BoundingRectangle, element.GetIdentifier(), Color.Green, ts);
+                        _overlayService.AddOverlay(element.GetSafeBoundingRectangle(), element.GetIdentifier(), Color.Green, ts);
                         _annotationService.AddEvent(elementInfo, "MouseClick", new { EventType, Coord }, ts);
                     }
                 }
@@ -150,7 +150,7 @@ namespace Recorder.Services
                             _logger.LogWarning("Could not retrieve element hierarchy for key up event.");
                             return;
                         }
-                        _overlayService.AddOverlay(elementInfo.BoundingRectangle, element.GetIdentifier(), Color.Green, ts);
+                        _overlayService.AddOverlay(element.GetSafeBoundingRectangle(), element.GetIdentifier(), Color.Green, ts);
                         _annotationService.AddEvent(elementInfo, "KeyUp", new { e.KeyCode }, ts);
                     }
                 }
@@ -180,8 +180,8 @@ namespace Recorder.Services
             {
                 return true; // If whitelist is empty, allow all
             }
-            return !string.IsNullOrEmpty(processName) &&
-                   _whitelistedProcesses.Contains(processName, StringComparer.OrdinalIgnoreCase);
+           //do we have a match?
+            return _whitelistedProcesses.Any(p => p.Contains(processName, StringComparison.OrdinalIgnoreCase));
         }
 
         private ElementInfo GetElementHierarchy(AutomationElement element)

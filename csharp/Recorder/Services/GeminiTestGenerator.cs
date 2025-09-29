@@ -21,7 +21,6 @@ namespace Recorder.Services
         private GenerativeModel _generativeModel;
         private FileClient _fileClient;
         private string _systemPrompt;
-        private bool _isVerboseLoggingEnabled;
 
         public GeminiTestGenerator(ILogger<GeminiTestGenerator> logger, InputUiaService inputUiaService)
         {
@@ -63,9 +62,8 @@ namespace Recorder.Services
             _logger.LogInformation("System prompt loaded successfully.");
         }
 
-        public async Task GenerateAndRunTestAsync(string projectDir, string recordingDir, string processName, bool isVerboseLoggingEnabled)
+        public async Task GenerateAndRunTestAsync(string projectDir, string recordingDir, string processName)
         {
-            _isVerboseLoggingEnabled = isVerboseLoggingEnabled;
             _logger.LogInformation("Starting test generation process...");
             InitializeClient();
             LoadSystemPrompt();
@@ -75,7 +73,7 @@ namespace Recorder.Services
             _logger.LogInformation("Run output directory: {runOutputRoot}", runOutputRoot);
 
             _logger.LogInformation("Initializing Gemini tools...");
-            var tools = new GeminiTools(projectDir, processName, _inputUiaService);
+            var tools = new GeminiTools(projectDir, processName, _inputUiaService, _logger);
             var functionTool = tools.AsGoogleFunctionTool();
             _generativeModel.AddFunctionTool(functionTool);
             _generativeModel.FunctionCallingBehaviour = new GenerativeAI.Core.FunctionCallingBehaviour
@@ -103,14 +101,6 @@ namespace Recorder.Services
                 _logger.LogInformation("Iteration {i}", i + 1);
                 var response = await chat.GenerateContentAsync(request);
 
-                if (_isVerboseLoggingEnabled)
-                {
-                    _logger.LogInformation("--- Begin Chat History (Iteration {i}) ---", i + 1);
-                    //save serialized chat history to file 
-                    var history = JsonConvert.SerializeObject(chat.History);
-                    await File.WriteAllTextAsync(Path.Combine(runOutputRoot, $"chat_history_{i + 1}.json"), history);
-                    _logger.LogInformation("--- End Chat History (Iteration {i}) ---", i + 1);
-                }
                 var responseText = response.Text;
                 _logger.LogInformation("LLM->User: {text}", responseText);
                 if (responseText.Contains("TEST_GENERATION_COMPLETE"))
@@ -120,7 +110,8 @@ namespace Recorder.Services
                 }
 
 
-                request = null;
+                request = new GenerateContentRequest();
+                request.AddText("Please retry");
             }
         }
 

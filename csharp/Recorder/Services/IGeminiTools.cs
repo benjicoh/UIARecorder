@@ -42,6 +42,15 @@ public interface IGeminiTools
         bool record,
         CancellationToken cancellationToken = default);
 
-    [Description("Dumps the UI, returns JSON dump")]
-    Task<string> DumpUi(CancellationToken cancellationToken = default);
+    [Description("Generates a json of current UI automation structure, helpful when the test fails")]
+    Task<string> DumpUiAutomationTree(CancellationToken cancellationToken = default);
+
+    [Description("Logs a thought that the user needs to know about")]
+    Task<string> LogThought(string thought, CancellationToken cancellationToken = default);
+
+    [Description("Asks human for help")]
+    Task<string> AskHuman(
+        [Description("Question to ask human")]
+        string question,
+        CancellationToken cancellationToken = default);
 }

@@ -58,6 +58,10 @@ namespace Recorder
                     }
                 }));
             });
+
+            //set log level to debug
+            services.Configure<LoggerFilterOptions>(options => options.MinLevel = LogLevel.Debug);
+
         }
 
         public IServiceProvider ServiceProvider { get; }

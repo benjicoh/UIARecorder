@@ -53,9 +53,6 @@ namespace Recorder.ViewModels
 
         [ObservableProperty]
         private string selectedProcess;
-
-        [ObservableProperty]
-        private bool isVerboseLoggingEnabled;
         #endregion
 
         #region Computed Properties
@@ -209,7 +206,7 @@ namespace Recorder.ViewModels
 
                     
                     var recordingId = $"recording_{DateTime.Now:yyyyMMdd_HHmmss}";
-                    RecordingDirectoryPath = Path.Combine("recordings", recordingId);
+                    RecordingDirectoryPath = Path.GetFullPath(Path.Combine("recordings", recordingId));
 
                     Directory.CreateDirectory(RecordingDirectoryPath);
                     var videoFilePath = Path.Combine(RecordingDirectoryPath, "video.mp4");
@@ -311,7 +308,7 @@ namespace Recorder.ViewModels
             {
                 dialog.Description = "Select the recording output directory";
                 dialog.UseDescriptionForTitle = true;
-                if (!string.IsNullOrEmpty(RecordingDirectoryPath))
+                if (!string.IsNullOrEmpty(RecordingDirectoryPath) && Directory.Exists(RecordingDirectoryPath))
                 {
                     dialog.SelectedPath = RecordingDirectoryPath;
                 }
@@ -369,7 +366,7 @@ namespace Recorder.ViewModels
             try
             {
                 _logger.LogInformation("Starting Gemini test generation...");
-                await _geminiTestGenerator.GenerateAndRunTestAsync(ProjectDirectoryPath, RecordingDirectoryPath, _selectionRes.ProcessName, IsVerboseLoggingEnabled);
+                await _geminiTestGenerator.GenerateAndRunTestAsync(ProjectDirectoryPath, RecordingDirectoryPath, _selectionRes.ProcessName);
                 _logger.LogInformation("Gemini test generation process completed.");
             }
             catch (Exception ex)
