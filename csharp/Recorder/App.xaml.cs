@@ -40,17 +40,21 @@ namespace Recorder
 
             services.AddLogging(builder =>
             {
-                builder.AddProvider(new ObservableLoggerProvider(message =>
+                builder.AddProvider(new ObservableLoggerProvider(logEntry =>
                 {
                     var mainViewModel = ServiceProvider.GetService<MainViewModel>();
-                    App.Current.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, new Action(() =>
+                    if (mainViewModel != null)
                     {
-                        mainViewModel?.LogMessages.Add(message);
-                    }));
+                        App.Current.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, new Action(() =>
+                        {
+                            mainViewModel.LogMessages.Add(logEntry);
+                        }));
+                    }
                 }));
             });
             
             services.AddSingleton<MainWindow>();
+            services.AddSingleton<ConsoleWindow>();
         }
 
         public IServiceProvider ServiceProvider { get; }
@@ -67,7 +71,11 @@ namespace Recorder
             }
 
             var mainWindow = ServiceProvider.GetService<MainWindow>();
+            var consoleWindow = ServiceProvider.GetService<ConsoleWindow>();
+
+            consoleWindow.DataContext = mainViewModel;
             mainWindow.Show();
+            consoleWindow.Show();
         }
     }
 }

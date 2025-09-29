@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
+using Recorder.Models;
 using Recorder.Services;
 using Recorder.Utils;
 using System;
@@ -57,7 +58,7 @@ namespace Recorder.ViewModels
         private readonly IServiceProvider _serviceProvider;
         private readonly GeminiTestGenerator _geminiTestGenerator;
 
-        public ObservableCollection<string> LogMessages { get; } = new ObservableCollection<string>();
+        public ObservableCollection<LogEntry> LogMessages { get; } = new ObservableCollection<LogEntry>();
         private SelectionResult _selectionRes = new SelectionResult();
         private string _annotationsFilePath;
 
@@ -280,6 +281,20 @@ namespace Recorder.ViewModels
         private void ExitApplication()
         {
             Application.Current.Shutdown();
+        }
+
+        [RelayCommand]
+        private void ShowConsole()
+        {
+            var consoleWindow = _serviceProvider.GetService(typeof(ConsoleWindow)) as Window;
+            if (consoleWindow != null)
+            {
+                if (!consoleWindow.IsVisible)
+                {
+                    consoleWindow.Show();
+                }
+                consoleWindow.Activate();
+            }
         }
 
         [RelayCommand]

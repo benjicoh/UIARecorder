@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Recorder.Models;
 using System;
 using System.Collections.Concurrent;
 
@@ -7,9 +8,9 @@ namespace Recorder.Logging
     public class ObservableLoggerProvider : ILoggerProvider
     {
         private readonly ConcurrentDictionary<string, ObservableLogger> _loggers = new ConcurrentDictionary<string, ObservableLogger>();
-        private readonly Action<string> _logAction;
+        private readonly Action<LogEntry> _logAction;
 
-        public ObservableLoggerProvider(Action<string> logAction)
+        public ObservableLoggerProvider(Action<LogEntry> logAction)
         {
             _logAction = logAction;
         }

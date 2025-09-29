@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Recorder.Models;
 using System;
 using System.Runtime.CompilerServices;
 
@@ -7,9 +8,9 @@ namespace Recorder.Logging
     public class ObservableLogger : ILogger
     {
         private readonly string _name;
-        private readonly Action<string> _logAction;
+        private readonly Action<LogEntry> _logAction;
 
-        public ObservableLogger(string name, Action<string> logAction)
+        public ObservableLogger(string name, Action<LogEntry> logAction)
         {
             _name = name;
             _logAction = logAction;
@@ -20,7 +21,6 @@ namespace Recorder.Logging
         public bool IsEnabled(LogLevel logLevel) => true;
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
-            //[CallerFilePath] string filePath = "", [CallerLineNumber] int lineNumber = 0)
         {
             if (!IsEnabled(logLevel))
             {
@@ -28,11 +28,9 @@ namespace Recorder.Logging
             }
 
             var message = formatter(state, exception);
-            var level = logLevel.ToString().ToUpper();
-            /*{System.IO.Path.GetFileName(filePath)}:{lineNumber}*/
-            var finalMessage = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - {level} - {message}";
+            var logEntry = new LogEntry(logLevel, message);
 
-            _logAction?.Invoke(finalMessage);
+            _logAction?.Invoke(logEntry);
         }
     }
 }
