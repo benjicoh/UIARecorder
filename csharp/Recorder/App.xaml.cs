@@ -31,8 +31,17 @@ namespace Recorder
                 provider.GetRequiredService<GeminiTestGenerator>(),
                 provider.GetRequiredService<ConfigurationService>(),
                 provider.GetRequiredService<WindowSelector>(),
-                provider.GetRequiredService<ConsoleWindow>()
+                provider.GetRequiredService<ConsoleWindow>(),
+                provider.GetRequiredService<IAlertService>()
             ));
+
+            services.AddSingleton(provider => new GeminiTestGenerator(
+                provider.GetRequiredService<ILogger<GeminiTestGenerator>>(),
+                provider.GetRequiredService<InputUiaService>(),
+                provider.GetRequiredService<IAskHumanService>()
+            ));
+            services.AddSingleton<IAlertService, AlertService>();
+            services.AddSingleton<IAskHumanService, AskHumanService>();
             services.AddSingleton<ConfigurationService>();
             services.AddSingleton<RecordingService>();
             services.AddSingleton<ThreadManager>();
@@ -40,7 +49,6 @@ namespace Recorder
             services.AddSingleton<OverlayService>();
             services.AddSingleton<AnnotationService>();
             services.AddSingleton<WindowSelector>();
-            services.AddSingleton<GeminiTestGenerator>();
             services.AddSingleton<MainWindow>();
             services.AddSingleton<ConsoleWindow>();
 
@@ -74,7 +82,7 @@ namespace Recorder
 
             var mainViewModel = ServiceProvider.GetService<MainViewModel>();
 
-            var mainWindow = ServiceProvider.GetService<MainWindow>();
+            var mainWindow = new MainWindow(ServiceProvider.GetRequiredService<IAlertService>());
             var consoleWindow = ServiceProvider.GetService<ConsoleWindow>();
 
             consoleWindow.DataContext = mainViewModel;

@@ -18,15 +18,16 @@ namespace Recorder.Services
 
         private readonly ILogger<GeminiTestGenerator> _logger;
         private readonly InputUiaService _inputUiaService;
+        private readonly IAskHumanService _askHumanService;
         private GenerativeModel _generativeModel;
         private FileClient _fileClient;
         private string _systemPrompt;
 
-        public GeminiTestGenerator(ILogger<GeminiTestGenerator> logger, InputUiaService inputUiaService)
+        public GeminiTestGenerator(ILogger<GeminiTestGenerator> logger, InputUiaService inputUiaService, IAskHumanService askHumanService)
         {
             _logger = logger;
             _inputUiaService = inputUiaService;
-            
+            _askHumanService = askHumanService;
         }
 
         private void InitializeClient()
@@ -73,7 +74,7 @@ namespace Recorder.Services
             _logger.LogInformation("Run output directory: {runOutputRoot}", runOutputRoot);
 
             _logger.LogInformation("Initializing Gemini tools...");
-            var tools = new GeminiTools(projectDir, processName, _inputUiaService, _logger);
+            var tools = new GeminiTools(projectDir, processName, _inputUiaService, _logger, _askHumanService);
             var functionTool = tools.AsGoogleFunctionTool();
             _generativeModel.AddFunctionTool(functionTool);
             _generativeModel.FunctionCallingBehaviour = new GenerativeAI.Core.FunctionCallingBehaviour

@@ -14,13 +14,15 @@ namespace Recorder.Services
         private readonly string _processName;
         private readonly InputUiaService _inputUiaService;
         private readonly ILogger<GeminiTestGenerator> _logger;
+        private readonly IAskHumanService _askHumanService;
 
-        public GeminiTools(string projectDir, string processName,InputUiaService inputUiaService, ILogger<GeminiTestGenerator> logger)
+        public GeminiTools(string projectDir, string processName, InputUiaService inputUiaService, ILogger<GeminiTestGenerator> logger, IAskHumanService askHumanService)
         {
             _projectDir = projectDir;
             _processName = processName;
             _inputUiaService = inputUiaService;
             _logger = logger;
+            _askHumanService = askHumanService;
         }
 
         public Task<string> AddFile(string path, string newContent, System.Threading.CancellationToken cancellationToken = default)
@@ -112,8 +114,9 @@ namespace Recorder.Services
         public Task<string> AskHuman(string question, System.Threading.CancellationToken cancellationToken = default)
         {
             _logger.LogInformation($"Asking human: {question}");
-            //todo : popup window to ask human
-            return Task.FromResult("No answer provided.");
+            var answer = _askHumanService.Ask(question);
+            _logger.LogInformation($"Human responded: {answer}");
+            return Task.FromResult(answer);
         }
 
         private async Task<(int returnCode, string stdout, string stderr)> RunCommandAsync(string command, string args, string workingDirectory)
