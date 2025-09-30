@@ -22,6 +22,14 @@ namespace Recorder
 
         private void ConfigureServices(IServiceCollection services)
         {
+
+            services.AddSingleton(provider => new GeminiTestGenerator(
+                provider.GetRequiredService<ILogger<GeminiTestGenerator>>(),
+                provider.GetRequiredService<InputUiaService>(),
+                provider.GetRequiredService<IAskHumanService>()
+            ));
+            services.AddSingleton<IAlertService, AlertService>();
+            services.AddSingleton<IAskHumanService, AskHumanService>();
             services.AddSingleton<MainViewModel>();
             services.AddSingleton<ConfigurationService>();
             services.AddSingleton<RecordingService>();
@@ -30,7 +38,6 @@ namespace Recorder
             services.AddSingleton<OverlayService>();
             services.AddSingleton<AnnotationService>();
             services.AddSingleton<WindowSelector>();
-            services.AddSingleton<GeminiTestGenerator>();
             services.AddSingleton<MainWindow>();
 
             services.AddLogging(builder =>
@@ -87,8 +94,7 @@ namespace Recorder
             }
             //show console window
             Win32Utils.AllocConsole();
-
-            var mainViewModel = ServiceProvider.GetService<MainViewModel>();
+            
             var mainWindow = ServiceProvider.GetService<MainWindow>();
             mainWindow.Show();
         }

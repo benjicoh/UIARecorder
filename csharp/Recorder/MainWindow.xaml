@@ -6,6 +6,7 @@
         xmlns:local="clr-namespace:Recorder"
         xmlns:viewModels="clr-namespace:Recorder.ViewModels"
         xmlns:utils="clr-namespace:Recorder.Utils"
+        xmlns:controls="clr-namespace:Recorder.Controls"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         xmlns:tb="http://www.hardcodet.net/taskbar"
         Style="{DynamicResource MaterialDesignWindow}"
@@ -27,7 +28,10 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
+
+        <controls:AlertBar x:Name="AlertBar" Grid.Row="0" />
 
         <tb:TaskbarIcon
             x:Name="TaskbarIcon"
@@ -41,8 +45,8 @@
             </tb:TaskbarIcon.ContextMenu>
         </tb:TaskbarIcon>
 
-        
-        <StackPanel Grid.Row="0" Orientation="Horizontal"
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
                     Margin="10">
@@ -81,7 +85,7 @@
 
         </StackPanel>
 
-        <Grid Grid.Row="1" Margin="10">
+        <Grid Grid.Row="2" Margin="10">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="*" />
@@ -134,7 +138,7 @@
             </StackPanel>
         </Grid>
 
-        <StackPanel Grid.Row="2">
+        <StackPanel Grid.Row="3">
             <Button Content="Generate Test"
                     Command="{Binding GenerateTestCommand}"
                     Margin="5"

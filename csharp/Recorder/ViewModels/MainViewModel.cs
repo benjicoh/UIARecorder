@@ -79,6 +79,7 @@ namespace Recorder.ViewModels
         private readonly GeminiTestGenerator _geminiTestGenerator;
         private readonly ConfigurationService _configurationService;
         private readonly WindowSelector _windowSelector;
+        private readonly IAlertService _alertService;
         #endregion
 
         #region Fields
@@ -96,6 +97,7 @@ namespace Recorder.ViewModels
             GeminiTestGenerator geminiTestGenerator,
             ConfigurationService configurationService,
             WindowSelector windowSelector,
+            IAlertService alertService,
             ILogger<MainViewModel> logger)
         {
             _recordingService = recordingService;
@@ -106,6 +108,7 @@ namespace Recorder.ViewModels
             _geminiTestGenerator = geminiTestGenerator;
             _configurationService = configurationService;
             _windowSelector = windowSelector;
+            _alertService = alertService;
 
             CaptureModes = new ObservableCollection<string>
             {
@@ -338,12 +341,12 @@ namespace Recorder.ViewModels
         {
             if (string.IsNullOrEmpty(ProjectDirectoryPath))
             {
-                System.Windows.MessageBox.Show("Please select a project directory first.", "Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
+                _alertService.ShowAlert("Please select a project directory first.");
                 return;
             }
             if (string.IsNullOrEmpty(RecordingDirectoryPath))
             {
-                 System.Windows.MessageBox.Show("Please record a scenario first.", "Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
+                _alertService.ShowAlert("Please record a scenario first.");
                 return;
             }
 
@@ -357,7 +360,7 @@ namespace Recorder.ViewModels
             catch (Exception ex)
             {
                 _logger.LogError(ex, "An error occurred during test generation.");
-                System.Windows.MessageBox.Show($"An error occurred: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                _alertService.ShowAlert($"An error occurred: {ex.Message}");
             }
             finally
             {

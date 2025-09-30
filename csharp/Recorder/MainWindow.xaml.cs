@@ -1,3 +1,4 @@
+using Recorder.Services;
 using Recorder.ViewModels;
 using System;
 using System.Runtime.InteropServices;
@@ -19,6 +20,7 @@ namespace Recorder
 
         private HwndSource _source;
         private MainViewModel _viewModel;
+        private IAlertService _alertService;
 
         [DllImport("user32.dll")]
         private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
@@ -26,12 +28,19 @@ namespace Recorder
         [DllImport("user32.dll")]
         private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
 
-        public MainWindow()
+        public MainWindow(IAlertService alertService)
         {
             InitializeComponent();
             _viewModel = (App.Current as App).ServiceProvider.GetService(typeof(MainViewModel)) as MainViewModel;
             DataContext = _viewModel;
             TaskbarIcon.DataContext = _viewModel;
+            _alertService = alertService;
+            _alertService.OnShowAlert += ShowAlert;
+        }
+
+        private void ShowAlert(string message)
+        {
+            AlertBar.ShowAlert(message);
         }
 
         protected override void OnSourceInitialized(EventArgs e)
