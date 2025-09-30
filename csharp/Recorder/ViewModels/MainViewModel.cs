@@ -53,6 +53,9 @@ namespace Recorder.ViewModels
 
         [ObservableProperty]
         private string selectedProcess;
+
+        [ObservableProperty]
+        private bool copyTemplateDirectory = true;
         #endregion
 
         #region Computed Properties
@@ -227,7 +230,7 @@ namespace Recorder.ViewModels
                     {
                         _inputUiaService.Stop();
                         _recordingService.StopRecording();
-                        await _annotationService.StopAndSaveAsync(_annotationsFilePath);
+                        await _annotationService.StopAndSaveAsync(_annotationsFilePath, _selectionRes.ProcessName);
                     });
 
                     _logger.LogInformation("Recording stopped.");
@@ -354,7 +357,7 @@ namespace Recorder.ViewModels
             try
             {
                 _logger.LogInformation("Starting Gemini test generation...");
-                await _geminiTestGenerator.GenerateAndRunTestAsync(ProjectDirectoryPath, RecordingDirectoryPath, _selectionRes.ProcessName);
+                await _geminiTestGenerator.GenerateAndRunTestAsync(ProjectDirectoryPath, RecordingDirectoryPath, _selectionRes.ProcessName, CopyTemplateDirectory);
                 _logger.LogInformation("Gemini test generation process completed.");
             }
             catch (Exception ex)

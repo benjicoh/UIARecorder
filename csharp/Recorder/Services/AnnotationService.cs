@@ -76,14 +76,19 @@ namespace Recorder.Services
             }
         }
 
-        public async Task StopAndSaveAsync(string filePath)
+        public async Task StopAndSaveAsync(string filePath, string processName)
         {
             try
             {
                 string json;
                 lock (_lock)
                 {
-                    json = JsonConvert.SerializeObject(_knownElements, Formatting.Indented);
+                    var annotationData = new
+                    {
+                        ProcessName = processName,
+                        Elements = _knownElements
+                    };
+                    json = JsonConvert.SerializeObject(annotationData, Formatting.Indented);
                 }
                 await File.WriteAllTextAsync(filePath, json);
                 _logger.LogInformation("Annotations saved to {FilePath}", filePath);
