@@ -64,8 +64,12 @@ namespace Recorder.Services
             _logger.LogInformation("System prompt loaded successfully.");
         }
 
-        public async Task GenerateAndRunTestAsync(string projectDir, string recordingDir, string processName)
+        public async Task GenerateAndRunTestAsync(string projectDir, string recordingDir, string processName, bool copyTemplate)
         {
+            if (copyTemplate)
+            {
+                CopyTemplateFiles(projectDir);
+            }
             _logger.LogInformation("Starting test generation process...");
             InitializeClient();
             LoadSystemPrompt();
@@ -134,5 +138,29 @@ namespace Recorder.Services
             }
         }
 
+        private void CopyTemplateFiles(string destinationDir)
+        {
+            var templateDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TemplateTest");
+            if (!Directory.Exists(templateDir))
+            {
+                _logger.LogWarning("Template directory not found at {templateDir}", templateDir);
+                return;
+            }
+
+            var newDirName = $"{Path.GetFileName(destinationDir)}_{DateTime.Now:yyyyMMdd_HHmmss}";
+            var newDirPath = Path.Combine(Path.GetDirectoryName(destinationDir), newDirName);
+
+            Directory.CreateDirectory(newDirPath);
+
+
+            foreach (var file in Directory.GetFiles(templateDir, "*", SearchOption.AllDirectories))
+            {
+                var relativePath = file.Substring(templateDir.Length + 1);
+                var destFile = Path.Combine(newDirPath, relativePath);
+                Directory.CreateDirectory(Path.GetDirectoryName(destFile));
+                File.Copy(file, destFile, true);
+            }
+            _logger.LogInformation("Template files copied to {newDirPath}", newDirPath);
+        }
     }
 }

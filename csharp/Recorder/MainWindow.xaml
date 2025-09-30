@@ -139,6 +139,11 @@
         </Grid>
 
         <StackPanel Grid.Row="3">
+            <CheckBox Content="Copy Template Directory"
+                      IsChecked="{Binding CopyTemplateDirectory}"
+                      HorizontalAlignment="Center"
+                      Margin="5"
+                      IsEnabled="{Binding IsNotRecordingAndNotGenerating}"/>
             <Button Content="Generate Test"
                     Command="{Binding GenerateTestCommand}"
                     Margin="5"
