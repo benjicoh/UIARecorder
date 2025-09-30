@@ -9,6 +9,7 @@ namespace Recorder.Logging
     {
         private readonly string _name;
         private readonly Action<LogEntry> _logAction;
+        private object _lock = new object();
 
         public ObservableLogger(string name, Action<LogEntry> logAction)
         {
@@ -61,8 +62,10 @@ namespace Recorder.Logging
             }
 
             var logEntry = new LogEntry(logLevel, message, filePath, lineNumber, memberName);
-
-            _logAction?.Invoke(logEntry);
+            lock (_lock)
+            {
+                _logAction?.Invoke(logEntry);
+            }
         }
     }
 }

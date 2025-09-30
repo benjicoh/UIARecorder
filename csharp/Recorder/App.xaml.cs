@@ -23,11 +23,8 @@ namespace Recorder
         private void ConfigureServices(IServiceCollection services)
         {
 
-            services.AddSingleton(provider => new GeminiTestGenerator(
-                provider.GetRequiredService<ILogger<GeminiTestGenerator>>(),
-                provider.GetRequiredService<InputUiaService>(),
-                provider.GetRequiredService<IAskHumanService>()
-            ));
+            services.AddSingleton<GeminiTestGenerator>();
+            services.AddSingleton<GeminiTools>();
             services.AddSingleton<IAlertService, AlertService>();
             services.AddSingleton<IAskHumanService, AskHumanService>();
             services.AddSingleton<MainViewModel>();
@@ -53,7 +50,7 @@ namespace Recorder
                     {
                         case LogLevel.Trace:
                         case LogLevel.Debug:
-                            Console.ForegroundColor = ConsoleColor.Gray;
+                            Console.ForegroundColor = ConsoleColor.DarkGray;
                             break;
                         case LogLevel.Information:
                             Console.ForegroundColor = ConsoleColor.White;

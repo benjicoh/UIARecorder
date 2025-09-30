@@ -53,6 +53,20 @@ namespace Recorder.Services
             });
         }
 
+        public void TakeScreenshot(string path)
+        {
+            
+            try
+            {
+                _automation.GetDesktop().CaptureToFile(path);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error taking screenshot.");
+            }
+            
+        }
+
         public void Stop()
         {
             _threadManager.InputUiaThread.EnqueueAction(() =>

@@ -13,21 +13,22 @@ namespace Recorder.Services
 {
     public class GeminiTestGenerator
     {
-        private const string RunOutputDirectory = "generated_scripts/{timestamp}";
         private const string Model = "gemini-flash-latest";
 
         private readonly ILogger<GeminiTestGenerator> _logger;
         private readonly InputUiaService _inputUiaService;
         private readonly IAskHumanService _askHumanService;
+        private GeminiTools _tools;
         private GenerativeModel _generativeModel;
         private FileClient _fileClient;
         private string _systemPrompt;
 
-        public GeminiTestGenerator(ILogger<GeminiTestGenerator> logger, InputUiaService inputUiaService, IAskHumanService askHumanService)
+        public GeminiTestGenerator(ILogger<GeminiTestGenerator> logger, InputUiaService inputUiaService, IAskHumanService askHumanService, GeminiTools tools)
         {
             _logger = logger;
             _inputUiaService = inputUiaService;
             _askHumanService = askHumanService;
+            _tools = tools;
         }
 
         private void InitializeClient()
@@ -69,13 +70,12 @@ namespace Recorder.Services
             InitializeClient();
             LoadSystemPrompt();
 
-            var runOutputRoot = RunOutputDirectory.Replace("{timestamp}", DateTime.Now.ToString("yyyyMMdd-HHmmss"));
-            Directory.CreateDirectory(runOutputRoot);
-            _logger.LogInformation("Run output directory: {runOutputRoot}", runOutputRoot);
-
             _logger.LogInformation("Initializing Gemini tools...");
-            var tools = new GeminiTools(projectDir, processName, _inputUiaService, _logger, _askHumanService);
-            var functionTool = tools.AsGoogleFunctionTool();
+            _tools.ProjectDir = projectDir;
+            _tools.ProcessName = processName;
+            _tools.FileClient = _fileClient;
+
+            var functionTool = _tools.AsGoogleFunctionTool();
             _generativeModel.AddFunctionTool(functionTool);
             _generativeModel.FunctionCallingBehaviour = new GenerativeAI.Core.FunctionCallingBehaviour
             {
@@ -112,7 +112,7 @@ namespace Recorder.Services
 
 
                 request = new GenerateContentRequest();
-                request.AddText("Please retry");
+                request.AddText("Please continue");
             }
         }
 

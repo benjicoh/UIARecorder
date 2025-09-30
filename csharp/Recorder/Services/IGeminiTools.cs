@@ -1,6 +1,7 @@
 using CSharpToJsonSchema;
 using GenerativeAI.Tools;
 using System.ComponentModel;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace Recorder.Services;
@@ -37,13 +38,21 @@ public interface IGeminiTools
     Task<string> Compile(CancellationToken cancellationToken = default);
 
     [Description("Runs a test, returns the test output")]
-    Task<string> RunTest(
-        [Description("if true, captures and returns videos")]
-        bool record,
+    Task<string> RunTest(CancellationToken cancellationToken = default);
+
+    [Description("Runs a command line with arguments, returns exit code, the stdout and stderr output. Current working directory is the project root")]
+    Task<string> RunCommandLine(
+        [Description("Command to run, e.g. dotnet, git, etc.")]
+        string cmd, 
+        [Description("Arguments to pass to the command")]
+        string args, 
         CancellationToken cancellationToken = default);
 
     [Description("Generates a json of current UI automation structure, helpful when the test fails")]
     Task<string> DumpUiAutomationTree(CancellationToken cancellationToken = default);
+
+    [Description("Take screenshot of the current desktop")]
+    Task<string> TakeScreenshot(CancellationToken cancellationToken = default);
 
     [Description("Logs a thought that the user needs to know about")]
     Task<string> LogThought(string thought, CancellationToken cancellationToken = default);

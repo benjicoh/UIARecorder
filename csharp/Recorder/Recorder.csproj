@@ -44,32 +44,4 @@
 	  </Content>
 	</ItemGroup>
 
-	<ItemGroup>
-		<Page Include="Controls\AlertBar.xaml">
-			<SubType>Designer</SubType>
-			<Generator>MSBuild:Compile</Generator>
-		</Page>
-		<Compile Update="Controls\AlertBar.xaml.cs">
-			<SubType>Code</SubType>
-			<DependentUpon>AlertBar.xaml</DependentUpon>
-		</Compile>
-	</ItemGroup>
-
-	<ItemGroup>
-		<Compile Include="Services\IAlertService.cs" />
-		<Compile Include="Services\AlertService.cs" />
-		<Compile Include="Services\IAskHumanService.cs" />
-		<Compile Include="Services\AskHumanService.cs" />
-	</ItemGroup>
-
-	<ItemGroup>
-		<Page Include="Dialogs\AskHumanDialog.xaml">
-			<SubType>Designer</SubType>
-			<Generator>MSBuild:Compile</Generator>
-		</Page>
-		<Compile Update="Dialogs\AskHumanDialog.xaml.cs">
-			<DependentUpon>AskHumanDialog.xaml</DependentUpon>
-		</Compile>
-	</ItemGroup>
-
 </Project>

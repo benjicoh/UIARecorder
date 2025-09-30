@@ -7,7 +7,7 @@
              mc:Ignorable="d"
              d:DesignHeight="50" d:DesignWidth="800"
              Visibility="Collapsed"
-             Background="#FFE0E0">
+             Background="#990000">
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" />
