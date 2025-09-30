@@ -22,18 +22,6 @@ namespace Recorder
 
         private void ConfigureServices(IServiceCollection services)
         {
-            services.AddSingleton(provider => new MainViewModel(
-                provider.GetRequiredService<RecordingService>(),
-                provider.GetRequiredService<InputUiaService>(),
-                provider.GetRequiredService<AnnotationService>(),
-                provider.GetRequiredService<ThreadManager>(),
-                provider.GetRequiredService<ILogger<MainViewModel>>(),
-                provider.GetRequiredService<GeminiTestGenerator>(),
-                provider.GetRequiredService<ConfigurationService>(),
-                provider.GetRequiredService<WindowSelector>(),
-                provider.GetRequiredService<ConsoleWindow>(),
-                provider.GetRequiredService<IAlertService>()
-            ));
 
             services.AddSingleton(provider => new GeminiTestGenerator(
                 provider.GetRequiredService<ILogger<GeminiTestGenerator>>(),
@@ -42,6 +30,7 @@ namespace Recorder
             ));
             services.AddSingleton<IAlertService, AlertService>();
             services.AddSingleton<IAskHumanService, AskHumanService>();
+            services.AddSingleton<MainViewModel>();
             services.AddSingleton<ConfigurationService>();
             services.AddSingleton<RecordingService>();
             services.AddSingleton<ThreadManager>();
@@ -50,25 +39,46 @@ namespace Recorder
             services.AddSingleton<AnnotationService>();
             services.AddSingleton<WindowSelector>();
             services.AddSingleton<MainWindow>();
-            services.AddSingleton<ConsoleWindow>();
 
             services.AddLogging(builder =>
             {
                 builder.AddProvider(new ObservableLoggerProvider(logEntry =>
                 {
-                    var mainViewModel = ServiceProvider.GetService<MainViewModel>();
-                    if (mainViewModel != null)
+                    //log to file
+                    System.IO.File.AppendAllText("app.log", $"{logEntry.Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{logEntry.CallerFilePath}:{logEntry.CallerLineNumber}] [{logEntry.Level}] {logEntry.Message}{Environment.NewLine}");
+
+                    //log to console
+                    var consoleColor = Console.ForegroundColor;
+                    switch (logEntry.Level)
                     {
-                        App.Current.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, new Action(() =>
-                        {
-                            mainViewModel.LogMessages.Add(logEntry);
-                        }));
+                        case LogLevel.Trace:
+                        case LogLevel.Debug:
+                            Console.ForegroundColor = ConsoleColor.Gray;
+                            break;
+                        case LogLevel.Information:
+                            Console.ForegroundColor = ConsoleColor.White;
+                            break;
+                        case LogLevel.Warning:
+                            Console.ForegroundColor = ConsoleColor.Yellow;
+                            break;
+                        case LogLevel.Error:
+                        case LogLevel.Critical:
+                            Console.ForegroundColor = ConsoleColor.Red;
+                            break;
+                        default:
+                            break;
                     }
+                            
+                    Console.WriteLine($"{logEntry.Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{logEntry.CallerFilePath}:{logEntry.CallerLineNumber}] [{logEntry.Level}] {logEntry.Message}");
+                    Console.ForegroundColor = consoleColor;
+                    
                 }));
             });
 
             //set log level to debug
             services.Configure<LoggerFilterOptions>(options => options.MinLevel = LogLevel.Debug);
+
+            
 
         }
 
@@ -77,17 +87,16 @@ namespace Recorder
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
-
-            Win32Utils.SetProcessDpiAwarenessContext(Win32Utils.DPI_AWARENESS_CONTEXT.DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
-
-            var mainViewModel = ServiceProvider.GetService<MainViewModel>();
-
-            var mainWindow = new MainWindow(ServiceProvider.GetRequiredService<IAlertService>());
-            var consoleWindow = ServiceProvider.GetService<ConsoleWindow>();
-
-            consoleWindow.DataContext = mainViewModel;
+            //delete log file if exists
+            if (System.IO.File.Exists("app.log"))
+            {
+                System.IO.File.Delete("app.log");
+            }
+            //show console window
+            Win32Utils.AllocConsole();
+            
+            var mainWindow = ServiceProvider.GetService<MainWindow>();
             mainWindow.Show();
-            consoleWindow.Show();
         }
     }
 }

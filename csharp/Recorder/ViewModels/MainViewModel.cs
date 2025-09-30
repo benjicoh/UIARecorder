@@ -79,7 +79,6 @@ namespace Recorder.ViewModels
         private readonly GeminiTestGenerator _geminiTestGenerator;
         private readonly ConfigurationService _configurationService;
         private readonly WindowSelector _windowSelector;
-        private readonly ConsoleWindow _consoleWindow;
         private readonly IAlertService _alertService;
         #endregion
 
@@ -95,12 +94,11 @@ namespace Recorder.ViewModels
             InputUiaService inputUiaService,
             AnnotationService annotationService,
             ThreadManager threadManager,
-            ILogger<MainViewModel> logger,
             GeminiTestGenerator geminiTestGenerator,
             ConfigurationService configurationService,
             WindowSelector windowSelector,
-            ConsoleWindow consoleWindow,
-            IAlertService alertService)
+            IAlertService alertService,
+            ILogger<MainViewModel> logger)
         {
             _recordingService = recordingService;
             _inputUiaService = inputUiaService;
@@ -110,7 +108,6 @@ namespace Recorder.ViewModels
             _geminiTestGenerator = geminiTestGenerator;
             _configurationService = configurationService;
             _windowSelector = windowSelector;
-            _consoleWindow = consoleWindow;
             _alertService = alertService;
 
             CaptureModes = new ObservableCollection<string>
@@ -269,18 +266,6 @@ namespace Recorder.ViewModels
             Application.Current.Shutdown();
         }
 
-        [RelayCommand]
-        private void ShowConsole()
-        {
-            if (_consoleWindow != null)
-            {
-                if (!_consoleWindow.IsVisible)
-                {
-                    _consoleWindow.Show();
-                }
-                _consoleWindow.Activate();
-            }
-        }
 
         [RelayCommand]
         private void BrowseProjectDirectory()

@@ -14,9 +14,11 @@
         mc:Ignorable="d"
         Title="Recorder"
         SizeToContent="Height"
+        WindowStyle="ToolWindow"
         MinWidth="1000"
-        MinHeight="500"
-        Width="1200">
+        Height="400"
+        MinHeight="400"
+        Width="1000">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
         <utils:LogLevelToBrushConverter x:Key="LogLevelToBrushConverter" />
@@ -69,18 +71,18 @@
                       ItemsSource="{Binding CaptureModes}"
                       SelectedItem="{Binding SelectedCaptureMode}"
                       VerticalAlignment="Center"/>
-
             <Button Content="Select Area"
                     Command="{Binding SelectCaptureAreaCommand}"
                     Margin="10"
                     IsEnabled="{Binding IsNotRecording}"/>
             <TextBlock Text="{Binding CaptureAreaInfo}"
                        VerticalAlignment="Center"
-                       Margin="10"/>
+                       MaxWidth="150"
+                       TextTrimming="CharacterEllipsis"
+                       ToolTip="{Binding CaptureAreaInfo}"
+                       Margin="10" />
 
-            <Button Content="Show Console"
-                    Command="{Binding ShowConsoleCommand}"
-                    Margin="10" />
+
         </StackPanel>
 
         <Grid Grid.Row="2" Margin="10">
@@ -113,6 +115,7 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="{Binding ProjectDirectoryPath, FallbackValue='No project selected'}"
+                                   ToolTip="{Binding ProjectDirectoryPath, FallbackValue='No project selected'}"
                                    VerticalAlignment="Center" Margin="5" TextTrimming="CharacterEllipsis" Grid.Column="0" />
                         <Button Content="Browse" Command="{Binding BrowseProjectDirectoryCommand}"
                                 Grid.Column="1" Margin="5" IsEnabled="{Binding IsNotGenerating}" />
@@ -126,6 +129,7 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="{Binding RecordingDirectoryPath, FallbackValue='Default recordings folder'}"
+                                   ToolTip="{Binding RecordingDirectoryPath, FallbackValue='Default recordings selected'}"
                                    VerticalAlignment="Center" Margin="5" TextTrimming="CharacterEllipsis" Grid.Column="0" />
                         <Button Content="Browse" Command="{Binding BrowseRecordingsDirectoryCommand}"
                                 Grid.Column="1" Margin="5" IsEnabled="{Binding IsNotRecording}" />
