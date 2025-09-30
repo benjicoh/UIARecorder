@@ -1,4 +1,5 @@
 using FlaUI.Core.AutomationElements;
+using FlaUI.UIA3.Converters;
 using Recorder.Models;
 using System;
 using System.Collections.Generic;
@@ -94,38 +95,49 @@ namespace Recorder.Utils
         public static List<PatternInfo> GetPatternsInfo(this AutomationElement element)
         {
             var patterns = new List<PatternInfo>();
-            //try
-            //{
-            //    if (element.Patterns.Value.IsSupported)
-            //    {
-            //        patterns.Add(new PatternInfo
-            //        {
-            //            PatternName = "Value",
-            //            Properties = new Dictionary<string, object>()
-            //            {
-            //                { "IsReadOnly", element.Patterns.Value.Pattern.IsReadOnly.ValueOrDefault },
-            //                { "Value", element.Patterns.Value.Pattern.Value.ValueOrDefault }
-            //            }
-            //        });
-            //    }
-            //    if (element.Patterns.Window.IsSupported)
-            //    {
-            //        patterns.Add(new PatternInfo
-            //        {
-            //            PatternName = "Window",
-            //            Properties = new Dictionary<string, object>()
-            //            {
-            //                { "IsModal", element.Patterns.Window.Pattern.IsModal.ValueOrDefault },
-            //                { "IsTopmost", element.Patterns.Window.Pattern.IsTopmost.ValueOrDefault },
-            //                { "WindowVisualState", element.Patterns.Window.Pattern.WindowVisualState.ValueOrDefault.ToString() }
-            //            }
-            //        });
-            //    }
-            //}
-            //catch
-            //{
-            //    // Ignore pattern retrieval errors
-            //}
+            try
+            {
+                if (element.Patterns.Value.IsSupported)
+                {
+                    patterns.Add(new PatternInfo
+                    {
+                        PatternName = "Value",
+                        Properties = new Dictionary<string, object>()
+                        {
+                            { "IsReadOnly", element.Patterns.Value.Pattern.IsReadOnly.ValueOrDefault },
+                            { "Value", element.Patterns.Value.Pattern.Value.ValueOrDefault }
+                        }
+                    });
+                }
+                if (element.Patterns.Window.IsSupported)
+                {
+                    patterns.Add(new PatternInfo
+                    {
+                        PatternName = "Window",
+                        Properties = new Dictionary<string, object>()
+                        {
+                            { "IsModal", element.Patterns.Window.Pattern.IsModal.ValueOrDefault },
+                            { "IsTopmost", element.Patterns.Window.Pattern.IsTopmost.ValueOrDefault },
+                            { "WindowVisualState", element.Patterns.Window.Pattern.WindowVisualState.ValueOrDefault.ToString() }
+                        }
+                    });
+                }
+                if (element.Patterns.Toggle.IsSupported)
+                {
+                    patterns.Add(new PatternInfo
+                    {
+                        PatternName = "Toggle",
+                        Properties = new Dictionary<string, object>()
+                        {
+                            { "ToggleState", element.Patterns.Toggle.Pattern.ToggleState.Value },
+                        }
+                    });
+                }
+            }
+            catch
+            {
+                // Ignore pattern retrieval errors
+            }
             return patterns;
         }
 

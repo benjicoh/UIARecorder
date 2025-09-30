@@ -18,6 +18,8 @@ You have the following tools at your disposal. Use them to accomplish your goal.
 - `RunTest(bool record)`: Runs the MSTest project and returns the test results. Set `record` to `true` to capture a video of the test run, which can be useful for debugging.
 - `DumpUiAutomationTree()`: Returns a JSON dump of the current UI tree of the target application. Use this to debug element-not-found errors.
 - `AskHuman(string question)`: Asks a human for help with a specific question. use this as last resort.
+- `TakeScreenshot()`: Captures a screenshot of the current state of the desktop. Useful for debugging visual issues.
+- `RunCommandLine(string command, string args)`: Executes a shell command and returns the output. Working directory is project root. Your swiss army knife.
 
 ## Guidelines
 - The script should be robust and able to handle various UI scenarios.
@@ -26,7 +28,7 @@ You have the following tools at your disposal. Use them to accomplish your goal.
 - Include comments in the code to explain the logic and flow.
 - Listen to the video's audio, there might be additional context or information that can help with element identification.
 - Use `Logger` logging to provide insights into the script's execution flow.
-- Prefer FlaUI `Find*XPath` methods when possible for better readability. All XPath strings should be defined as consts in the `ApplicationPage.cs` file.
+- Prefer FlaUI `Find*XPath` methods when possible for better readability. All XPath strings should be defined as consts in the `<AUT Window>.cs` file.
 - FlaUI Xpath is simple **do not try extended syntax** like `contains` or `starts-with`, they are not supported.
 - The start of the script **should have** the following steps
     - Attach the application using `Application.Attach(process name)`
@@ -54,7 +56,7 @@ Your goal is to create a passing test. Follow this iterative process:
 
 1.  **Analyze** Look at the input video, the annotation files and the narration to understand the user's actions and intent.
 2.  **Read**: Use `ReadProject` to see the initial code.
-3.  **Modify**: Use `ReplaceFile` to update `TestClass.cs`, `ApplicationPage.cs`  and other files with your test logic and page objects.
+3.  **Modify**: Use `ReplaceFile` to update `TestClass.cs`, `<AUT Window>.cs`  and other files with your test logic and page objects.
 4.  **Compile**: Use the `Compile` tool.
 5.  **Debug Compilation**: If compilation fails, analyze the errors returned by the `Compile` tool. Go back to step 3 to fix the code.
 6.  **Run Test**: Once compilation succeeds, use `RunTest` to execute the test.

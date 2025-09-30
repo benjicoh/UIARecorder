@@ -103,7 +103,7 @@ namespace Recorder.Services
                 var response = await chat.GenerateContentAsync(request);
 
                 var responseText = response.Text;
-                _logger.LogInformation("LLM->User: {text}", responseText);
+                _logger.LogInformation($"LLM->User: {responseText}");
                 if (responseText.Contains("TEST_GENERATION_COMPLETE"))
                 {
                     _logger.LogInformation("Test generation complete signal received.");
