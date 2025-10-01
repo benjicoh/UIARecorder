@@ -1,3 +1,4 @@
+using FlaUI.Core.AutomationElements;
 using System.Drawing;
 
 namespace Recorder.Utils
@@ -15,6 +16,23 @@ namespace Recorder.Utils
             return new Point(screenPoint.X - captureArea.X, screenPoint.Y - captureArea.Y);
         }
 
+        public static Rectangle TransformFromScreen(Rectangle screenRect, Rectangle captureArea)
+        {
+            return new Rectangle(
+                screenRect.X - captureArea.X,
+                screenRect.Y - captureArea.Y,
+                screenRect.Width,
+                screenRect.Height);
+        }
+
+
+        public static Point TransformToElement(Point screenPoint, AutomationElement element)
+        {
+            var elementRec = element.GetSafeBoundingRectangle();
+            return new Point(screenPoint.X - elementRec.X, screenPoint.Y - elementRec.Y);
+        }
+
+        
         /// <summary>
         /// Transforms a point from relative capture area coordinates to absolute screen coordinates.
         /// </summary>

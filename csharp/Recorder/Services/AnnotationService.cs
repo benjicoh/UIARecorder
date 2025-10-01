@@ -13,12 +13,14 @@ namespace Recorder.Services
     {
         private readonly List<ElementInfo> _knownElements = new List<ElementInfo>();
         private readonly ILogger<AnnotationService> _logger;
+        private readonly ConfigurationService _configurationService;
         private readonly object _lock = new object();
         private DateTime _startTime;
 
-        public AnnotationService(ILogger<AnnotationService> logger)
+        public AnnotationService(ILogger<AnnotationService> logger, ConfigurationService configurationService)
         {
             _logger = logger;
+            _configurationService = configurationService;
         }
 
         public void Start()
@@ -76,7 +78,7 @@ namespace Recorder.Services
             }
         }
 
-        public async Task StopAndSaveAsync(string filePath, string processName)
+        public async Task StopAndSaveAsync(string filePath)
         {
             try
             {
@@ -85,7 +87,7 @@ namespace Recorder.Services
                 {
                     var annotationData = new
                     {
-                        ProcessName = processName,
+                        ProcessNames = _configurationService.Config.WhitelistedProcesses,
                         Elements = _knownElements
                     };
                     json = JsonConvert.SerializeObject(annotationData, Formatting.Indented);

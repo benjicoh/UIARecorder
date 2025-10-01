@@ -60,8 +60,8 @@ namespace Recorder.Logging
                 memberName = frame.GetMethod()?.Name ?? "unknown";
                 break;
             }
-
-            var logEntry = new LogEntry(logLevel, message, filePath, lineNumber, memberName);
+            var shortFile = System.IO.File.Exists(filePath) ? System.IO.Path.GetFileName(filePath) : filePath;
+            var logEntry = new LogEntry(logLevel, message, shortFile, lineNumber, memberName, exception);
             lock (_lock)
             {
                 _logAction?.Invoke(logEntry);

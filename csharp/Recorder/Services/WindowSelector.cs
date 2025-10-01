@@ -63,6 +63,7 @@ namespace Recorder.Services
                 {
                     SelectedWindowHandle = _currentHoveredWindow,
                     WindowTitle = Win32Utils.GetWindowText(_currentHoveredWindow),
+                    ProcessName = Win32Utils.GetProcessName(_currentHoveredWindow),
                     SelectedArea = area,
                     SelectedMonitor = Screen.AllScreens.ToList().IndexOf(Screen.FromHandle(_currentHoveredWindow))
                 };

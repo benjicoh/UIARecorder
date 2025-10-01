@@ -26,5 +26,17 @@ namespace Recorder.Utils
         public string WindowTitle { get; set; }
 
         public string ProcessName { get; set; } = string.Empty;
+
+        public void MakeDivisableBy2()
+        {
+            if (SelectedArea.Width % 2 != 0)
+            {
+                SelectedArea = new Rectangle(SelectedArea.X, SelectedArea.Y, SelectedArea.Width - 1, SelectedArea.Height);
+            }
+            if (SelectedArea.Height % 2 != 0)
+            {
+                SelectedArea = new Rectangle(SelectedArea.X, SelectedArea.Y, SelectedArea.Width, SelectedArea.Height - 1);
+            }
+        }
     }
 }

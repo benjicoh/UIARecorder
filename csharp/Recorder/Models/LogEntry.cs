@@ -12,8 +12,10 @@ namespace Recorder.Models
         public int CallerLineNumber { get; set; }
         public string CallerMemberName { get; set; }
 
+        public Exception Exception { get; set; }
 
-        public LogEntry(LogLevel level, string message, string callerFilePath, int callerLineNumber, string callerMemberName)
+
+        public LogEntry(LogLevel level, string message, string callerFilePath, int callerLineNumber, string callerMemberName, Exception exception)
         {
             Timestamp = DateTime.Now;
             Level = level;
@@ -21,12 +23,13 @@ namespace Recorder.Models
             CallerFilePath = callerFilePath;
             CallerLineNumber = callerLineNumber;
             CallerMemberName = callerMemberName;
+            Exception = exception;
         }
 
         public override string ToString()
         {
             var file = System.IO.Path.GetFileName(CallerFilePath);
-            return $"{Timestamp:yyyy-MM-dd HH:mm:ss} - {Level} [{file}:{CallerLineNumber}] - {Message}";
+            return $"{Timestamp:yyyy-MM-dd HH:mm:ss} - {Level} [{file}:{CallerLineNumber}] - {Message} {Exception?.Message}";
         }
     }
 }

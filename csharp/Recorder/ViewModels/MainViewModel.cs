@@ -230,7 +230,7 @@ namespace Recorder.ViewModels
                     {
                         _inputUiaService.Stop();
                         _recordingService.StopRecording();
-                        await _annotationService.StopAndSaveAsync(_annotationsFilePath, _selectionRes.ProcessName);
+                        await _annotationService.StopAndSaveAsync(_annotationsFilePath);
                     });
 
                     _logger.LogInformation("Recording stopped.");

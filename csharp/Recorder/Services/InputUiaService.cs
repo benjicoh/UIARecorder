@@ -118,11 +118,12 @@ namespace Recorder.Services
                             return;
                         }
 
-                        var relativePoint = CoordinateUtils.TransformFromScreen(screenPoint, _captureArea);
+                        var relativeToVideoPoint = CoordinateUtils.TransformFromScreen(screenPoint, _captureArea);
+                        var relativeToElementPoint = CoordinateUtils.TransformToElement(screenPoint, element);
                         var EventType = $"{button} {updown}";
-                        var Coord = $"{relativePoint.X}, {relativePoint.Y}";
-
-                        _overlayService.AddClickOverlay(new OpenCvSharp.Point(relativePoint.X, relativePoint.Y), EventType, ts);
+                        var RelativeCoord = $"{relativeToElementPoint.X}, {relativeToElementPoint.Y}";
+                        _logger.LogDebug(EventType + " at " + RelativeCoord + " in element " + element.GetIdentifier());
+                        _overlayService.AddClickOverlay(new OpenCvSharp.Point(relativeToVideoPoint.X, relativeToVideoPoint.Y), EventType, ts);
 
                         var elementInfo = GetElementHierarchy(element);
                         if (elementInfo == null)
@@ -130,8 +131,9 @@ namespace Recorder.Services
                             _logger.LogWarning("Could not retrieve element hierarchy for click at {X}, {Y}", x, y);
                             return;
                         }
-                        _overlayService.AddOverlay(element.GetSafeBoundingRectangle(), element.GetIdentifier(), Color.Green, ts);
-                        _annotationService.AddEvent(elementInfo, "MouseClick", new { EventType, Coord }, ts);
+                        var relativeToVideoRect = CoordinateUtils.TransformFromScreen(element.GetSafeBoundingRectangle(), _captureArea);
+                        _overlayService.AddOverlay(relativeToVideoRect, element.GetIdentifier(), Color.Green, ts);
+                        _annotationService.AddEvent(elementInfo, "MouseClick", new { EventType, RelativeCoord }, ts);
                     }
                 }
                 catch (Exception ex)
@@ -164,7 +166,8 @@ namespace Recorder.Services
                             _logger.LogWarning("Could not retrieve element hierarchy for key up event.");
                             return;
                         }
-                        _overlayService.AddOverlay(element.GetSafeBoundingRectangle(), element.GetIdentifier(), Color.Green, ts);
+                        var relativeToVideoRect = CoordinateUtils.TransformFromScreen(element.GetSafeBoundingRectangle(), _captureArea);
+                        _overlayService.AddOverlay(relativeToVideoRect, element.GetIdentifier(), Color.Green, ts);
                         _annotationService.AddEvent(elementInfo, "KeyUp", new { e.KeyCode }, ts);
                     }
                 }
@@ -223,19 +226,13 @@ namespace Recorder.Services
                     return null; // The main element is outside the capture area, ignore the hierarchy.
                 }
 
-                var relativeRect = new Rectangle(
-                    screenRect.X - _captureArea.X,
-                    screenRect.Y - _captureArea.Y,
-                    screenRect.Width,
-                    screenRect.Height
-                );
 
                 var newInfo = new ElementInfo
                 {
                     AutomationID = el.GetSafeAutomationID(),
                     Name = el.GetSafeName(),
                     ControlType = el.GetSafeControlType(),
-                    BoundingRectangle = relativeRect,
+                    BoundingRectangle = screenRect,
                     Patterns = el.GetPatternsInfo()
                 };
 

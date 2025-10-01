@@ -48,6 +48,9 @@ namespace Recorder.Utils
         [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool GetWindowRect(IntPtr hWnd, out Rect lpRect);
 
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
         public static string GetWindowText(IntPtr hWnd)
         {
             var length = GetWindowTextLength(hWnd);
@@ -77,6 +80,21 @@ namespace Recorder.Utils
 
         [DllImport("user32.dll")]
         public static extern bool SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT value);
+
+        internal static string GetProcessName(nint currentHoveredWindow)
+        {
+            GetWindowThreadProcessId(currentHoveredWindow, out uint processId);
+            try
+            {
+                var process = System.Diagnostics.Process.GetProcessById((int)processId);
+                return process.ProcessName;
+            }
+            catch
+            {
+                return string.Empty;
+            }
+
+        }
 
         private const int GWL_STYLE = -16;
         private const ulong WS_VISIBLE = 0x10000000L;

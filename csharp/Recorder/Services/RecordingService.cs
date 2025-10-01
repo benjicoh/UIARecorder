@@ -56,11 +56,23 @@ namespace Recorder.Services
 
         public void StopRecording()
         {
-            _cancellationTokenSource?.Cancel();
-            _threadManager.StopAll(); // Ensure all threads are stopped
-            _logger.LogInformation("Post processing video...");
-            _tempVideoPath = _overlayService.AddOverlayToVideo(_tempVideoPath, _startCaptureTime);
-            MergeVideoAndAudio();
+            try
+            {
+                _cancellationTokenSource?.Cancel();
+                _threadManager.StopAll(); // Ensure all threads are stopped
+                _logger.LogInformation("Post processing video...");
+                _tempVideoPath = _overlayService.AddOverlayToVideo(_tempVideoPath, _startCaptureTime);
+                MergeVideoAndAudio();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while stopping the recording.");
+            }
+            finally
+            {
+                _cancellationTokenSource?.Dispose();
+                _cancellationTokenSource = null;
+            }
         }
 
         private void RecordVideo(CancellationToken token, SelectionResult selection)
@@ -75,14 +87,20 @@ namespace Recorder.Services
         {
             try
             {
+                selection.MakeDivisableBy2();
                 var rect = selection.SelectedArea;
-                if (rect.IsEmpty)
-                {
-                    var screenSize = ScreenCapture.GetScreenSize(selection.SelectedMonitor);
-                    rect = new Rectangle(0, 0, screenSize.Width, screenSize.Height);
-                }
+                
+                var screenSize = ScreenCapture.GetScreenSize(selection.SelectedMonitor);
+                var fullScreenRect = new Rectangle(0, 0, screenSize.Width, screenSize.Height);
 
-                using var writer = new VideoWriter(_tempVideoPath, FourCC.FromString("X264"), 20.0, new OpenCvSharp.Size(rect.Width, rect.Height));
+                if (rect == Rectangle.Empty || !fullScreenRect.Contains(rect))
+                {
+                    rect = fullScreenRect;
+                }
+                bool shouldCrop = rect != fullScreenRect;
+
+
+                using var writer = new VideoWriter(_tempVideoPath, FourCC.X264, 20.0, new OpenCvSharp.Size(rect.Width, rect.Height));
                 if (!writer.IsOpened())
                 {
                     _logger.LogError("Could not open video writer.");
@@ -96,19 +114,26 @@ namespace Recorder.Services
 
                     using var fullScreenMat = Mat.FromPixelData(frame.Height, frame.Width, MatType.CV_8UC4, frame.DataPointer);
 
-                    // Adjust the rect to be within the bounds of the full screen mat
-                    var cropRect = new OpenCvSharp.Rect(
-                        Math.Max(0, rect.X),
-                        Math.Max(0, rect.Y),
-                        Math.Min(rect.Width, fullScreenMat.Width - rect.X),
-                        Math.Min(rect.Height, fullScreenMat.Height - rect.Y)
-                    );
+                    if (shouldCrop)
+                    {
 
-                    using var croppedMat = new Mat(fullScreenMat, cropRect);
+                        // Adjust the rect to be within the bounds of the full screen mat
+                        var cropRect = new OpenCvSharp.Rect(
+                            Math.Max(0, rect.X),
+                            Math.Max(0, rect.Y),
+                            Math.Min(rect.Width, fullScreenMat.Width - rect.X),
+                            Math.Min(rect.Height, fullScreenMat.Height - rect.Y)
+                        );
 
-                    _overlayService.DrawCursor(croppedMat, new Point(rect.X, rect.Y));
-                    
-                    writer.Write(croppedMat);
+                        using var croppedMat = new Mat(fullScreenMat, cropRect);
+                        _overlayService.DrawCursor(croppedMat, new Point(rect.X, rect.Y));
+                        writer.Write(croppedMat);
+                    }
+                    else
+                    {
+                        _overlayService.DrawCursor(fullScreenMat);
+                        writer.Write(fullScreenMat);
+                    }
                 }
             }
             catch (OperationCanceledException)

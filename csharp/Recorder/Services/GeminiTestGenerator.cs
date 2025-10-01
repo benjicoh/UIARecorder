@@ -68,7 +68,7 @@ namespace Recorder.Services
         {
             if (copyTemplate)
             {
-                CopyTemplateFiles(projectDir);
+                projectDir = CopyTemplateFiles(projectDir);
             }
             _logger.LogInformation("Starting test generation process...");
             InitializeClient();
@@ -138,17 +138,15 @@ namespace Recorder.Services
             }
         }
 
-        private void CopyTemplateFiles(string destinationDir)
+        private string CopyTemplateFiles(string templateDir)
         {
-            var templateDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TemplateTest");
             if (!Directory.Exists(templateDir))
             {
-                _logger.LogWarning("Template directory not found at {templateDir}", templateDir);
-                return;
+                throw new InvalidDataException($"Template directory not found at {templateDir}");
             }
 
-            var newDirName = $"{Path.GetFileName(destinationDir)}_{DateTime.Now:yyyyMMdd_HHmmss}";
-            var newDirPath = Path.Combine(Path.GetDirectoryName(destinationDir), newDirName);
+            var newDirName = $"{Path.GetFileName(templateDir)}_{DateTime.Now:yyyyMMdd_HHmmss}";
+            var newDirPath = Path.Combine(Path.GetDirectoryName(templateDir), newDirName);
 
             Directory.CreateDirectory(newDirPath);
 
@@ -161,6 +159,7 @@ namespace Recorder.Services
                 File.Copy(file, destFile, true);
             }
             _logger.LogInformation("Template files copied to {newDirPath}", newDirPath);
+            return newDirPath;
         }
     }
 }

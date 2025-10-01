@@ -82,8 +82,8 @@ namespace Recorder.Services
                     Cv2.Rectangle(image, shiftRect, black, 2);
                     Cv2.Rectangle(image, rect, color, 2);
                     
-                    Cv2.PutText(image, overlay.Text, new OpenCvSharp.Point(rect.X + 6, rect.Y + 26), HersheyFonts.HersheySimplex, 0.5, black, 2, LineTypes.AntiAlias);
-                    Cv2.PutText(image, overlay.Text, new OpenCvSharp.Point(rect.X + 5, rect.Y + 25), HersheyFonts.HersheySimplex, 0.5, color, 2, LineTypes.AntiAlias);
+                    Cv2.PutText(image, overlay.Text, new OpenCvSharp.Point(rect.X + 6, rect.Y + 26), HersheyFonts.HersheySimplex, 0.5, black, 1, LineTypes.AntiAlias);
+                    Cv2.PutText(image, overlay.Text, new OpenCvSharp.Point(rect.X + 5, rect.Y + 25), HersheyFonts.HersheySimplex, 0.5, color, 1, LineTypes.AntiAlias);
                 }
 
                 var clicksToDraw = _clickOverlays.Where(o => (frameTimestamp - o.Timestamp).TotalSeconds > -0.25 && (frameTimestamp - o.Timestamp).TotalSeconds < 0.75).ToList();
@@ -128,7 +128,7 @@ namespace Recorder.Services
         {
             using var capture = new VideoCapture(tempVideoPath);
             var copiedVideoPath = tempVideoPath.Replace(".mp4", "_with_overlays.mp4");
-            using var writer = new VideoWriter(copiedVideoPath, FourCC.FromString("X264"), capture.Fps, new OpenCvSharp.Size(capture.FrameWidth, capture.FrameHeight));
+            using var writer = new VideoWriter(copiedVideoPath, FourCC.X264, capture.Fps, new OpenCvSharp.Size(capture.FrameWidth, capture.FrameHeight));
             if (!capture.IsOpened())
             {
                 throw new Exception("Failed to open video file for overlay processing.");

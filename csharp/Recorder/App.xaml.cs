@@ -22,27 +22,34 @@ namespace Recorder
 
         private void ConfigureServices(IServiceCollection services)
         {
-
-            services.AddSingleton<GeminiTestGenerator>();
-            services.AddSingleton<GeminiTools>();
+            //services
             services.AddSingleton<IAlertService, AlertService>();
             services.AddSingleton<IAskHumanService, AskHumanService>();
-            services.AddSingleton<MainViewModel>();
+            services.AddSingleton<GeminiTestGenerator>();
             services.AddSingleton<ConfigurationService>();
             services.AddSingleton<RecordingService>();
-            services.AddSingleton<ThreadManager>();
             services.AddSingleton<InputUiaService>();
             services.AddSingleton<OverlayService>();
             services.AddSingleton<AnnotationService>();
+            //utils
+            services.AddSingleton<GeminiTools>();
+            services.AddSingleton<ThreadManager>();
             services.AddSingleton<WindowSelector>();
+            //vms
+            services.AddSingleton<MainViewModel>();
+            //views
             services.AddSingleton<MainWindow>();
-
+            //logging
             services.AddLogging(builder =>
             {
                 builder.AddProvider(new ObservableLoggerProvider(logEntry =>
                 {
                     //log to file
                     System.IO.File.AppendAllText("app.log", $"{logEntry.Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{logEntry.CallerFilePath}:{logEntry.CallerLineNumber}] [{logEntry.Level}] {logEntry.Message}{Environment.NewLine}");
+                    if (logEntry.Exception != null)
+                    {
+                        System.IO.File.AppendAllText("app.log", $"Exception : {logEntry.Exception}{Environment.NewLine}");
+                    }
 
                     //log to console
                     var consoleColor = Console.ForegroundColor;
@@ -67,6 +74,10 @@ namespace Recorder
                     }
                             
                     Console.WriteLine($"{logEntry.Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{logEntry.CallerFilePath}:{logEntry.CallerLineNumber}] [{logEntry.Level}] {logEntry.Message}");
+                    if (logEntry.Exception != null)
+                    {
+                        Console.WriteLine($"Exception : {logEntry.Exception}");
+                    }
                     Console.ForegroundColor = consoleColor;
                     
                 }));
