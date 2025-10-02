@@ -38,7 +38,10 @@ public interface IGeminiTools
     Task<string> Compile(CancellationToken cancellationToken = default);
 
     [Description("Runs a test, returns the test output")]
-    Task<string> RunTest(CancellationToken cancellationToken = default);
+    Task<string> RunTest(
+        [Description("Set to true to record the screen during the test run, and upload the video and annotations to gemini")]
+        bool record = false,
+        CancellationToken cancellationToken = default);
 
     [Description("Runs a command line with arguments, returns exit code, the stdout and stderr output. Current working directory is the project root")]
     Task<string> RunCommandLine(

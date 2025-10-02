@@ -1,8 +1,11 @@
 using FlaUI.Core.Tools;
 using GenerativeAI.Clients;
 using Microsoft.Extensions.Logging;
+using Recorder.Models;
+using Sdcb.ScreenCapture;
 using System;
 using System.Diagnostics;
+using System.Drawing;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
@@ -14,6 +17,8 @@ namespace Recorder.Services
         private readonly InputUiaService _inputUiaService;
         private readonly ILogger<GeminiTools> _logger;
         private readonly IAskHumanService _askHumanService;
+        private readonly RecordingService _recordingService;
+        private readonly AnnotationService _annotationService;
 
         public string ProjectDir { get; set; }
         public string ProcessName { get; set; }
@@ -21,11 +26,13 @@ namespace Recorder.Services
         public FileClient FileClient { get; set; }
 
 
-        public GeminiTools(InputUiaService inputUiaService, ILogger<GeminiTools> logger, IAskHumanService askHumanService)
+        public GeminiTools(InputUiaService inputUiaService, ILogger<GeminiTools> logger, IAskHumanService askHumanService, RecordingService recordingService, AnnotationService annotationService)
         {
             _inputUiaService = inputUiaService;
             _logger = logger;
             _askHumanService = askHumanService;
+            _recordingService = recordingService;
+            _annotationService = annotationService;
         }
 
         public Task<string> AddFile(string path, string newContent, System.Threading.CancellationToken cancellationToken = default)
@@ -99,12 +106,49 @@ namespace Recorder.Services
             return Task.FromResult($"File {path} not found.");
         }
 
-        public async Task<string> RunTest(CancellationToken cancellationToken = default)
+        public async Task<string> RunTest(bool record = false, CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("Running tests...");
-            var result = await RunCommandAsync("dotnet", "test --logger \"console;verbosity=detailed\"", ProjectDir);
-            _logger.LogInformation($"Test run finished\n{result.stdout}");
-            return $"Exit Code: {result.returnCode}\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}";
+            if (record)
+            {
+                var videoPath = Path.Combine(ProjectDir, "test_run.mp4");
+                var annotationsPath = Path.Combine(ProjectDir, "test_run_annotations.json");
+                _logger.LogInformation("Starting recording...");
+
+                var primaryMonitor = MonitorInfo.Primary;
+                var selection = new SelectionResult
+                {
+                    SelectedMonitor = primaryMonitor,
+                    SelectedArea = new Rectangle(0, 0, primaryMonitor.Bounds.Width, primaryMonitor.Bounds.Height)
+                };
+
+                _annotationService.Start();
+                _inputUiaService.Start(ProcessName, () => { });
+                _recordingService.StartRecording(videoPath, selection);
+
+                var result = await RunCommandAsync("dotnet", "test --logger \"console;verbosity=detailed\"", ProjectDir);
+
+                _logger.LogInformation("Stopping recording...");
+                _recordingService.StopRecording();
+                await _annotationService.StopAndSaveAsync(annotationsPath);
+                _inputUiaService.Stop();
+
+                var videoFile = await FileClient.UploadFileAsync(videoPath);
+                await FileClient.AwaitForFileStateActiveAsync(videoFile, 15, new CancellationToken());
+
+                var annotationFile = await FileClient.UploadFileAsync(annotationsPath);
+                await FileClient.AwaitForFileStateActiveAsync(annotationFile, 15, new CancellationToken());
+
+                _logger.LogInformation($"Test run finished\n{result.stdout}");
+                return $"Exit Code: {result.returnCode}\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}\n\nRecording and annotations uploaded.";
+
+            }
+            else
+            {
+                var result = await RunCommandAsync("dotnet", "test --logger \"console;verbosity=detailed\"", ProjectDir);
+                _logger.LogInformation($"Test run finished\n{result.stdout}");
+                return $"Exit Code: {result.returnCode}\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}";
+            }
         }
 
         public async Task<string> RunCommandLine(string cmd, string args, CancellationToken cancellationToken = default)

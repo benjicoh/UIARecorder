@@ -15,7 +15,7 @@ You have the following tools at your disposal. Use them to accomplish your goal.
 - `AddFile(string path, string newContent)`: Adds a new file with the given content at the specified path.
 - `DeleteFile(string path)`: Deletes a file at the given path.
 - `Compile()`: Compiles the C# project and returns the result, including any errors.
-- `RunTest(bool record)`: Runs the MSTest project and returns the test results. Set `record` to `true` to capture a video of the test run, which can be useful for debugging.
+- `RunTest(bool record = false)`: Runs the MSTest project and returns the test results. Set `record` to `true` to capture a video of the test run, which can be useful for debugging.
 - `DumpUiAutomationTree()`: Returns a JSON dump of the current UI tree of the target application. Use this to debug element-not-found errors.
 - `AskHuman(string question)`: Asks a human for help with a specific question. use this as last resort.
 - `TakeScreenshot()`: Captures a screenshot of the current state of the desktop. Useful for debugging visual issues.
@@ -61,6 +61,7 @@ Your goal is to create a passing test. Follow this iterative process:
 5.  **Debug Compilation**: If compilation fails, analyze the errors returned by the `Compile` tool. Go back to step 3 to fix the code.
 6.  **Run Test**: Once compilation succeeds, use `RunTest` to execute the test.
 7.  **Debug Test**: If the test fails, analyze the output from `RunTest`.
+    - Consider re-running the test with `record` set to `true` (`RunTest(record: true)`). The resulting video can provide valuable context for debugging.
     - If it's an element identification error, you may need to use `DumpUiAutomationTree` to inspect the current state of the application and correct your element selectors.
     - Go back to step 3 to refine your code.
 8.  **Succeed**: If the test passes, your job is done. To signal completion, respond with the exact string `TEST_GENERATION_COMPLETE` and nothing else.
