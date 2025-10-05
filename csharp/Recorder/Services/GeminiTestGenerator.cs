@@ -84,6 +84,7 @@ namespace Recorder.Services
             _generativeModel.FunctionCallingBehaviour = new GenerativeAI.Core.FunctionCallingBehaviour
             {
                 AutoCallFunction = true,
+                //todo set reply to false to be able to upload files before replying
                 AutoReplyFunction = true,
                 AutoHandleBadFunctionCalls = true
             };

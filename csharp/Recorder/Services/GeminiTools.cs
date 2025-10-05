@@ -2,13 +2,14 @@ using FlaUI.Core.Tools;
 using GenerativeAI.Clients;
 using Microsoft.Extensions.Logging;
 using Recorder.Models;
-using Sdcb.ScreenCapture;
+using Recorder.Utils;
 using System;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 
 namespace Recorder.Services
 {
@@ -19,6 +20,7 @@ namespace Recorder.Services
         private readonly IAskHumanService _askHumanService;
         private readonly RecordingService _recordingService;
         private readonly AnnotationService _annotationService;
+        private readonly ConfigurationService _configurationService;
 
         public string ProjectDir { get; set; }
         public string ProcessName { get; set; }
@@ -26,13 +28,14 @@ namespace Recorder.Services
         public FileClient FileClient { get; set; }
 
 
-        public GeminiTools(InputUiaService inputUiaService, ILogger<GeminiTools> logger, IAskHumanService askHumanService, RecordingService recordingService, AnnotationService annotationService)
+        public GeminiTools(InputUiaService inputUiaService, ILogger<GeminiTools> logger, IAskHumanService askHumanService, RecordingService recordingService, AnnotationService annotationService, ConfigurationService configurationService)
         {
             _inputUiaService = inputUiaService;
             _logger = logger;
             _askHumanService = askHumanService;
             _recordingService = recordingService;
             _annotationService = annotationService;
+            _configurationService = configurationService;
         }
 
         public Task<string> AddFile(string path, string newContent, System.Threading.CancellationToken cancellationToken = default)
@@ -115,15 +118,14 @@ namespace Recorder.Services
                 var annotationsPath = Path.Combine(ProjectDir, "test_run_annotations.json");
                 _logger.LogInformation("Starting recording...");
 
-                var primaryMonitor = MonitorInfo.Primary;
                 var selection = new SelectionResult
                 {
-                    SelectedMonitor = primaryMonitor,
-                    SelectedArea = new Rectangle(0, 0, primaryMonitor.Bounds.Width, primaryMonitor.Bounds.Height)
+                    SelectedMonitor = 0,
+                    SelectedArea = new Rectangle(0, 0, Screen.PrimaryScreen.Bounds.Width, Screen.PrimaryScreen.Bounds.Height)
                 };
 
                 _annotationService.Start();
-                _inputUiaService.Start(ProcessName, () => { });
+                _inputUiaService.Start(selection,_configurationService.Config.WhitelistedProcesses);
                 _recordingService.StartRecording(videoPath, selection);
 
                 var result = await RunCommandAsync("dotnet", "test --logger \"console;verbosity=detailed\"", ProjectDir);
@@ -138,7 +140,7 @@ namespace Recorder.Services
 
                 var annotationFile = await FileClient.UploadFileAsync(annotationsPath);
                 await FileClient.AwaitForFileStateActiveAsync(annotationFile, 15, new CancellationToken());
-
+                
                 _logger.LogInformation($"Test run finished\n{result.stdout}");
                 return $"Exit Code: {result.returnCode}\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}\n\nRecording and annotations uploaded.";
 
